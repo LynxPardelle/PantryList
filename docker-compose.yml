@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: pantrylist-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+      MONGO_INITDB_DATABASE: pantrylist
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - ./backend/scripts/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - pantrylist-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pantrylist-backend
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=mongodb://admin:password123@mongodb:27017/pantrylist?authSource=admin
+      - JWT_SECRET=your-jwt-secret-here
+      - PORT=3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - mongodb
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    networks:
+      - pantrylist-network
+    command: npm run start:dev
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: pantrylist-frontend
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=development
+    ports:
+      - "4200:4200"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - pantrylist-network
+    command: ng serve --host 0.0.0.0 --port 4200
+
+volumes:
+  mongodb_data:
+
+networks:
+  pantrylist-network:
+    driver: bridge
