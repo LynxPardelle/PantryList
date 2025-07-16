@@ -1,0 +1,20 @@
+export enum ProductStatus {
+  AVAILABLE = 'available',
+  LOW_STOCK = 'low_stock',
+  OUT_OF_STOCK = 'out_of_stock'
+}
+
+export enum QuantityUnit {
+  LITER = 'lt',
+  KILOGRAM = 'kg',
+  GRAM = 'g',
+  PIECE = 'piezas',
+  MILLILITER = 'ml'
+}
+
+export enum ProductCategory {
+  FOOD = 'food',
+  CLEANING = 'cleaning',
+  HYGIENE = 'hygiene',
+  OTHER = 'other'
+}
