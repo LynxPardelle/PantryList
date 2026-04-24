@@ -1,25 +1,60 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import {
+  FastifyAdapter,
+  NestFastifyApplication,
+} from '@nestjs/platform-fastify';
 import * as request from 'supertest';
-import { App } from 'supertest/types';
-import { AppModule } from './../src/app.module';
+import { AppController } from '../src/app.controller';
+import { AppService } from '../src/app.service';
+import { configureApp } from '../src/app.setup';
 
 describe('AppController (e2e)', () => {
-  let app: INestApplication<App>;
+  let app: NestFastifyApplication;
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
+      imports: [
+        ConfigModule.forRoot({
+          isGlobal: true,
+          ignoreEnvFile: true,
+          load: [
+            () => ({
+              API_PREFIX: 'api',
+              CORS_ORIGIN: 'http://localhost:4200',
+              HELMET_ENABLED: 'false',
+              SWAGGER_ENABLED: 'false',
+            }),
+          ],
+        }),
+      ],
+      controllers: [AppController],
+      providers: [AppService],
     }).compile();
 
-    app = moduleFixture.createNestApplication();
+    app = moduleFixture.createNestApplication<NestFastifyApplication>(
+      new FastifyAdapter(),
+    );
+    await configureApp(app, app.get(ConfigService));
     await app.init();
+    await app.getHttpAdapter().getInstance().ready();
   });
 
-  it('/ (GET)', () => {
-    return request(app.getHttpServer())
-      .get('/')
-      .expect(200)
-      .expect('Hello World!');
+  afterEach(async () => {
+    await app.close();
+  });
+
+  it('/api (GET)', () => {
+    return request(app.getHttpServer()).get('/api').expect(200).expect({
+      status: 'ok',
+      service: 'pantrylist-backend',
+    });
+  });
+
+  it('/api/healthz (GET)', () => {
+    return request(app.getHttpServer()).get('/api/healthz').expect(200).expect({
+      status: 'ok',
+      service: 'pantrylist-backend',
+    });
   });
 });

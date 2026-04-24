@@ -1,7 +1,13 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Product, CreateProductRequest, UpdateQuantityRequest } from '../../shared/models/product.model';
+import { map } from 'rxjs/operators';
+import {
+  ApiProduct,
+  CreateProductRequest,
+  Product,
+  UpdateQuantityRequest,
+} from '../../shared/models/product.model';
 import { environment } from '../../../environments/environment';
 
 @Injectable({
@@ -12,19 +18,30 @@ export class ProductService {
 
   constructor(private http: HttpClient) {}
 
-  getProductsByUser(userId: string): Observable<Product[]> {
-    return this.http.get<Product[]>(`${this.baseUrl}?userId=${userId}`);
+  getProducts(): Observable<Product[]> {
+    return this.http
+      .get<ApiProduct[]>(this.baseUrl)
+      .pipe(map((products) => products.map((product) => this.normalizeProduct(product))));
   }
 
   createProduct(product: CreateProductRequest): Observable<Product> {
-    return this.http.post<Product>(this.baseUrl, product);
+    return this.http
+      .post<ApiProduct>(this.baseUrl, product)
+      .pipe(map((createdProduct) => this.normalizeProduct(createdProduct)));
   }
 
   updateProductQuantity(productId: string, quantity: UpdateQuantityRequest): Observable<Product> {
-    return this.http.put<Product>(`${this.baseUrl}/${productId}/quantity`, quantity);
+    return this.http
+      .put<ApiProduct>(`${this.baseUrl}/${productId}/quantity`, quantity)
+      .pipe(map((product) => this.normalizeProduct(product)));
   }
 
-  getProductById(id: string): Observable<Product> {
-    return this.http.get<Product>(`${this.baseUrl}/${id}`);
+  private normalizeProduct(product: ApiProduct): Product {
+    return {
+      ...product,
+      createdAt: new Date(product.createdAt),
+      updatedAt: new Date(product.updatedAt),
+      nextPurchaseDate: product.nextPurchaseDate ? new Date(product.nextPurchaseDate) : null,
+    };
   }
 }

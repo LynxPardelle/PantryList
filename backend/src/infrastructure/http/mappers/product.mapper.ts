@@ -15,7 +15,7 @@ export class ProductMapper {
       status: primitives.status,
       nextPurchaseDate: primitives.nextPurchaseDate,
       createdAt: primitives.createdAt,
-      updatedAt: primitives.updatedAt
+      updatedAt: primitives.updatedAt,
     };
   }
 }

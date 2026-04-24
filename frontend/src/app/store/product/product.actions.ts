@@ -3,8 +3,7 @@ import { Product, CreateProductRequest, UpdateQuantityRequest } from '../../shar
 
 // Load Products Actions
 export const loadProducts = createAction(
-  '[Product] Load Products',
-  props<{ userId: string }>()
+  '[Product] Load Products'
 );
 
 export const loadProductsSuccess = createAction(
@@ -57,6 +56,10 @@ export const selectProduct = createAction(
 
 export const clearSelectedProduct = createAction(
   '[Product] Clear Selected Product'
+);
+
+export const resetProducts = createAction(
+  '[Product] Reset Products'
 );
 
 // Clear Error Action

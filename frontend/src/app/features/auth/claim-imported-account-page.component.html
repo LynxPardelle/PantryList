@@ -1,0 +1,87 @@
+<main class="auth-page">
+  <section class="auth-card">
+    <div class="brand-block">
+      <p class="eyebrow">Migraci&oacute;n</p>
+      <h1>Reclamar cuenta importada</h1>
+      <p class="lead">
+        Convierte un username legado en una cuenta real con correo y password sin
+        volver a capturar tu despensa.
+      </p>
+    </div>
+
+    <form class="auth-form" [formGroup]="form" (ngSubmit)="submit()">
+      <label class="field">
+        <span>Username legado</span>
+        <input
+          type="text"
+          formControlName="legacyUsername"
+          placeholder="Tu username anterior"
+          autocomplete="username"
+        />
+      </label>
+
+      @if (form.controls.legacyUsername.invalid && form.controls.legacyUsername.touched) {
+        <p class="field-error">Ingresa el username legado que vas a reclamar.</p>
+      }
+
+      <label class="field">
+        <span>Correo</span>
+        <input
+          type="email"
+          formControlName="email"
+          placeholder="chef@pantrylist.dev"
+          autocomplete="email"
+        />
+      </label>
+
+      @if (form.controls.email.invalid && form.controls.email.touched) {
+        <p class="field-error">Ingresa un correo electr&oacute;nico v&aacute;lido.</p>
+      }
+
+      <label class="field">
+        <span>Password</span>
+        <input
+          type="password"
+          formControlName="password"
+          placeholder="M&iacute;nimo 12 caracteres"
+          autocomplete="new-password"
+        />
+      </label>
+
+      @if (form.controls.password.invalid && form.controls.password.touched) {
+        <p class="field-error">Ingresa un password de al menos 12 caracteres.</p>
+      }
+
+      <label class="field">
+        <span>Username final (opcional)</span>
+        <input
+          type="text"
+          formControlName="finalUsername"
+          placeholder="Solo si quieres cambiar el username visible"
+          autocomplete="nickname"
+        />
+      </label>
+
+      @if (form.controls.finalUsername.invalid && form.controls.finalUsername.touched) {
+        <p class="field-error">El username final no puede exceder 40 caracteres.</p>
+      }
+
+      @if (authError$ | async; as authError) {
+        <p class="status-copy status-copy--error" role="alert">{{ authError }}</p>
+      }
+
+      <button class="primary-button" type="submit" [disabled]="claimPending$ | async">
+        @if (claimPending$ | async) {
+          Reclamando cuenta...
+        } @else {
+          Reclamar mi cuenta
+        }
+      </button>
+    </form>
+
+    <nav class="auth-links" aria-label="Rutas de autenticaci&oacute;n">
+      <a routerLink="/login" [queryParams]="redirectQueryParams">Ya tengo acceso</a>
+      <a routerLink="/register" [queryParams]="redirectQueryParams">Prefiero crear una cuenta nueva</a>
+    </nav>
+  </section>
+</main>

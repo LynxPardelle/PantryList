@@ -15,6 +15,7 @@ export const productReducer = createReducer(
   on(ProductActions.loadProductsSuccess, (state, { products }) => ({
     ...state,
     products,
+    selectedProduct: null,
     loading: false,
     error: null
   })),
@@ -75,6 +76,10 @@ export const productReducer = createReducer(
   on(ProductActions.clearSelectedProduct, (state) => ({
     ...state,
     selectedProduct: null
+  })),
+
+  on(ProductActions.resetProducts, () => ({
+    ...initialProductState
   })),
 
   // Clear Error

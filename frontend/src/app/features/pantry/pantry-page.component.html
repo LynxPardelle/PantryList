@@ -1,0 +1,377 @@
+<main class="pantry-page" aria-labelledby="pantry-page-title">
+  <section class="hero-card">
+    <div class="hero-copy">
+      <p class="eyebrow">Despensa viva</p>
+      <h1 id="pantry-page-title">Organiza tipos base, lotes y caducidades sin perder de vista lo urgente.</h1>
+      <p class="lead">
+        PantryList ahora separa el inventario real por lotes y te muestra primero
+        lo que necesita atenci&oacute;n para reducir desperdicio en casa.
+      </p>
+    </div>
+
+    <aside class="session-card">
+      @if (username$ | async; as username) {
+        <p class="session-label">Username activo</p>
+        <h2>{{ username }}</h2>
+      }
+      <p class="session-caption">
+        Registra cada compra por lote y decide de cu&aacute;l consumir cuando haga falta.
+      </p>
+      <button class="secondary-button" type="button" (click)="logout()">Cerrar sesi&oacute;n</button>
+    </aside>
+  </section>
+
+  @if (error$ | async; as error) {
+    <section class="error-banner" role="alert" aria-live="assertive">
+      <strong>La API respondi&oacute; con un error.</strong>
+      <span>{{ error }}</span>
+    </section>
+  }
+
+  @if (registerError; as registerErrorMessage) {
+    <section class="error-banner error-banner-soft" role="alert" aria-live="assertive">
+      <strong>No se pudo registrar el lote.</strong>
+      <span>{{ registerErrorMessage }}</span>
+    </section>
+  }
+
+  @if (summary$ | async; as summary) {
+    <section class="summary-grid" aria-label="Resumen de despensa">
+      <article class="summary-card">
+        <span>Tipos base</span>
+        <strong>{{ summary.totalTypes }}</strong>
+        <small>agrupados en despensa</small>
+      </article>
+      <article class="summary-card">
+        <span>Lotes</span>
+        <strong>{{ summary.totalLots }}</strong>
+        <small>controlados de forma individual</small>
+      </article>
+      <article class="summary-card summary-card-alert">
+        <span>Pr&oacute;ximos a caducar</span>
+        <strong>{{ summary.expiringTypes }}</strong>
+        <small>tipos con presi&oacute;n de consumo</small>
+      </article>
+      <article class="summary-card summary-card-critical">
+        <span>Criticos</span>
+        <strong>{{ summary.criticalLots }}</strong>
+        <small>lotes que requieren acci&oacute;n muy pronto</small>
+      </article>
+    </section>
+  }
+
+  <section class="content-grid">
+    <article class="panel register-panel">
+      <div class="panel-header">
+        <div>
+          <p class="panel-kicker">Registrar lote</p>
+          <h2>Entrada nueva a la casa</h2>
+        </div>
+      </div>
+
+      <form class="lot-form" [formGroup]="lotForm" (ngSubmit)="submitLot()">
+        <div class="mode-switch field-full" role="group" aria-label="Seleccion de tipo base">
+          @for (mode of selectionModeOptions; track mode) {
+            <button
+              type="button"
+              class="mode-button"
+              [attr.data-active]="lotForm.controls.selectionMode.value === mode"
+              [attr.aria-pressed]="lotForm.controls.selectionMode.value === mode"
+              (click)="setSelectionMode(mode)"
+            >
+              {{ mode === 'existing' ? 'Usar tipo existente' : 'Crear tipo nuevo' }}
+            </button>
+          }
+        </div>
+
+        @if (lotForm.controls.selectionMode.value === 'existing') {
+          <label class="field field-full" for="existingTypeSearch">
+            <span>Busca el tipo base</span>
+            <input
+              id="existingTypeSearch"
+              type="text"
+              formControlName="existingTypeSearch"
+              placeholder="Atun, shampoo anticaspa, jamon de pierna de pavo"
+            />
+          </label>
+
+          @if (searchingTypeSuggestions$ | async) {
+            <p class="helper-copy field-full">Buscando tipos base existentes...</p>
+          }
+
+          @if (existingTypeSuggestions$ | async; as suggestions) {
+            <div class="suggestion-list field-full" role="listbox" aria-label="Sugerencias de tipos base">
+              @for (suggestion of suggestions; track suggestion.id) {
+                <button
+                  type="button"
+                  class="suggestion-item"
+                  [attr.data-selected]="selectedExistingType?.id === suggestion.id"
+                  [attr.aria-selected]="selectedExistingType?.id === suggestion.id"
+                  (click)="selectExistingProductType(suggestion)"
+                >
+                  <strong>{{ suggestion.baseName }}</strong>
+                  <span>
+                    {{ categoryLabels[suggestion.category] }} · {{ suggestion.defaultUnit }}
+                  </span>
+                </button>
+              }
+            </div>
+          }
+
+          @if (selectedExistingType; as selectedType) {
+            <div class="selection-card field-full">
+              <p class="selection-label">Tipo elegido</p>
+              <strong>{{ selectedType.baseName }}</strong>
+              <span>{{ categoryLabels[selectedType.category] }} · {{ selectedType.defaultUnit }}</span>
+            </div>
+          }
+        } @else {
+          <label class="field field-full">
+            <span>Nuevo tipo base</span>
+            <input type="text" formControlName="newBaseName" placeholder="Jamon de pierna de pavo" />
+          </label>
+
+          <label class="field">
+            <span>Categor&iacute;a</span>
+            <select formControlName="category">
+              @for (category of categoryOptions; track category) {
+                <option [value]="category">{{ categoryLabels[category] }}</option>
+              }
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Unidad can&oacute;nica</span>
+            <select formControlName="unit">
+              @for (unit of unitOptions; track unit) {
+                <option [value]="unit">{{ unit }}</option>
+              }
+            </select>
+          </label>
+        }
+
+        <label class="field field-full">
+          <span>Variante o marca</span>
+          <input type="text" formControlName="variantName" placeholder="Dolores en agua, Herbal 650 ml, marca propia" />
+        </label>
+
+        <label class="field">
+          <span>Cantidad del lote</span>
+          <input type="number" formControlName="quantity" min="0.1" step="0.1" />
+        </label>
+
+        <label class="field">
+          <span>Unidad del lote</span>
+          <input
+            type="text"
+            [value]="lotForm.controls.selectionMode.value === 'existing' ? (selectedExistingType?.defaultUnit ?? lotForm.controls.unit.value) : lotForm.controls.unit.value"
+            [readOnly]="true"
+          />
+        </label>
+
+        <label class="field">
+          <span>Caducidad</span>
+          <input type="date" formControlName="expiresAt" />
+        </label>
+
+        <label class="field">
+          <span>Fecha de compra</span>
+          <input type="date" formControlName="purchaseDate" />
+        </label>
+
+        @if (lotForm.invalid && lotForm.touched) {
+          <p class="field-error field-full">
+            Revisa la informaci&oacute;n del lote antes de guardarlo.
+          </p>
+        }
+
+        <button class="primary-button field-full" type="submit" [disabled]="submittingLot">
+          {{ submittingLot ? 'Registrando lote...' : 'Registrar lote' }}
+        </button>
+      </form>
+    </article>
+
+    <section class="workspace-column">
+      <article class="panel expiring-panel">
+        <div class="panel-header">
+          <div>
+            <p class="panel-kicker">Prioridad</p>
+            <h2>Pr&oacute;ximos a caducar</h2>
+          </div>
+        </div>
+
+        @if (loading$ | async) {
+          <p class="loading-copy" aria-live="polite">Actualizando visibilidad de caducidades...</p>
+        }
+
+        @if (expiringGroups$ | async; as expiringGroups) {
+          @if (expiringGroups.length > 0) {
+            <div class="expiring-stack">
+              @for (group of expiringGroups; track trackByProductTypeId($index, group)) {
+                <article class="expiring-card">
+                  <div class="expiring-card-top">
+                    <div>
+                      <p class="expiring-kicker">{{ categoryLabels[group.category] }}</p>
+                      <h3>{{ group.baseName }}</h3>
+                    </div>
+                    <div class="expiring-quantity">
+                      <strong>{{ group.totalExpiringQuantity }}</strong>
+                      <span>por atender</span>
+                    </div>
+                  </div>
+
+                  <div class="expiring-meta">
+                    <span>{{ group.lotCount }} lotes involucrados</span>
+                    <span>
+                      @if (group.nextExpirationAt) {
+                        Caduca primero el {{ group.nextExpirationAt | date:'dd MMM y' }}
+                      } @else {
+                        Sin fecha disponible
+                      }
+                    </span>
+                  </div>
+
+                  <div class="expiring-lot-list">
+                    @for (lot of group.lots; track trackByLotId($index, lot)) {
+                      <div class="expiring-lot-row" [attr.data-status]="lot.expirationStatus">
+                        <span>{{ lot.variantName || 'Sin variante especifica' }}</span>
+                        <strong>{{ lot.quantity }} {{ lot.unit }}</strong>
+                      </div>
+                    }
+                  </div>
+                </article>
+              }
+            </div>
+          } @else {
+            <section class="empty-state compact-empty-state">
+              <h3>No hay lotes urgentes por ahora.</h3>
+              <p>Cuando registres caducidades cercanas, aparecer&aacute;n aqu&iacute; para ayudarte a decidir qu&eacute; usar primero.</p>
+            </section>
+          }
+        }
+      </article>
+
+      <article class="panel pantry-panel">
+        <div class="panel-header">
+          <div>
+            <p class="panel-kicker">Vista agrupada</p>
+            <h2>Despensa por tipo base</h2>
+          </div>
+        </div>
+
+        @if (loading$ | async) {
+          <p class="loading-copy" aria-live="polite">Sincronizando lotes y agrupaciones...</p>
+        }
+
+        @if (pantryGroups$ | async; as pantryGroups) {
+          @if (pantryGroups.length > 0) {
+            <div class="group-list">
+              @for (group of pantryGroups; track trackByProductTypeId($index, group)) {
+                <article class="group-card">
+                  <button
+                    type="button"
+                    class="group-summary"
+                    [attr.aria-expanded]="isGroupExpanded(group.productTypeId)"
+                    [attr.aria-controls]="'group-panel-' + group.productTypeId"
+                    (click)="toggleGroup(group.productTypeId)"
+                  >
+                    <div class="group-summary-copy">
+                      <div class="group-tags">
+                        <span class="category-pill">{{ categoryLabels[group.category] }}</span>
+                        @if (group.expiringSoonQuantity > 0) {
+                          <span class="alert-pill">{{ group.expiringSoonQuantity }} por caducar</span>
+                        }
+                      </div>
+                      <h3>{{ group.baseName }}</h3>
+                      <p>
+                        {{ group.lotCount }} lotes ·
+                        @if (group.variants.length > 0) {
+                          {{ group.variants.join(', ') }}
+                        } @else {
+                          Sin variantes especificadas
+                        }
+                      </p>
+                    </div>
+
+                    <div class="group-summary-stats">
+                      <strong>{{ group.totalQuantity }}</strong>
+                      <span>{{ group.defaultUnit }}</span>
+                      <small>
+                        @if (group.nextExpirationAt) {
+                          Primero vence {{ group.nextExpirationAt | date:'dd MMM y' }}
+                        } @else {
+                          Sin caducidad registrada
+                        }
+                      </small>
+                    </div>
+                  </button>
+
+                  @if (isGroupExpanded(group.productTypeId)) {
+                    <div
+                      class="lot-table"
+                      [attr.id]="'group-panel-' + group.productTypeId"
+                      role="region"
+                      [attr.aria-label]="'Lotes de ' + group.baseName"
+                    >
+                      @for (lot of group.lots; track trackByLotId($index, lot)) {
+                        <div class="lot-row" [attr.data-status]="lot.expirationStatus">
+                          <div class="lot-copy">
+                            <div class="lot-copy-top">
+                              <strong>{{ lot.variantName || 'Sin variante especifica' }}</strong>
+                              <span class="status-pill" [attr.data-status]="lot.expirationStatus">
+                                {{ expirationLabels[lot.expirationStatus] }}
+                              </span>
+                            </div>
+                            <p>{{ lot.quantity }} {{ lot.unit }}</p>
+                            <small>
+                              @if (lot.expiresAt) {
+                                Caduca el {{ lot.expiresAt | date:'dd MMM y' }}
+                              } @else {
+                                Sin fecha de caducidad
+                              }
+                            </small>
+                          </div>
+
+                          <div class="lot-actions">
+                            <label>
+                              <span>Consumir de este lote</span>
+                              <input
+                                #consumeInput
+                                type="number"
+                                min="0.1"
+                                step="0.1"
+                                [value]="1"
+                                [disabled]="consumeBusyLotId !== null"
+                              />
+                            </label>
+                            <button
+                              type="button"
+                              class="secondary-button"
+                              [disabled]="consumeBusyLotId !== null"
+                              (click)="consumeLot(lot.lotId, consumeInput.valueAsNumber)"
+                            >
+                              {{ consumeBusyLotId === lot.lotId ? 'Consumiendo...' : 'Consumir' }}
+                            </button>
+                          </div>
+
+                          @if (consumeErrors[lot.lotId]) {
+                            <p class="field-error lot-error">{{ consumeErrors[lot.lotId] }}</p>
+                          }
+                        </div>
+                      }
+                    </div>
+                  }
+                </article>
+              }
+            </div>
+          } @else {
+            <section class="empty-state">
+              <h3>A&uacute;n no hay tipos base en esta despensa.</h3>
+              <p>Registra tu primer lote para empezar a ver agrupaciones, alertas de caducidad y consumo controlado.</p>
+            </section>
+          }
+        }
+      </article>
+    </section>
+  </section>
+</main>

@@ -1,7 +1,7 @@
 # PantryList Expiration Lots Design
 
 Date: 2026-04-21
-Status: Proposed and validated in chat, pending user review before implementation
+Status: Approved in chat and used as the implementation baseline
 
 ## Context
 

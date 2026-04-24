@@ -1,0 +1,41 @@
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { HydratedDocument } from 'mongoose';
+import { UserAccountStatus } from '../../../../domain/enums';
+
+export type UserDocumentModel = HydratedDocument<UserDocument>;
+
+@Schema({
+  collection: 'users',
+  timestamps: false,
+  versionKey: false,
+})
+export class UserDocument {
+  @Prop({ required: true, unique: true, index: true })
+  id: string;
+
+  @Prop({ required: true, unique: true })
+  email: string;
+
+  @Prop({ required: true, unique: true, index: true })
+  normalizedEmail: string;
+
+  @Prop({ required: true, unique: true })
+  username: string;
+
+  @Prop({ required: true, unique: true, index: true })
+  normalizedUsername: string;
+
+  @Prop({ required: true, enum: Object.values(UserAccountStatus), index: true })
+  status: UserAccountStatus;
+
+  @Prop({ required: true })
+  createdAt: Date;
+
+  @Prop({ required: true })
+  updatedAt: Date;
+}
+
+export const UserSchema = SchemaFactory.createForClass(UserDocument);
+
+UserSchema.index({ normalizedEmail: 1 }, { unique: true });
+UserSchema.index({ normalizedUsername: 1 }, { unique: true });

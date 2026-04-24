@@ -14,10 +14,10 @@ export class SchedulingDomainService implements SchedulingService {
     const dailyUsage = product.usageRate.toDailyUsage();
     const daysRemaining = Math.floor(product.currentQuantity / dailyUsage);
     const safetyDays = Math.floor(daysRemaining * this.SAFETY_BUFFER);
-    
+
     const nextDate = new Date();
     nextDate.setDate(nextDate.getDate() + safetyDays);
-    
+
     return nextDate;
   }
 
@@ -26,8 +26,10 @@ export class SchedulingDomainService implements SchedulingService {
       return ProductStatus.AVAILABLE;
     }
 
-    const daysUntilPurchase = this.getDaysUntilPurchase(product.nextPurchaseDate);
-    
+    const daysUntilPurchase = this.getDaysUntilPurchase(
+      product.nextPurchaseDate,
+    );
+
     if (daysUntilPurchase <= 0) {
       return ProductStatus.OUT_OF_STOCK;
     } else if (daysUntilPurchase <= 3) {

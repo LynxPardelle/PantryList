@@ -1,8 +1,20 @@
-import { Controller, Post, Get, Put, Param, Body, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Put,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { CreateProductUseCase } from '../../../application/use-cases/create-product.use-case';
+import { GetProductByIdUseCase } from '../../../application/use-cases/get-product-by-id.use-case';
 import { UpdateProductQuantityUseCase } from '../../../application/use-cases/update-product-quantity.use-case';
 import { GetProductsByUserUseCase } from '../../../application/use-cases/get-products-by-user.use-case';
+import { AccessTokenGuard } from '../auth/access-token.guard';
+import { CurrentUser } from '../auth/current-user.decorator';
+import { AuthenticatedUser } from '../auth/authenticated-user.interface';
 import { CreateProductDto } from '../dtos/create-product.dto';
 import { UpdateQuantityDto } from '../dtos/update-quantity.dto';
 import { ProductResponseDto } from '../dtos/product-response.dto';
@@ -11,23 +23,28 @@ import { CreateProductCommand } from '../../../application/ports/commands/create
 
 @Controller('products')
 @ApiTags('products')
+@UseGuards(AccessTokenGuard)
 export class ProductsController {
   constructor(
     private readonly createProductUseCase: CreateProductUseCase,
+    private readonly getProductByIdUseCase: GetProductByIdUseCase,
     private readonly updateProductQuantityUseCase: UpdateProductQuantityUseCase,
-    private readonly getProductsByUserUseCase: GetProductsByUserUseCase
+    private readonly getProductsByUserUseCase: GetProductsByUserUseCase,
   ) {}
 
   @Post()
   @ApiOperation({ summary: 'Crear nuevo producto' })
-  async create(@Body() createProductDto: CreateProductDto): Promise<ProductResponseDto> {
+  async create(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Body() createProductDto: CreateProductDto,
+  ): Promise<ProductResponseDto> {
     const command: CreateProductCommand = {
-      userId: createProductDto.userId,
+      userId: currentUser.userId,
       title: createProductDto.title,
       currentQuantity: createProductDto.currentQuantity,
       unit: createProductDto.unit,
       usageRate: createProductDto.usageRate,
-      category: createProductDto.category
+      category: createProductDto.category,
     };
 
     const product = await this.createProductUseCase.execute(command);
@@ -36,20 +53,39 @@ export class ProductsController {
 
   @Get()
   @ApiOperation({ summary: 'Obtener productos del usuario' })
-  async findUserProducts(@Query('userId') userId: string): Promise<ProductResponseDto[]> {
-    const products = await this.getProductsByUserUseCase.execute(userId);
-    return products.map(ProductMapper.toResponse);
+  async findUserProducts(
+    @CurrentUser() currentUser: AuthenticatedUser,
+  ): Promise<ProductResponseDto[]> {
+    const products = await this.getProductsByUserUseCase.execute(
+      currentUser.userId,
+    );
+    return products.map((product) => ProductMapper.toResponse(product));
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Obtener producto por identificador' })
+  async findOne(
+    @Param('id') id: string,
+    @CurrentUser() currentUser: AuthenticatedUser,
+  ): Promise<ProductResponseDto> {
+    const product = await this.getProductByIdUseCase.execute(
+      id,
+      currentUser.userId,
+    );
+    return ProductMapper.toResponse(product);
   }
 
   @Put(':id/quantity')
   @ApiOperation({ summary: 'Actualizar cantidad del producto' })
   async updateQuantity(
     @Param('id') id: string,
-    @Body() updateQuantityDto: UpdateQuantityDto
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Body() updateQuantityDto: UpdateQuantityDto,
   ): Promise<ProductResponseDto> {
     const product = await this.updateProductQuantityUseCase.execute(
-      id, 
-      updateQuantityDto.quantity
+      id,
+      currentUser.userId,
+      updateQuantityDto.quantity,
     );
     return ProductMapper.toResponse(product);
   }

@@ -1,1 +1,264 @@
-/* You can add global styles to this file, and also import other style files */
+:root {
+  --color-background: #f7efe4;
+  --color-surface: #fffaf2;
+  --color-surface-strong: #fff4e8;
+  --color-surface-elevated: #fffdf9;
+  --color-surface-tint: #fbf3ea;
+  --color-surface-warning: #fff2df;
+  --color-surface-critical: #fdece6;
+  --color-border: rgba(161, 96, 54, 0.18);
+  --color-text: #3f2b21;
+  --color-text-muted: #76584a;
+  --color-accent: #c47a4b;
+  --color-accent-deep: #9e5731;
+  --color-accent-soft: #efd9bc;
+  --color-success-soft: #dde6cf;
+  --color-danger-text: #8f2d20;
+  --color-warning-text: #8a5615;
+  --shadow-soft: 0 12px 32px rgba(102, 60, 33, 0.08);
+  --shadow-lift: 0 18px 40px rgba(102, 60, 33, 0.12);
+  --focus-ring: 0 0 0 4px rgba(196, 122, 75, 0.18);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: light;
+  font-size: 16px;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  color: var(--color-text);
+  background:
+    radial-gradient(circle at top left, rgba(223, 172, 131, 0.45), transparent 32%),
+    radial-gradient(circle at bottom right, rgba(147, 165, 108, 0.18), transparent 28%),
+    linear-gradient(180deg, #f7eee2 0%, #f2e7d8 45%, #efe3d1 100%);
+}
+
+h1,
+h2,
+h3 {
+  font-family: "Georgia", "Times New Roman", serif;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+p {
+  line-height: 1.6;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled,
+input:disabled,
+select:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+input,
+select {
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--color-text);
+  transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+}
+
+input:focus,
+select:focus,
+button:focus-visible {
+  outline: none;
+  border-color: rgba(158, 87, 49, 0.7);
+  box-shadow: var(--focus-ring);
+}
+
+.primary-button,
+.secondary-button,
+.ghost-button {
+  border: 0;
+  border-radius: 16px;
+  padding: 0.85rem 1.1rem;
+  font-weight: 700;
+  transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+}
+
+.primary-button:hover,
+.secondary-button:hover,
+.ghost-button:hover {
+  transform: translateY(-1px);
+}
+
+.primary-button {
+  color: #fff9f4;
+  background: linear-gradient(135deg, #b86536, #d1895e);
+  box-shadow: 0 10px 30px rgba(160, 92, 48, 0.24);
+}
+
+.secondary-button {
+  color: var(--color-text);
+  background: rgba(239, 217, 188, 0.72);
+}
+
+.ghost-button {
+  color: var(--color-accent-deep);
+  background: rgba(196, 122, 75, 0.08);
+}
+
+.field-error {
+  margin: 0;
+  color: var(--color-danger-text);
+  font-size: 0.92rem;
+}
+
+.panel-header,
+.expiring-card-top,
+.group-summary,
+.lot-copy-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.panel-header {
+  align-items: center;
+}
+
+.expiring-card-top,
+.group-summary,
+.lot-copy-top {
+  align-items: flex-start;
+}
+
+.eyebrow,
+.panel-kicker,
+.session-label,
+.expiring-kicker,
+.selection-label {
+  margin: 0 0 0.75rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--color-accent-deep);
+}
+
+.helper-copy,
+.loading-copy {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.summary-card span,
+.summary-card small,
+.summary-card strong {
+  display: block;
+}
+
+.summary-card span,
+.summary-card small,
+.expiring-quantity span,
+.expiring-meta span,
+.suggestion-item span,
+.selection-card span,
+.group-summary-copy p,
+.group-summary-stats small,
+.lot-copy p,
+.lot-copy small {
+  color: var(--color-text-muted);
+}
+
+.expiring-meta,
+.group-tags {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.group-summary-stats {
+  display: grid;
+  justify-items: end;
+  gap: 0.15rem;
+}
+
+.field,
+.lot-actions label,
+.lot-copy {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.field span,
+.lot-actions span {
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.field-full,
+.lot-error {
+  grid-column: 1 / -1;
+}
+
+.category-pill,
+.alert-pill,
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.34rem 0.78rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.category-pill {
+  background: rgba(184, 119, 71, 0.12);
+  color: var(--color-accent-deep);
+}
+
+.alert-pill {
+  background: var(--color-surface-warning);
+  color: var(--color-accent-deep);
+}
+
+.status-pill {
+  background: rgba(96, 113, 74, 0.12);
+  color: #465238;
+}
+
+.status-pill[data-status='critical'] {
+  background: rgba(169, 57, 39, 0.14);
+  color: var(--color-danger-text);
+}
+
+.status-pill[data-status='soon'] {
+  background: rgba(205, 127, 50, 0.16);
+  color: var(--color-warning-text);
+}
+
+.empty-state {
+  border-style: dashed;
+  border-radius: 24px;
+  padding: 2rem 1.4rem;
+  text-align: center;
+}
+
+.compact-empty-state {
+  padding: 1.6rem 1.2rem;
+}

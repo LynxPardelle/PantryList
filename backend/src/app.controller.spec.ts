@@ -15,8 +15,18 @@ describe('AppController', () => {
   });
 
   describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
+    it('should return the backend status payload', () => {
+      expect(appController.getRootStatus()).toEqual({
+        status: 'ok',
+        service: 'pantrylist-backend',
+      });
+    });
+
+    it('should expose a healthz payload', () => {
+      expect(appController.getHealthz()).toEqual({
+        status: 'ok',
+        service: 'pantrylist-backend',
+      });
     });
   });
 });

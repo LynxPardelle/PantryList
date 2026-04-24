@@ -15,6 +15,7 @@ export interface ProductRepository {
   findByUserId(userId: UserId): Promise<Product[]>;
   findByCategory(category: ProductCategory): Promise<Product[]>;
   findByStatus(status: ProductStatus): Promise<Product[]>;
+  reassignUserOwnership(fromUserId: UserId, toUserId: UserId): Promise<number>;
   delete(id: ProductId): Promise<void>;
   findAll(filter?: ProductFilter): Promise<Product[]>;
 }

@@ -1,7 +1,7 @@
 export enum ProductStatus {
   AVAILABLE = 'available',
   LOW_STOCK = 'low_stock',
-  OUT_OF_STOCK = 'out_of_stock'
+  OUT_OF_STOCK = 'out_of_stock',
 }
 
 export enum QuantityUnit {
@@ -9,12 +9,31 @@ export enum QuantityUnit {
   KILOGRAM = 'kg',
   GRAM = 'g',
   PIECE = 'piezas',
-  MILLILITER = 'ml'
+  MILLILITER = 'ml',
 }
 
 export enum ProductCategory {
   FOOD = 'food',
   CLEANING = 'cleaning',
   HYGIENE = 'hygiene',
-  OTHER = 'other'
+  OTHER = 'other',
+}
+
+export enum ExpirationStatus {
+  CRITICAL = 'critical',
+  SOON = 'soon',
+  STABLE = 'stable',
+  NONE = 'none',
+}
+
+export enum UserAccountStatus {
+  ACTIVE = 'active',
+  DISABLED = 'disabled',
+}
+
+export enum LegacyAccountClaimStatus {
+  UNCLAIMED = 'unclaimed',
+  CLAIMING = 'claiming',
+  CLAIMED = 'claimed',
+  LOCKED = 'locked',
 }

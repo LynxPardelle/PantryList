@@ -1,22 +1,29 @@
-# Backend Dockerfile
-FROM node:20-alpine
+# syntax=docker/dockerfile:1
+
+FROM node:20-alpine AS build
 
 WORKDIR /app
 
-# Copy package files
 COPY package*.json ./
-
-# Install dependencies
 RUN npm ci
 
-# Copy source code
 COPY . .
+RUN npm run build \
+    && npm prune --omit=dev \
+    && npm cache clean --force
 
-# Build the application
-RUN npm run build
+FROM node:20-alpine AS runtime
 
-# Expose port
+ENV NODE_ENV=production
+
+WORKDIR /app
+
+COPY --from=build --chown=node:node /app/package*.json ./
+COPY --from=build --chown=node:node /app/node_modules ./node_modules
+COPY --from=build --chown=node:node /app/dist ./dist
+
+USER node
+
 EXPOSE 3000
 
-# Start application
-CMD ["npm", "run", "start:prod"]
+CMD ["node", "dist/src/main.js"]

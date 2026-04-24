@@ -1,6 +1,12 @@
 import { createFeatureSelector, createSelector } from '@ngrx/store';
 import { ProductState } from './product.state';
 
+export interface ProductSummary {
+  total: number;
+  lowStock: number;
+  dueSoon: number;
+}
+
 export const selectProductState = createFeatureSelector<ProductState>('products');
 
 export const selectAllProducts = createSelector(
@@ -40,6 +46,11 @@ export const selectLowStockProducts = createSelector(
   )
 );
 
+export const selectProductsSortedByUpdatedAt = createSelector(
+  selectAllProducts,
+  (products) => [...products].sort((left, right) => right.updatedAt.getTime() - left.updatedAt.getTime())
+);
+
 export const selectProductsNeedingPurchase = createSelector(
   selectAllProducts,
   (products) => products.filter(product => {
@@ -47,5 +58,16 @@ export const selectProductsNeedingPurchase = createSelector(
     const today = new Date();
     const purchaseDate = new Date(product.nextPurchaseDate);
     return purchaseDate <= today;
+  })
+);
+
+export const selectProductSummary = createSelector(
+  selectAllProducts,
+  selectLowStockProducts,
+  selectProductsNeedingPurchase,
+  (products, lowStockProducts, productsNeedingPurchase): ProductSummary => ({
+    total: products.length,
+    lowStock: lowStockProducts.length,
+    dueSoon: productsNeedingPurchase.length,
   })
 );

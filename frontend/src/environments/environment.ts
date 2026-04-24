@@ -1,6 +1,6 @@
 export const environment = {
   production: false,
-  apiUrl: 'http://localhost:3000/api',
+  apiUrl: '/api',
   appName: 'PantryList',
   version: '1.0.0',
   enableDevTools: true,

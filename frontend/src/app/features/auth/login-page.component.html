@@ -1,0 +1,64 @@
+<main class="auth-page">
+  <section class="auth-card">
+    <div class="brand-block">
+      <p class="eyebrow">PantryList MVP</p>
+      <h1>{{ appName }}</h1>
+      <p class="lead">
+        Inicia sesi&oacute;n con tu correo y tu password para entrar a tu despensa sin
+        guardar tokens en `localStorage`.
+      </p>
+    </div>
+
+    <form class="auth-form" [formGroup]="form" (ngSubmit)="submit()">
+      <label class="field">
+        <span>Correo</span>
+        <input
+          type="email"
+          formControlName="email"
+          placeholder="chef@pantrylist.dev"
+          autocomplete="email"
+        />
+      </label>
+
+      @if (form.controls.email.invalid && form.controls.email.touched) {
+        <p class="field-error">Ingresa un correo electr&oacute;nico v&aacute;lido.</p>
+      }
+
+      <label class="field">
+        <span>Password</span>
+        <input
+          type="password"
+          formControlName="password"
+          placeholder="M&iacute;nimo 12 caracteres"
+          autocomplete="current-password"
+        />
+      </label>
+
+      @if (form.controls.password.invalid && form.controls.password.touched) {
+        <p class="field-error">Ingresa un password de al menos 12 caracteres.</p>
+      }
+
+      @if (authError$ | async; as authError) {
+        <p class="status-copy status-copy--error" role="alert">{{ authError }}</p>
+      }
+
+      <button class="primary-button" type="submit" [disabled]="loginPending$ | async">
+        @if (loginPending$ | async) {
+          Entrando...
+        } @else {
+          Entrar a mi despensa
+        }
+      </button>
+    </form>
+
+    <nav class="auth-links" aria-label="Rutas de autenticaci&oacute;n">
+      <a routerLink="/register" [queryParams]="redirectQueryParams">Crear cuenta</a>
+      <a routerLink="/forgot-password">Olvid&eacute; mi password</a>
+      <a routerLink="/claim-imported-account" [queryParams]="redirectQueryParams">
+        Reclamar cuenta importada
+      </a>
+    </nav>
+
+    <p class="helper-copy">La sesi&oacute;n usa cookies seguras y el estado derivado vive en NgRx.</p>
+  </section>
+</main>

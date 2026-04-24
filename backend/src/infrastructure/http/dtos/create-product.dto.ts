@@ -1,4 +1,10 @@
-import { IsString, IsNumber, IsEnum, ValidateNested, IsPositive } from 'class-validator';
+import {
+  IsString,
+  IsNumber,
+  IsEnum,
+  ValidateNested,
+  IsPositive,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -8,17 +14,16 @@ class UsageRateDto {
   @IsPositive()
   amount: number;
 
-  @ApiProperty({ description: 'Period of usage', enum: ['day', 'week', 'month', 'year'] })
+  @ApiProperty({
+    description: 'Period of usage',
+    enum: ['day', 'week', 'month', 'year'],
+  })
   @IsString()
   @IsEnum(['day', 'week', 'month', 'year'])
   period: string;
 }
 
 export class CreateProductDto {
-  @ApiProperty({ description: 'User ID who owns the product' })
-  @IsString()
-  userId: string;
-
   @ApiProperty({ description: 'Product title', example: 'Aceite de oliva' })
   @IsString()
   title: string;
@@ -28,7 +33,10 @@ export class CreateProductDto {
   @IsPositive()
   currentQuantity: number;
 
-  @ApiProperty({ description: 'Unit of measurement', enum: ['lt', 'kg', 'g', 'piezas', 'ml'] })
+  @ApiProperty({
+    description: 'Unit of measurement',
+    enum: ['lt', 'kg', 'g', 'piezas', 'ml'],
+  })
   @IsString()
   @IsEnum(['lt', 'kg', 'g', 'piezas', 'ml'])
   unit: string;
@@ -38,7 +46,10 @@ export class CreateProductDto {
   @Type(() => UsageRateDto)
   usageRate: UsageRateDto;
 
-  @ApiProperty({ description: 'Product category', enum: ['food', 'cleaning', 'hygiene', 'other'] })
+  @ApiProperty({
+    description: 'Product category',
+    enum: ['food', 'cleaning', 'hygiene', 'other'],
+  })
   @IsString()
   @IsEnum(['food', 'cleaning', 'hygiene', 'other'])
   category: string;

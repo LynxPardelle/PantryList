@@ -1,0 +1,32 @@
+:host {
+  display: block;
+}
+
+.app-shell {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.app-shell__glow {
+  position: fixed;
+  z-index: 0;
+  width: 28rem;
+  height: 28rem;
+  border-radius: 50%;
+  filter: blur(40px);
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.app-shell__glow--left {
+  top: -8rem;
+  left: -8rem;
+  background: rgba(204, 124, 72, 0.34);
+}
+
+.app-shell__glow--right {
+  right: -10rem;
+  bottom: -10rem;
+  background: rgba(133, 153, 93, 0.2);
+}

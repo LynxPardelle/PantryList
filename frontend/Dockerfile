@@ -1,19 +1,30 @@
-# Frontend Dockerfile
-FROM node:20-alpine
+# syntax=docker/dockerfile:1
+
+FROM node:20-alpine AS build
 
 WORKDIR /app
 
-# Copy package files
 COPY package*.json ./
-
-# Install dependencies
 RUN npm ci
 
-# Copy source code
 COPY . .
+RUN npm run build \
+    && npm prune --omit=dev \
+    && npm cache clean --force
 
-# Expose port
-EXPOSE 4200
+FROM node:20-alpine AS runtime
 
-# Start development server
-CMD ["ng", "serve", "--host", "0.0.0.0", "--port", "4200"]
+ENV NODE_ENV=production
+ENV PORT=4000
+
+WORKDIR /app
+
+COPY --from=build --chown=node:node /app/package*.json ./
+COPY --from=build --chown=node:node /app/node_modules ./node_modules
+COPY --from=build --chown=node:node /app/dist ./dist
+
+USER node
+
+EXPOSE 4000
+
+CMD ["node", "dist/frontend/server/server.mjs"]

@@ -1,6 +1,29 @@
+export type UsageRatePeriod = 'day' | 'week' | 'month' | 'year';
+export type ProductUnit = 'lt' | 'kg' | 'g' | 'piezas' | 'ml';
+export type ProductCategory = 'food' | 'cleaning' | 'hygiene' | 'other';
+export type ProductStatus = 'available' | 'low_stock' | 'out_of_stock';
+
+export const PRODUCT_UNITS: ProductUnit[] = ['lt', 'kg', 'g', 'piezas', 'ml'];
+export const PRODUCT_CATEGORIES: ProductCategory[] = ['food', 'cleaning', 'hygiene', 'other'];
+export const USAGE_RATE_PERIODS: UsageRatePeriod[] = ['day', 'week', 'month', 'year'];
+
 export interface UsageRate {
   amount: number;
-  period: 'day' | 'week' | 'month' | 'year';
+  period: UsageRatePeriod;
+}
+
+export interface ApiProduct {
+  id: string;
+  userId: string;
+  title: string;
+  currentQuantity: number;
+  unit: ProductUnit;
+  usageRate: UsageRate;
+  category: ProductCategory;
+  status: ProductStatus;
+  nextPurchaseDate?: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Product {
@@ -8,22 +31,21 @@ export interface Product {
   userId: string;
   title: string;
   currentQuantity: number;
-  unit: 'lt' | 'kg' | 'g' | 'piezas' | 'ml';
+  unit: ProductUnit;
   usageRate: UsageRate;
-  category: 'food' | 'cleaning' | 'hygiene' | 'other';
-  status: 'available' | 'low_stock' | 'out_of_stock';
-  nextPurchaseDate?: Date;
+  category: ProductCategory;
+  status: ProductStatus;
+  nextPurchaseDate: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface CreateProductRequest {
-  userId: string;
   title: string;
   currentQuantity: number;
-  unit: string;
+  unit: ProductUnit;
   usageRate: UsageRate;
-  category: string;
+  category: ProductCategory;
 }
 
 export interface UpdateQuantityRequest {

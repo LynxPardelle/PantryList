@@ -8,21 +8,62 @@ import AppServerModule from './main.server';
 const serverDistFolder = dirname(fileURLToPath(import.meta.url));
 const browserDistFolder = resolve(serverDistFolder, '../browser');
 const indexHtml = join(serverDistFolder, 'index.server.html');
+const backendUrl = process.env['BACKEND_URL'] ?? 'http://localhost:3000';
 
 const app = express();
 const commonEngine = new CommonEngine();
 
-/**
- * Example Express Rest API endpoints can be defined here.
- * Uncomment and define endpoints as necessary.
- *
- * Example:
- * ```ts
- * app.get('/api/**', (req, res) => {
- *   // Handle API request
- * });
- * ```
- */
+app.get('/healthz', (_req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    service: 'pantrylist-frontend',
+  });
+});
+
+app.use('/api', express.json(), async (req, res, next) => {
+  try {
+    const targetPath = req.originalUrl || '/api';
+    const targetUrl = new URL(targetPath, backendUrl);
+    const headers = new Headers();
+
+    Object.entries(req.headers).forEach(([key, value]) => {
+      if (!value || key === 'host' || key === 'content-length') {
+        return;
+      }
+
+      headers.set(key, Array.isArray(value) ? value.join(', ') : value);
+    });
+
+    const requestInit: RequestInit = {
+      method: req.method,
+      headers,
+    };
+
+    if (
+      !['GET', 'HEAD'].includes(req.method.toUpperCase()) &&
+      req.body &&
+      Object.keys(req.body).length > 0
+    ) {
+      requestInit.body = JSON.stringify(req.body);
+    }
+
+    const response = await fetch(targetUrl, requestInit);
+
+    res.status(response.status);
+    response.headers.forEach((value, key) => {
+      if (key === 'content-length' || key === 'content-encoding') {
+        return;
+      }
+
+      res.setHeader(key, value);
+    });
+
+    const payload = Buffer.from(await response.arrayBuffer());
+    res.send(payload);
+  } catch (error) {
+    next(error);
+  }
+});
 
 /**
  * Serve static files from /browser

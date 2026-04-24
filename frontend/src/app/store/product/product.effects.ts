@@ -1,20 +1,24 @@
-import { Injectable, Inject } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
 import { of } from 'rxjs';
-import { map, catchError, switchMap } from 'rxjs/operators';
+import { catchError, exhaustMap, map, switchMap } from 'rxjs/operators';
 import { ProductService } from '../../core/services/product.service';
 import * as ProductActions from './product.actions';
 
 @Injectable()
 export class ProductEffects {
+  private readonly actions$ = inject(Actions);
+  private readonly productService = inject(ProductService);
+
   
   loadProducts$ = createEffect(() =>
     this.actions$.pipe(
       ofType(ProductActions.loadProducts),
-      switchMap(({ userId }) =>
-        this.productService.getProductsByUser(userId).pipe(
-          map((products: any) => ProductActions.loadProductsSuccess({ products })),
-          catchError(error => of(ProductActions.loadProductsFailure({ error: error.message })))
+      switchMap(() =>
+        this.productService.getProducts().pipe(
+          map((products) => ProductActions.loadProductsSuccess({ products })),
+          catchError((error) => of(ProductActions.loadProductsFailure({ error: this.getErrorMessage(error) })))
         )
       )
     )
@@ -23,10 +27,10 @@ export class ProductEffects {
   createProduct$ = createEffect(() =>
     this.actions$.pipe(
       ofType(ProductActions.createProduct),
-      switchMap(({ product }) =>
+      exhaustMap(({ product }) =>
         this.productService.createProduct(product).pipe(
-          map((createdProduct: any) => ProductActions.createProductSuccess({ product: createdProduct })),
-          catchError(error => of(ProductActions.createProductFailure({ error: error.message })))
+          map((createdProduct) => ProductActions.createProductSuccess({ product: createdProduct })),
+          catchError((error) => of(ProductActions.createProductFailure({ error: this.getErrorMessage(error) })))
         )
       )
     )
@@ -35,17 +39,25 @@ export class ProductEffects {
   updateProductQuantity$ = createEffect(() =>
     this.actions$.pipe(
       ofType(ProductActions.updateProductQuantity),
-      switchMap(({ productId, quantity }) =>
+      exhaustMap(({ productId, quantity }) =>
         this.productService.updateProductQuantity(productId, quantity).pipe(
-          map((product: any) => ProductActions.updateProductQuantitySuccess({ product })),
-          catchError(error => of(ProductActions.updateProductQuantityFailure({ error: error.message })))
+          map((product) => ProductActions.updateProductQuantitySuccess({ product })),
+          catchError((error) => of(ProductActions.updateProductQuantityFailure({ error: this.getErrorMessage(error) })))
         )
       )
     )
   );
 
-  constructor(
-    private actions$: Actions,
-    private productService: ProductService
-  ) {}
+  private getErrorMessage(error: unknown): string {
+    if (error instanceof HttpErrorResponse) {
+      const apiMessage = typeof error.error?.message === 'string' ? error.error.message : null;
+      return apiMessage ?? error.message;
+    }
+
+    if (error instanceof Error) {
+      return error.message;
+    }
+
+    return 'No se pudo completar la solicitud.';
+  }
 }

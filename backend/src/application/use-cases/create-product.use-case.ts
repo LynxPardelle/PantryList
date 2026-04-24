@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { Product } from '../../domain/entities/product.entity';
 import { ProductRepository } from '../../domain/repositories/product.repository';
 import { SchedulingService } from '../../domain/services/scheduling.service';
@@ -7,12 +7,15 @@ import { UsageRate } from '../../domain/value-objects/usage-rate.vo';
 import { QuantityUnit, ProductCategory } from '../../domain/enums';
 import { Period } from '../../domain/enums/period.enum';
 import { CreateProductCommand } from '../ports/commands/create-product.command';
+import { PRODUCT_REPOSITORY, SCHEDULING_SERVICE } from '../tokens';
 
 @Injectable()
 export class CreateProductUseCase {
   constructor(
+    @Inject(PRODUCT_REPOSITORY)
     private readonly productRepository: ProductRepository,
-    private readonly schedulingService: SchedulingService
+    @Inject(SCHEDULING_SERVICE)
+    private readonly schedulingService: SchedulingService,
   ) {}
 
   async execute(command: CreateProductCommand): Promise<Product> {
@@ -20,10 +23,14 @@ export class CreateProductUseCase {
     const userId = UserId.fromString(command.userId);
     const usageRate = new UsageRate(
       command.usageRate.amount,
-      Period[command.usageRate.period.toUpperCase() as keyof typeof Period]
+      Period[command.usageRate.period.toUpperCase() as keyof typeof Period],
     );
-    const unit = QuantityUnit[command.unit.toUpperCase() as keyof typeof QuantityUnit];
-    const category = ProductCategory[command.category.toUpperCase() as keyof typeof ProductCategory];
+    const unit =
+      QuantityUnit[command.unit.toUpperCase() as keyof typeof QuantityUnit];
+    const category =
+      ProductCategory[
+        command.category.toUpperCase() as keyof typeof ProductCategory
+      ];
 
     // Crear entidad de dominio
     const product = Product.create(
@@ -32,7 +39,7 @@ export class CreateProductUseCase {
       command.currentQuantity,
       unit,
       usageRate,
-      category
+      category,
     );
 
     // Aplicar lógica de dominio

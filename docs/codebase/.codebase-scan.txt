@@ -1,0 +1,219 @@
+
+=== DIRECTORY TREE (max depth 3, source files only) ===
+.github
+.github\workflows
+.github\workflows\ci-cd.yml
+.gitignore
+backend
+backend\.env.example
+backend\.prettierrc
+backend\Dockerfile
+backend\eslint.config.mjs
+backend\nest-cli.json
+backend\package-lock.json
+backend\package.json
+backend\README.md
+backend\src
+backend\src\app.controller.spec.ts
+backend\src\app.controller.ts
+backend\src\app.module.ts
+backend\src\app.service.ts
+backend\src\application
+backend\src\application\ports
+backend\src\application\services
+backend\src\application\use-cases
+backend\src\domain
+backend\src\domain\entities
+backend\src\domain\enums
+backend\src\domain\repositories
+backend\src\domain\services
+backend\src\domain\value-objects
+backend\src\infrastructure
+backend\src\infrastructure\config
+backend\src\infrastructure\database
+backend\src\infrastructure\external
+backend\src\infrastructure\http
+backend\src\main.ts
+backend\test
+backend\test\app.e2e-spec.ts
+backend\test\jest-e2e.json
+backend\tsconfig.build.json
+backend\tsconfig.json
+changelog
+changelog\ARCHITECTURE_CHANGES.md
+changelog\ARCHITECTURE_CHANGES_UPDATED.md
+changelog\STEP1_PROGRESS.md
+changelog\STEP2_PROGRESS.md
+docker-compose.yml
+docs
+docs\codebase
+docs\codebase\.codebase-scan.txt
+findings.md
+frontend
+frontend\.angular
+frontend\.angular\cache
+frontend\.angular\cache\19.2.15
+frontend\.editorconfig
+frontend\.gitignore
+frontend\.vscode
+frontend\.vscode\extensions.json
+frontend\.vscode\launch.json
+frontend\.vscode\tasks.json
+frontend\angular.json
+frontend\Dockerfile
+frontend\package-lock.json
+frontend\package.json
+frontend\public
+frontend\public\favicon.ico
+frontend\README.md
+frontend\src
+frontend\src\app
+frontend\src\app\app-routing.module.ts
+frontend\src\app\app.component.html
+frontend\src\app\app.component.scss
+frontend\src\app\app.component.spec.ts
+frontend\src\app\app.component.ts
+frontend\src\app\app.module.server.ts
+frontend\src\app\app.module.ts
+frontend\src\app\core
+frontend\src\app\features
+frontend\src\app\shared
+frontend\src\app\store
+frontend\src\environments
+frontend\src\environments\environment.prod.ts
+frontend\src\environments\environment.ts
+frontend\src\index.html
+frontend\src\main.server.ts
+frontend\src\main.ts
+frontend\src\server.ts
+frontend\src\styles.scss
+frontend\tsconfig.app.json
+frontend\tsconfig.json
+frontend\tsconfig.spec.json
+instructions.md
+LICENSE
+planning
+planning\00-project-overview.md
+planning\01-setup-project-structure.md
+planning\02-core-architecture-patterns.md
+planning\03-database-models-mvp.md
+planning\04-frontend-mvp-components.md
+planning\05-testing-mvp.md
+planning\06-security-validation.md
+planning\07-advanced-features.md
+planning\08-docker-deployment.md
+planning\09-documentation-readme.md
+planning\10-final-polish-optimization.md
+progress.md
+README.md
+task_plan.md
+validation-step2-2025-06-17_20-51-43.log
+validations
+validations\validate-step1-auto.ps1
+validations\validate-step1-manual.md
+validations\validate-step2-auto.md
+validations\validate-step2-auto.ps1
+validations\validate-step2-manual.md
+validations\validate-step2-simple.ps1
+validations\VALIDATION_SUMMARY_STEP1.md
+
+=== STACK DETECTION (manifest files) ===
+No recognized manifest files found in project root.
+
+=== ENTRY POINTS ===
+No common entry points found. Check 'main' or 'scripts.start' in manifest files above.
+
+=== LINTING AND FORMATTING CONFIG ===
+No linting or formatting config files found in project root.
+
+=== ENVIRONMENT VARIABLE TEMPLATES ===
+No .env.example or .env.template found. Identify required environment variables by searching the code and config for environment variable reads.
+
+=== TODO / FIXME / HACK (production code only, test dirs excluded) ===
+frontend\.angular\cache\19.2.15\frontend\vite\deps\@angular_router.js:2845: // TODO(atscott): investigate combining parameters and positionalParamSegments
+frontend\.angular\cache\19.2.15\frontend\vite\deps\@angular_router.js:4863: // TODO(atscott): Remove changes parameter in major version as a breaking change.
+frontend\.angular\cache\19.2.15\frontend\vite\deps\chunk-5FHY7Z5A.js:333: // TODO: vsavkin. Remove the boolean flag and always include hash once the deprecated router is
+frontend\.angular\cache\19.2.15\frontend\vite\deps\chunk-5FHY7Z5A.js:383: // TODO: rename this method to pushState
+frontend\.angular\cache\19.2.15\frontend\vite\deps\chunk-5FHY7Z5A.js:2122: // TODO(crisbeto): this should be `Type<T>`, but doing so broke a few
+frontend\.angular\cache\19.2.15\frontend\vite\deps\chunk-N66GPOAE.js:173: // TODO: remove (has some usage in G3)
+frontend\.angular\cache\19.2.15\frontend\vite\deps\chunk-WGQFXCG2.js:13417: * // TODO(devversion): Remove this.
+frontend\.angular\cache\19.2.15\frontend\vite\deps\chunk-WGQFXCG2.js:13456: * <!-- TODO: Add a link to a chapter on OnPush components -->
+frontend\.angular\cache\19.2.15\frontend\vite\deps\chunk-WGQFXCG2.js:13495: * <!-- TODO: Add a link to a chapter on detach/reattach/local digest -->
+frontend\.angular\cache\19.2.15\frontend\vite\deps\chunk-WGQFXCG2.js:13496: * <!-- TODO: Add a live demo once ref.detectChanges is merged into master -->
+frontend\.angular\cache\19.2.15\frontend\vite\deps\chunk-WGQFXCG2.js:13549: * <!-- TODO: Add a link to a chapter on detach/reattach/local digest -->
+frontend\.angular\cache\19.2.15\frontend\vite\deps\chunk-WGQFXCG2.js:13609: * <!-- TODO: Add a link to a chapter on detach/reattach/local digest -->
+frontend\.angular\cache\19.2.15\frontend\vite\deps\chunk-WGQFXCG2.js:13610: * <!-- TODO: Add a live demo once ref.detectChanges is merged into master -->
+frontend\.angular\cache\19.2.15\frontend\vite\deps\chunk-WGQFXCG2.js:19462: *    TODO(alxhub): figure out if this behavior is still needed for edge cases.
+frontend\.angular\cache\19.2.15\frontend\vite\deps\chunk-WGQFXCG2.js:26568: // TODO: replace null by undefined in the return type
+frontend\.angular\cache\19.2.15\frontend\vite\deps\chunk-WGQFXCG2.js:26603: // TODO: replace null by undefined in the return type
+frontend\.angular\cache\19.2.15\frontend\vite\deps\chunk-WGQFXCG2.js:26868: // TODO: confirm the usage of `collection` as it's unused, readonly and on a non public API.
+frontend\.angular\cache\19.2.15\frontend\vite\deps_ssr\chunk-4KJ25FNC.js:170: // TODO: remove (has some usage in G3)
+frontend\.angular\cache\19.2.15\frontend\vite\deps_ssr\chunk-PXXRCHXC.js:20857: * // TODO(devversion): Remove this.
+frontend\.angular\cache\19.2.15\frontend\vite\deps_ssr\chunk-PXXRCHXC.js:20896: * <!-- TODO: Add a link to a chapter on OnPush components -->
+frontend\.angular\cache\19.2.15\frontend\vite\deps_ssr\chunk-PXXRCHXC.js:20935: * <!-- TODO: Add a link to a chapter on detach/reattach/local digest -->
+frontend\.angular\cache\19.2.15\frontend\vite\deps_ssr\chunk-PXXRCHXC.js:20936: * <!-- TODO: Add a live demo once ref.detectChanges is merged into master -->
+frontend\.angular\cache\19.2.15\frontend\vite\deps_ssr\chunk-PXXRCHXC.js:20989: * <!-- TODO: Add a link to a chapter on detach/reattach/local digest -->
+frontend\.angular\cache\19.2.15\frontend\vite\deps_ssr\chunk-PXXRCHXC.js:21049: * <!-- TODO: Add a link to a chapter on detach/reattach/local digest -->
+frontend\.angular\cache\19.2.15\frontend\vite\deps_ssr\chunk-PXXRCHXC.js:21050: * <!-- TODO: Add a live demo once ref.detectChanges is merged into master -->
+frontend\.angular\cache\19.2.15\frontend\vite\deps_ssr\chunk-PXXRCHXC.js:26800: *    TODO(alxhub): figure out if this behavior is still needed for edge cases.
+frontend\.angular\cache\19.2.15\frontend\vite\deps_ssr\chunk-PXXRCHXC.js:33718: // TODO: replace null by undefined in the return type
+frontend\.angular\cache\19.2.15\frontend\vite\deps_ssr\chunk-PXXRCHXC.js:33753: // TODO: replace null by undefined in the return type
+frontend\.angular\cache\19.2.15\frontend\vite\deps_ssr\chunk-PXXRCHXC.js:34018: // TODO: confirm the usage of `collection` as it's unused, readonly and on a non public API.
+frontend\.angular\cache\19.2.15\frontend\vite\deps_ssr\chunk-SXS2WA45.js:7314: // TODO determine the actual root element
+frontend\.angular\cache\19.2.15\frontend\vite\deps_ssr\chunk-SXS2WA45.js:7357: // FIXME: `getText` call is potentially expensive.
+frontend\.angular\cache\19.2.15\frontend\vite\deps_ssr\chunk-SXS2WA45.js:9573: // TODO: verify if these are needed for css-select
+frontend\.angular\cache\19.2.15\frontend\vite\deps_ssr\chunk-Y5BGAT76.js:2821: // TODO(atscott): investigate combining parameters and positionalParamSegments
+frontend\.angular\cache\19.2.15\frontend\vite\deps_ssr\chunk-Y5BGAT76.js:4841: // TODO(atscott): Remove changes parameter in major version as a breaking change.
+frontend\.angular\cache\19.2.15\frontend\vite\deps_ssr\chunk-YT24NAFA.js:338: // TODO: vsavkin. Remove the boolean flag and always include hash once the deprecated router is
+frontend\.angular\cache\19.2.15\frontend\vite\deps_ssr\chunk-YT24NAFA.js:388: // TODO: rename this method to pushState
+frontend\.angular\cache\19.2.15\frontend\vite\deps_ssr\chunk-YT24NAFA.js:2127: // TODO(crisbeto): this should be `Type<T>`, but doing so broke a few
+frontend\.angular\cache\19.2.15\frontend\vite\deps_ssr\express.js:4274: // TODO: KDDI extension to Shift_JIS
+frontend\.angular\cache\19.2.15\frontend\vite\deps_ssr\express.js:4275: // TODO: IBM CCSID 942 = CP932, but F0-F9 custom chars and other char changes.
+frontend\.angular\cache\19.2.15\frontend\vite\deps_ssr\express.js:4276: // TODO: IBM CCSID 943 = Shift_JIS = CP932 with original Shift_JIS lower 128 chars.
+
+=== GIT RECENT COMMITS (last 20) ===
+03ed2f1 Implement hexagonal architecture and NgRx store
+d7d7175 feat: Initialize Angular frontend with basic structure and server-side rendering
+b6fd9f2 feat: Implement final polish and optimization for MVP
+d223ee4 Initial commit
+
+=== HIGH-CHURN FILES (last 90 days, top 20) ===
+None found.
+
+=== MONOREPO SIGNALS ===
+No monorepo signals detected.
+
+=== CODE METRICS ===
+Total files scanned: 150
+Total lines of code: 117728
+
+Files by language:
+  Other: 82
+  TypeScript: 45
+  JavaScript: 23
+
+Top 10 largest files:
+frontend\.angular\cache\19.2.15\frontend\vite\deps_ssr\chunk-PXXRCHXC.js.map: 2771.0KB
+frontend\.angular\cache\19.2.15\frontend\vite\deps\chunk-WGQFXCG2.js.map: 2416.4KB
+frontend\.angular\cache\19.2.15\frontend\vite\deps_ssr\express.js.map: 1544.9KB
+frontend\.angular\cache\19.2.15\frontend\vite\deps_ssr\chunk-PXXRCHXC.js: 1275.9KB
+frontend\.angular\cache\19.2.15\frontend\vite\deps\chunk-WGQFXCG2.js: 1032.4KB
+frontend\.angular\cache\19.2.15\frontend\vite\deps_ssr\express.js: 944.5KB
+frontend\.angular\cache\19.2.15\frontend\vite\deps_ssr\chunk-SXS2WA45.js.map: 872.8KB
+frontend\.angular\cache\19.2.15\frontend\vite\deps_ssr\chunk-SSGKJJWO.js.map: 843.2KB
+frontend\package-lock.json: 517.1KB
+frontend\.angular\cache\19.2.15\frontend\vite\deps_ssr\chunk-SSGKJJWO.js: 500.9KB
+
+=== CI/CD PIPELINES ===
+CI/CD: GitHub Actions
+
+=== CONTAINERS & ORCHESTRATION ===
+Orchestration: Docker Compose found
+
+=== SECURITY & COMPLIANCE ===
+No security configs detected.
+
+=== PERFORMANCE & TESTING ===
+No performance testing configs detected.
+
+=== SCAN COMPLETE ===

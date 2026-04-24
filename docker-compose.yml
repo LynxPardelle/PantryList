@@ -1,60 +1,94 @@
-version: '3.8'
-
 services:
   mongodb:
-    image: mongo:7
+    image: mongo:7.0
     container_name: pantrylist-mongodb
     restart: unless-stopped
     environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: password123
-      MONGO_INITDB_DATABASE: pantrylist
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-pantrylist_root}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-change-this-root-password}
+      MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE:-pantrylist}
+      MONGO_APP_DATABASE: ${MONGO_APP_DATABASE:-pantrylist}
+      MONGO_APP_USERNAME: ${MONGO_APP_USERNAME:-pantrylist_app}
+      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:-change-this-app-password}
     ports:
-      - "27017:27017"
+      - "127.0.0.1:27017:27017"
     volumes:
       - mongodb_data:/data/db
-      - ./backend/scripts/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+      - ./docker/mongodb/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mongosh --quiet --username \"$${MONGO_INITDB_ROOT_USERNAME}\" --password \"$${MONGO_INITDB_ROOT_PASSWORD}\" --authenticationDatabase admin --eval \"quit(db.adminCommand({ ping: 1 }).ok ? 0 : 2)\"",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
     networks:
       - pantrylist-network
 
   backend:
+    profiles:
+      - app
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: pantrylist-backend
     restart: unless-stopped
     environment:
-      - NODE_ENV=development
-      - DATABASE_URL=mongodb://admin:password123@mongodb:27017/pantrylist?authSource=admin
-      - JWT_SECRET=your-jwt-secret-here
-      - PORT=3000
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: ${PORT:-3000}
+      DATABASE_NAME: ${DATABASE_NAME:-pantrylist}
+      DATABASE_URL: ${DATABASE_URL:-mongodb://${MONGO_APP_USERNAME:-pantrylist_app}:${MONGO_APP_PASSWORD:-change-this-app-password}@mongodb:${MONGO_PORT:-27017}/${MONGO_APP_DATABASE:-pantrylist}?authSource=${MONGO_APP_DATABASE:-pantrylist}}
+      MONGO_HOST: ${MONGO_HOST:-mongodb}
+      MONGO_PORT: ${MONGO_PORT:-27017}
+      MONGO_APP_DATABASE: ${MONGO_APP_DATABASE:-pantrylist}
+      MONGO_APP_USERNAME: ${MONGO_APP_USERNAME:-pantrylist_app}
+      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:-change-this-app-password}
+      API_PREFIX: ${API_PREFIX:-api}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:4200}
+      HELMET_ENABLED: ${HELMET_ENABLED:-true}
+      SWAGGER_ENABLED: ${SWAGGER_ENABLED:-false}
     ports:
       - "3000:3000"
+    user: root
     depends_on:
-      - mongodb
+      mongodb:
+        condition: service_healthy
     volumes:
       - ./backend:/app
       - /app/node_modules
     networks:
       - pantrylist-network
-    command: npm run start:dev
+    command:
+      - sh
+      - -c
+      - rm -rf dist tsconfig.tsbuildinfo && npm ci --include=dev && npm run start:dev
 
   frontend:
+    profiles:
+      - app
     build:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: pantrylist-frontend
     restart: unless-stopped
     environment:
-      - NODE_ENV=development
+      NODE_ENV: ${NODE_ENV:-development}
+      API_PROXY_TARGET: http://backend:3000
     ports:
       - "4200:4200"
+    user: root
     volumes:
       - ./frontend:/app
       - /app/node_modules
     networks:
       - pantrylist-network
-    command: ng serve --host 0.0.0.0 --port 4200
+    command:
+      - sh
+      - -c
+      - npm ci --include=dev && npm start -- --host 0.0.0.0 --port 4200
 
 volumes:
   mongodb_data:

@@ -2,6 +2,7 @@ import { ProductId } from '../value-objects/product-id.vo';
 import { UserId } from '../value-objects/user-id.vo';
 import { UsageRate } from '../value-objects/usage-rate.vo';
 import { QuantityUnit, ProductCategory, ProductStatus } from '../enums';
+import { Period } from '../enums/period.enum';
 import { SchedulingService } from '../services/scheduling.service';
 
 export interface ProductPrimitives {
@@ -33,7 +34,7 @@ export class Product {
     private _status: ProductStatus,
     private _nextPurchaseDate?: Date,
     private readonly _createdAt: Date = new Date(),
-    private _updatedAt: Date = new Date()
+    private _updatedAt: Date = new Date(),
   ) {}
 
   static create(
@@ -42,7 +43,7 @@ export class Product {
     currentQuantity: number,
     unit: QuantityUnit,
     usageRate: UsageRate,
-    category: ProductCategory
+    category: ProductCategory,
   ): Product {
     const id = ProductId.generate();
     return new Product(
@@ -53,7 +54,7 @@ export class Product {
       unit,
       usageRate,
       category,
-      ProductStatus.AVAILABLE
+      ProductStatus.AVAILABLE,
     );
   }
 
@@ -64,27 +65,52 @@ export class Product {
       primitives.title,
       primitives.currentQuantity,
       primitives.unit,
-      new UsageRate(primitives.usageRate.amount, primitives.usageRate.period as any),
+      new UsageRate(
+        primitives.usageRate.amount,
+        primitives.usageRate.period as Period,
+      ),
       primitives.category,
       primitives.status,
       primitives.nextPurchaseDate,
       primitives.createdAt,
-      primitives.updatedAt
+      primitives.updatedAt,
     );
   }
 
   // Getters
-  get id(): ProductId { return this._id; }
-  get userId(): UserId { return this._userId; }
-  get title(): string { return this._title; }
-  get currentQuantity(): number { return this._currentQuantity; }
-  get unit(): QuantityUnit { return this._unit; }
-  get usageRate(): UsageRate { return this._usageRate; }
-  get category(): ProductCategory { return this._category; }
-  get status(): ProductStatus { return this._status; }
-  get nextPurchaseDate(): Date | undefined { return this._nextPurchaseDate; }
-  get createdAt(): Date { return this._createdAt; }
-  get updatedAt(): Date { return this._updatedAt; }
+  get id(): ProductId {
+    return this._id;
+  }
+  get userId(): UserId {
+    return this._userId;
+  }
+  get title(): string {
+    return this._title;
+  }
+  get currentQuantity(): number {
+    return this._currentQuantity;
+  }
+  get unit(): QuantityUnit {
+    return this._unit;
+  }
+  get usageRate(): UsageRate {
+    return this._usageRate;
+  }
+  get category(): ProductCategory {
+    return this._category;
+  }
+  get status(): ProductStatus {
+    return this._status;
+  }
+  get nextPurchaseDate(): Date | undefined {
+    return this._nextPurchaseDate;
+  }
+  get createdAt(): Date {
+    return this._createdAt;
+  }
+  get updatedAt(): Date {
+    return this._updatedAt;
+  }
 
   // Métodos de dominio
   updateQuantity(newQuantity: number): void {
@@ -123,13 +149,13 @@ export class Product {
       unit: this._unit,
       usageRate: {
         amount: this._usageRate.Amount,
-        period: this._usageRate.Period
+        period: this._usageRate.Period,
       },
       category: this._category,
       status: this._status,
       nextPurchaseDate: this._nextPurchaseDate,
       createdAt: this._createdAt,
-      updatedAt: this._updatedAt
+      updatedAt: this._updatedAt,
     };
   }
 }

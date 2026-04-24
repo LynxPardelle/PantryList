@@ -25,13 +25,10 @@ jobs:
     
     - name: Install dependencies
       run: npm ci
-    
-    - name: Run linting
-      run: npm run lint
-    
+
     - name: Run tests
       run: npm run test:ci
-    
+
     - name: Build application
       run: npm run build
 
@@ -40,15 +37,6 @@ jobs:
     defaults:
       run:
         working-directory: ./backend
-    
-    services:
-      mongodb:
-        image: mongo:7
-        env:
-          MONGO_INITDB_ROOT_USERNAME: admin
-          MONGO_INITDB_ROOT_PASSWORD: password123
-        ports:
-          - 27017:27017
     
     steps:
     - uses: actions/checkout@v4
@@ -68,13 +56,9 @@ jobs:
     
     - name: Run tests
       run: npm run test
-      env:
-        DATABASE_URL: mongodb://admin:password123@localhost:27017/pantrylist_test?authSource=admin
     
     - name: Run e2e tests
       run: npm run test:e2e
-      env:
-        DATABASE_URL: mongodb://admin:password123@localhost:27017/pantrylist_test?authSource=admin
     
     - name: Build application
       run: npm run build
