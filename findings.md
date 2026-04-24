@@ -29,6 +29,7 @@
 | Keep `/api/products` only as a temporary compatibility path | The approved long-term source of truth is the lot-based model |
 | Keep AI suggestions out of this phase | The user preferred deterministic behavior first and possible AI features later |
 | Seed legacy account claims with insertion-only semantics | The current migration spec requires one claim per distinct legacy owner string without resetting records already in `claiming` or `claimed` |
+| Model durability/depletion rules on `ProductType`, not `InventoryLot` | Durability applies to the base product type. Lots participate only when their product type has an active rule, while manual removals remain lot-specific quantity adjustments |
 
 ## Visual/Browser Findings
 - Playwright-based browser smoke testing validated the grouped pantry flow and
@@ -68,6 +69,10 @@
   record when the target user already exists and the stored password credential
   verifies, then retries pantry ownership reassignment before marking the claim
   as `claimed`.
+- Durability/depletion forecasting is specified in
+  `docs/superpowers/specs/2026-04-24-durability-depletion-design.md` and uses
+  product-type-level rules, dynamic read-time estimates, and lot-level manual
+  adjustments.
 
 ## Skill Evaluation Findings
 - `create-implementation-plan` was useful and produced a concrete execution
@@ -99,6 +104,7 @@
 ## Resources
 - `C:\Users\lince\Documents\GitHub\PantryList\README.md`
 - `C:\Users\lince\Documents\GitHub\PantryList\docs\superpowers\specs\2026-04-21-expiration-lot-model-design.md`
+- `C:\Users\lince\Documents\GitHub\PantryList\docs\superpowers\specs\2026-04-24-durability-depletion-design.md`
 - `C:\Users\lince\Documents\GitHub\PantryList\plan\feature-expiration-lots-1.md`
 - `C:\Users\lince\Documents\GitHub\Codex\Output\pantrylist-expiration-smoke.png`
 - `C:\Users\lince\Documents\GitHub\Codex\Output\pantrylist-smoke.png`

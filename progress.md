@@ -151,6 +151,23 @@
     `localhost:4200`, create a lot, consume from that lot, logout, login again,
     and confirm the pantry state persists after re-authentication.
 
+## Session: 2026-04-24
+
+### Phase 9: Durability Depletion Design
+- **Status:** planned
+- **Started:** 2026-04-24 Central Time
+- Actions taken:
+  - Wrote and committed
+    `docs/superpowers/specs/2026-04-24-durability-depletion-design.md`.
+  - Confirmed durability/depletion belongs to `ProductType`, not individual
+    lots.
+  - Confirmed product types without an active durability rule must be excluded
+    from durability/depletion alerts.
+  - Confirmed manual removals remain lot-specific quantity adjustments, while
+    estimated current quantity is calculated dynamically at read time.
+  - Kept AWS CDK and DynamoDB as a separate follow-up foundation instead of
+    mixing cloud infrastructure into this feature pass.
+
 ## Test Results
 | Test | Input | Expected | Actual | Status |
 |------|-------|----------|--------|--------|
