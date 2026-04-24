@@ -1,3 +1,4 @@
+import { DepletionRulePrimitives } from '../../domain/entities/product-type.entity';
 import {
   ExpirationStatus,
   ProductCategory,
@@ -24,6 +25,18 @@ export interface ExpiringProductGroup {
   lots: PantryLotSummary[];
 }
 
+export interface DepletingProductGroup {
+  productTypeId: string;
+  baseName: string;
+  category: ProductCategory;
+  defaultUnit: QuantityUnit;
+  totalQuantity: number;
+  estimatedCurrentQuantity: number;
+  estimatedConsumedQuantity: number;
+  estimatedDepletionAt: Date;
+  depletionRule: DepletionRulePrimitives;
+}
+
 export interface PantryOverviewItem {
   productTypeId: string;
   baseName: string;
@@ -33,6 +46,11 @@ export interface PantryOverviewItem {
   lotCount: number;
   nextExpirationAt?: Date;
   expiringSoonQuantity: number;
+  hasDepletionRule: boolean;
+  depletionRule?: DepletionRulePrimitives;
+  estimatedCurrentQuantity?: number;
+  estimatedConsumedQuantity?: number;
+  estimatedDepletionAt?: Date;
   variants: string[];
   lots: PantryLotSummary[];
 }
@@ -42,4 +60,5 @@ export interface PantryOverview {
   generatedAt: Date;
   items: PantryOverviewItem[];
   expiringItems: ExpiringProductGroup[];
+  depletingItems: DepletingProductGroup[];
 }

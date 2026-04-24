@@ -154,7 +154,7 @@
 ## Session: 2026-04-24
 
 ### Phase 9: Durability Depletion Design
-- **Status:** planned
+- **Status:** completed
 - **Started:** 2026-04-24 Central Time
 - Actions taken:
   - Wrote and committed
@@ -167,6 +167,11 @@
     estimated current quantity is calculated dynamically at read time.
   - Kept AWS CDK and DynamoDB as a separate follow-up foundation instead of
     mixing cloud infrastructure into this feature pass.
+  - Implemented `defaultDepletionRule` on `ProductType`, Mongo persistence,
+    DTO validation, authenticated update endpoint, pantry overview
+    `depletingItems`, Angular form controls, and the `Se agotan pronto` panel.
+  - Verified the feature with unit tests, lint, builds, Docker Compose, and a
+    browser smoke test over the Dockerized stack.
 
 ## Test Results
 | Test | Input | Expected | Actual | Status |
@@ -190,6 +195,13 @@
 | Pantry lot registration | Create a new type + lot from pantry UI | Summary and grouped pantry should update | Passed | ✓ |
 | Pantry lot consumption | Consume from expanded pantry lot card | Quantity should decrement and remain persisted | Passed | ✓ |
 | Auth persistence after relogin | Logout and login with the same account | Pantry state should still be visible | Passed | ✓ |
+| Backend durability tests | `npm test -- --runInBand` in `backend/` | All backend tests pass with durability coverage | 10 suites passed, 24 tests passed | ✓ |
+| Backend lint | `npm run lint` in `backend/` | No lint errors or warnings | Passed | ✓ |
+| Backend e2e | `npm run test:e2e` in `backend/` | Health endpoints pass | 1 suite passed, 2 tests passed | ✓ |
+| Frontend durability tests | `npm run test:ci` in `frontend/` | All Angular tests pass | 10 tests passed | ✓ |
+| Frontend durability build | `npm run build` in `frontend/` | Build compiles without SCSS budget warning | Passed | ✓ |
+| Docker app stack | `docker compose --profile app up -d --build` | Backend, frontend, and MongoDB start | `backend=200 frontend=200`; MongoDB healthy | ✓ |
+| Durability browser smoke | Register, create durable detergent, consume manually | Dynamic estimate should use persisted lot quantity and scheduled depletion | Create: `4 -> estimated 1`; consume: `3 -> estimated 0` | ✓ |
 
 ## Error Log
 | Timestamp | Error | Attempt | Resolution |
@@ -201,3 +213,4 @@
 | 2026-04-23 Central Time | `npx ts-node .\scripts\seed-legacy-account-claims.ts` failed with `MongooseServerSelectionError: connect ECONNREFUSED 127.0.0.1:27017` | 1 | Kept verification at the TypeScript level because local MongoDB was not listening during this session |
 | 2026-04-23 Central Time | `docker compose --profile app up -d --build` left `pantrylist-backend` compiling with missing modules and later blocked on `pantrylist-mongodb` health | 1 | Updated dev compose startup to run `npm ci --include=dev` as `root`; remaining blocker is a legacy Mongo named volume whose stored credentials do not match the current env, requiring either the original credentials or a local Docker volume reset |
 | 2026-04-24 Central Time | `pantrylist-backend` started with stale compiled logic after source edits, then failed with repeated `CannotDetermineTypeError`, `DATABASE_URL` validation, and Mongo conflicting update operators during lot creation | 1 | Cleared backend build artifacts before watch start, made nullable Mongoose schema fields explicit, provided a non-empty `DATABASE_URL` default for dev compose, and removed conflicting upsert paths in `MongoProductTypeRepository` |
+| 2026-04-24 Central Time | `docker compose --profile app up -d --build` initially failed with `failed to connect to the docker API at npipe:////./pipe/dockerDesktopLinuxEngine` because Docker Desktop was not running | 1 | Started Docker Desktop, waited until `docker info` succeeded, then rebuilt and started the app stack successfully |

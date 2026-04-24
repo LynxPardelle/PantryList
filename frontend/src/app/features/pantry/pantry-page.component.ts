@@ -23,10 +23,13 @@ import {
 import { AuthFacade } from '../../core/services/auth.facade';
 import { PantryService } from '../../core/services/pantry.service';
 import {
+  DEPLETION_PERIODS,
+  DepletionPeriod,
   ExpirationStatus,
   PRODUCT_CATEGORIES,
   PRODUCT_UNITS,
   ProductCategory,
+  ProductTypeDepletionRuleRequest,
   ProductType,
   ProductTypeSelectionMode,
   ProductUnit,
@@ -34,6 +37,7 @@ import {
 import * as PantryActions from '../../store/pantry/pantry.actions';
 import {
   selectExpiringGroups,
+  selectDepletingGroups,
   selectPantryError,
   selectPantryGroupsSorted,
   selectPantryLoading,
@@ -60,12 +64,14 @@ export class PantryPageComponent implements OnInit {
   readonly error$ = this.store.select(selectPantryError);
   readonly summary$ = this.store.select(selectPantrySummary);
   readonly expiringGroups$ = this.store.select(selectExpiringGroups);
+  readonly depletingGroups$ = this.store.select(selectDepletingGroups);
   readonly pantryGroups$ = this.store.select(selectPantryGroupsSorted);
 
   readonly searchingTypeSuggestions$ = new BehaviorSubject(false);
   readonly selectionModeOptions: ProductTypeSelectionMode[] = ['existing', 'new'];
   readonly categoryOptions = PRODUCT_CATEGORIES;
   readonly unitOptions = PRODUCT_UNITS;
+  readonly depletionPeriodOptions = DEPLETION_PERIODS;
 
   readonly categoryLabels: Record<ProductCategory, string> = {
     food: 'Comida',
@@ -81,6 +87,12 @@ export class PantryPageComponent implements OnInit {
     none: 'Sin caducidad',
   };
 
+  readonly depletionPeriodLabels: Record<DepletionPeriod, string> = {
+    day: 'dias',
+    week: 'semanas',
+    month: 'meses',
+  };
+
   readonly lotForm = this.formBuilder.nonNullable.group({
     selectionMode: ['existing' as ProductTypeSelectionMode, Validators.required],
     existingTypeSearch: [''],
@@ -92,6 +104,11 @@ export class PantryPageComponent implements OnInit {
     quantity: [1, [Validators.required, Validators.min(0.1)]],
     expiresAt: [''],
     purchaseDate: [''],
+    enableDurability: [false],
+    depletionConsumeAmount: [1, [Validators.required, Validators.min(0.01)]],
+    depletionEveryAmount: [1, [Validators.required, Validators.min(1)]],
+    depletionEveryPeriod: ['month' as DepletionPeriod, Validators.required],
+    depletionAnchorDate: [toDateInputValue(new Date()), Validators.required],
   });
 
   readonly existingTypeSuggestions$ =
@@ -160,6 +177,11 @@ export class PantryPageComponent implements OnInit {
               existingTypeSearch: '',
               existingProductTypeId: '',
               unit: 'piezas',
+              enableDurability: false,
+              depletionConsumeAmount: 1,
+              depletionEveryAmount: 1,
+              depletionEveryPeriod: 'month',
+              depletionAnchorDate: toDateInputValue(new Date()),
             },
             { emitEvent: false },
           );
@@ -181,6 +203,7 @@ export class PantryPageComponent implements OnInit {
       },
       { emitEvent: false },
     );
+    this.patchDepletionRuleControls(productType);
     this.registerError = null;
   }
 
@@ -219,6 +242,15 @@ export class PantryPageComponent implements OnInit {
 
     this.submittingLot = true;
     this.registerError = null;
+    const lotUnit =
+      selectionMode === 'existing'
+        ? (this.selectedExistingType?.defaultUnit ?? rawValue.unit)
+        : rawValue.unit;
+    const defaultDepletionRule = this.buildDefaultDepletionRule(rawValue, lotUnit);
+
+    if (rawValue.enableDurability && !defaultDepletionRule) {
+      return;
+    }
 
     this.pantryService
       .registerLot({
@@ -233,14 +265,14 @@ export class PantryPageComponent implements OnInit {
                 baseName: rawValue.newBaseName.trim(),
                 category: rawValue.category,
                 defaultUnit: rawValue.unit,
+                defaultDepletionRule,
               }
             : undefined,
+        defaultDepletionRule:
+          selectionMode === 'existing' ? defaultDepletionRule : undefined,
         variantName: rawValue.variantName.trim() || undefined,
         quantity,
-        unit:
-          selectionMode === 'existing'
-            ? (this.selectedExistingType?.defaultUnit ?? rawValue.unit)
-            : rawValue.unit,
+        unit: lotUnit,
         expiresAt: rawValue.expiresAt || undefined,
         purchaseDate: rawValue.purchaseDate || undefined,
       })
@@ -317,11 +349,72 @@ export class PantryPageComponent implements OnInit {
       quantity: 1,
       expiresAt: '',
       purchaseDate: '',
+      enableDurability: false,
+      depletionConsumeAmount: 1,
+      depletionEveryAmount: 1,
+      depletionEveryPeriod: 'month',
+      depletionAnchorDate: toDateInputValue(new Date()),
     });
   }
 
   private loadOverview(): void {
     this.store.dispatch(PantryActions.loadPantryOverview());
+  }
+
+  private buildDefaultDepletionRule(
+    rawValue: ReturnType<typeof this.lotForm.getRawValue>,
+    unit: ProductUnit,
+  ): ProductTypeDepletionRuleRequest | undefined {
+    if (!rawValue.enableDurability) {
+      return undefined;
+    }
+
+    const consumeAmount = Number(rawValue.depletionConsumeAmount);
+    const everyAmount = Number(rawValue.depletionEveryAmount);
+
+    if (!Number.isFinite(consumeAmount) || consumeAmount <= 0) {
+      this.submittingLot = false;
+      this.registerError = 'La cantidad de durabilidad debe ser mayor a cero.';
+      return undefined;
+    }
+
+    if (!Number.isFinite(everyAmount) || everyAmount <= 0) {
+      this.submittingLot = false;
+      this.registerError = 'El intervalo de durabilidad debe ser mayor a cero.';
+      return undefined;
+    }
+
+    if (!rawValue.depletionAnchorDate) {
+      this.submittingLot = false;
+      this.registerError = 'Define desde que fecha empieza la durabilidad.';
+      return undefined;
+    }
+
+    return {
+      enabled: true,
+      consumeAmount: Number(consumeAmount.toFixed(2)),
+      unit,
+      everyAmount,
+      everyPeriod: rawValue.depletionEveryPeriod,
+      anchorDate: rawValue.depletionAnchorDate,
+    };
+  }
+
+  private patchDepletionRuleControls(productType: ProductType): void {
+    const rule = productType.defaultDepletionRule;
+
+    this.lotForm.patchValue(
+      {
+        enableDurability: Boolean(rule?.enabled),
+        depletionConsumeAmount: rule?.consumeAmount ?? 1,
+        depletionEveryAmount: rule?.everyAmount ?? 1,
+        depletionEveryPeriod: rule?.everyPeriod ?? 'month',
+        depletionAnchorDate: rule?.anchorDate
+          ? toDateInputValue(rule.anchorDate)
+          : toDateInputValue(new Date()),
+      },
+      { emitEvent: false },
+    );
   }
 
   private getErrorMessage(error: unknown): string {
@@ -337,4 +430,8 @@ export class PantryPageComponent implements OnInit {
 
     return 'No se pudo completar la solicitud.';
   }
+}
+
+function toDateInputValue(date: Date): string {
+  return date.toISOString().slice(0, 10);
 }

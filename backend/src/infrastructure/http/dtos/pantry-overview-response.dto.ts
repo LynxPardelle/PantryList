@@ -46,6 +46,55 @@ export class ExpiringProductGroupResponseDto {
   lots: PantryLotSummaryResponseDto[];
 }
 
+export class DepletionRuleResponseDto {
+  @ApiProperty()
+  enabled: boolean;
+
+  @ApiProperty()
+  consumeAmount: number;
+
+  @ApiProperty()
+  unit: string;
+
+  @ApiProperty()
+  everyAmount: number;
+
+  @ApiProperty()
+  everyPeriod: string;
+
+  @ApiProperty()
+  anchorDate: Date;
+}
+
+export class DepletingProductGroupResponseDto {
+  @ApiProperty()
+  productTypeId: string;
+
+  @ApiProperty()
+  baseName: string;
+
+  @ApiProperty()
+  category: string;
+
+  @ApiProperty()
+  defaultUnit: string;
+
+  @ApiProperty()
+  totalQuantity: number;
+
+  @ApiProperty()
+  estimatedCurrentQuantity: number;
+
+  @ApiProperty()
+  estimatedConsumedQuantity: number;
+
+  @ApiProperty()
+  estimatedDepletionAt: Date;
+
+  @ApiProperty({ type: DepletionRuleResponseDto })
+  depletionRule: DepletionRuleResponseDto;
+}
+
 export class PantryOverviewItemResponseDto {
   @ApiProperty()
   productTypeId: string;
@@ -71,6 +120,21 @@ export class PantryOverviewItemResponseDto {
   @ApiProperty()
   expiringSoonQuantity: number;
 
+  @ApiProperty()
+  hasDepletionRule: boolean;
+
+  @ApiProperty({ required: false, type: DepletionRuleResponseDto })
+  depletionRule?: DepletionRuleResponseDto;
+
+  @ApiProperty({ required: false })
+  estimatedCurrentQuantity?: number;
+
+  @ApiProperty({ required: false })
+  estimatedConsumedQuantity?: number;
+
+  @ApiProperty({ required: false })
+  estimatedDepletionAt?: Date;
+
   @ApiProperty({ type: [String] })
   variants: string[];
 
@@ -90,4 +154,7 @@ export class PantryOverviewResponseDto {
 
   @ApiProperty({ type: [ExpiringProductGroupResponseDto] })
   expiringItems: ExpiringProductGroupResponseDto[];
+
+  @ApiProperty({ type: [DepletingProductGroupResponseDto] })
+  depletingItems: DepletingProductGroupResponseDto[];
 }

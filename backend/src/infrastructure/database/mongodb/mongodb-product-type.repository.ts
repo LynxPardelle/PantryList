@@ -2,6 +2,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Injectable } from '@nestjs/common';
 import { Model } from 'mongoose';
 import {
+  DepletionRulePrimitives,
   ProductType,
   ProductTypePrimitives,
 } from '../../../domain/entities/product-type.entity';
@@ -10,8 +11,16 @@ import { ProductTypeId } from '../../../domain/value-objects/product-type-id.vo'
 import { UserId } from '../../../domain/value-objects/user-id.vo';
 import { ProductTypeDocument } from './schemas/product-type.schema';
 
-type PersistedProductType = ProductTypePrimitives & {
+type PersistedDepletionRule = Omit<DepletionRulePrimitives, 'everyPeriod'> & {
+  everyPeriod: string;
+};
+
+type PersistedProductType = Omit<
+  ProductTypePrimitives,
+  'defaultDepletionRule'
+> & {
   normalizedBaseName: string;
+  defaultDepletionRule?: PersistedDepletionRule;
 };
 
 @Injectable()
@@ -40,6 +49,7 @@ export class MongoProductTypeRepository implements ProductTypeRepository {
             baseName: primitives.baseName,
             category: primitives.category,
             defaultUnit: primitives.defaultUnit,
+            defaultDepletionRule: primitives.defaultDepletionRule,
             updatedAt: primitives.updatedAt,
             normalizedBaseName,
           },
@@ -135,6 +145,15 @@ export class MongoProductTypeRepository implements ProductTypeRepository {
       baseName: productType.baseName,
       category: productType.category,
       defaultUnit: productType.defaultUnit,
+      defaultDepletionRule: productType.defaultDepletionRule
+        ? {
+            ...productType.defaultDepletionRule,
+            everyPeriod: toDepletionPeriod(
+              productType.defaultDepletionRule.everyPeriod,
+            ),
+            anchorDate: new Date(productType.defaultDepletionRule.anchorDate),
+          }
+        : undefined,
       createdAt: new Date(productType.createdAt),
       updatedAt: new Date(productType.updatedAt),
     });
@@ -147,4 +166,14 @@ function normalizeBaseName(value: string): string {
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function toDepletionPeriod(
+  value: string,
+): DepletionRulePrimitives['everyPeriod'] {
+  if (value === 'day' || value === 'week' || value === 'month') {
+    return value;
+  }
+
+  throw new Error(`Unsupported persisted depletion interval period: ${value}`);
 }

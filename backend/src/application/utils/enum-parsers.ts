@@ -1,4 +1,8 @@
 import { BadRequestException } from '@nestjs/common';
+import {
+  DepletionPeriod,
+  DepletionRulePrimitives,
+} from '../../domain/entities/product-type.entity';
 import { ProductCategory, QuantityUnit } from '../../domain/enums';
 
 export function parseQuantityUnit(value: string): QuantityUnit {
@@ -25,4 +29,61 @@ export function parseProductCategory(value: string): ProductCategory {
   }
 
   return category;
+}
+
+export interface DepletionRuleInput {
+  enabled: boolean;
+  consumeAmount: number;
+  unit: string;
+  everyAmount: number;
+  everyPeriod: string;
+  anchorDate: Date | string;
+}
+
+export function parseDefaultDepletionRule(
+  value: DepletionRuleInput | undefined,
+  defaultUnit: QuantityUnit,
+): DepletionRulePrimitives | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const unit = parseQuantityUnit(value.unit);
+
+  if (unit !== defaultUnit) {
+    throw new BadRequestException(
+      'Depletion rule unit must match product type default unit',
+    );
+  }
+
+  if (value.consumeAmount <= 0) {
+    throw new BadRequestException(
+      'Depletion consume amount must be greater than zero',
+    );
+  }
+
+  if (value.everyAmount <= 0) {
+    throw new BadRequestException(
+      'Depletion interval amount must be greater than zero',
+    );
+  }
+
+  return {
+    enabled: value.enabled,
+    consumeAmount: value.consumeAmount,
+    unit,
+    everyAmount: value.everyAmount,
+    everyPeriod: parseDepletionPeriod(value.everyPeriod),
+    anchorDate: new Date(value.anchorDate),
+  };
+}
+
+function parseDepletionPeriod(value: string): DepletionPeriod {
+  if (value === 'day' || value === 'week' || value === 'month') {
+    return value;
+  }
+
+  throw new BadRequestException(
+    `Unsupported depletion interval period: ${value}`,
+  );
 }

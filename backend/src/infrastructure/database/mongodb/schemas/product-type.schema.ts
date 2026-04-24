@@ -4,6 +4,31 @@ import { ProductCategory, QuantityUnit } from '../../../../domain/enums';
 
 export type ProductTypeDocumentModel = HydratedDocument<ProductTypeDocument>;
 
+@Schema({ _id: false, versionKey: false })
+export class ProductTypeDepletionRuleDocument {
+  @Prop({ required: true })
+  enabled: boolean;
+
+  @Prop({ required: true, min: 0 })
+  consumeAmount: number;
+
+  @Prop({ required: true, enum: Object.values(QuantityUnit) })
+  unit: QuantityUnit;
+
+  @Prop({ required: true, min: 1 })
+  everyAmount: number;
+
+  @Prop({ required: true, enum: ['day', 'week', 'month'] })
+  everyPeriod: string;
+
+  @Prop({ required: true })
+  anchorDate: Date;
+}
+
+export const ProductTypeDepletionRuleSchema = SchemaFactory.createForClass(
+  ProductTypeDepletionRuleDocument,
+);
+
 @Schema({
   collection: 'product_types',
   timestamps: false,
@@ -27,6 +52,9 @@ export class ProductTypeDocument {
 
   @Prop({ required: true, enum: Object.values(QuantityUnit) })
   defaultUnit: QuantityUnit;
+
+  @Prop({ type: ProductTypeDepletionRuleSchema, required: false })
+  defaultDepletionRule?: ProductTypeDepletionRuleDocument;
 
   @Prop({ required: true })
   createdAt: Date;

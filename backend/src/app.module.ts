@@ -43,6 +43,7 @@ import { RegisterUserUseCase } from './application/use-cases/register-user.use-c
 import { RequestPasswordResetUseCase } from './application/use-cases/request-password-reset.use-case';
 import { ResetPasswordUseCase } from './application/use-cases/reset-password.use-case';
 import { SearchProductTypesUseCase } from './application/use-cases/search-product-types.use-case';
+import { UpdateProductTypeDepletionRuleUseCase } from './application/use-cases/update-product-type-depletion-rule.use-case';
 import { UpdateProductQuantityUseCase } from './application/use-cases/update-product-quantity.use-case';
 import { SchedulingDomainService } from './domain/services/scheduling.service';
 import { MongoLegacyAccountClaimDao } from './infrastructure/database/mongodb/mongodb-legacy-account-claim.dao';
@@ -231,6 +232,7 @@ const buildMongoUri = (configService: ConfigService): string => {
     GetExpiringLotsUseCase,
     ListInventoryLotsUseCase,
     SearchProductTypesUseCase,
+    UpdateProductTypeDepletionRuleUseCase,
     UpdateProductQuantityUseCase,
     MongoUserDao,
     MongoPasswordCredentialDao,

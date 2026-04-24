@@ -1,9 +1,11 @@
 import {
+  DepletingProductGroup,
   ExpiringProductGroup,
   PantryLotSummary,
   PantryOverview,
 } from '../../../application/read-models/pantry-overview.read-model';
 import {
+  DepletingProductGroupResponseDto,
   ExpiringProductGroupResponseDto,
   PantryLotSummaryResponseDto,
   PantryOverviewResponseDto,
@@ -23,11 +25,19 @@ export class PantryOverviewMapper {
         lotCount: item.lotCount,
         nextExpirationAt: item.nextExpirationAt,
         expiringSoonQuantity: item.expiringSoonQuantity,
+        hasDepletionRule: item.hasDepletionRule,
+        depletionRule: item.depletionRule,
+        estimatedCurrentQuantity: item.estimatedCurrentQuantity,
+        estimatedConsumedQuantity: item.estimatedConsumedQuantity,
+        estimatedDepletionAt: item.estimatedDepletionAt,
         variants: item.variants,
         lots: item.lots.map((lot) => this.toLotSummaryResponse(lot)),
       })),
       expiringItems: overview.expiringItems.map((item) =>
         this.toExpiringGroupResponse(item),
+      ),
+      depletingItems: overview.depletingItems.map((item) =>
+        this.toDepletingGroupResponse(item),
       ),
     };
   }
@@ -43,6 +53,22 @@ export class PantryOverviewMapper {
       nextExpirationAt: item.nextExpirationAt,
       lotCount: item.lotCount,
       lots: item.lots.map((lot) => this.toLotSummaryResponse(lot)),
+    };
+  }
+
+  static toDepletingGroupResponse(
+    item: DepletingProductGroup,
+  ): DepletingProductGroupResponseDto {
+    return {
+      productTypeId: item.productTypeId,
+      baseName: item.baseName,
+      category: item.category,
+      defaultUnit: item.defaultUnit,
+      totalQuantity: item.totalQuantity,
+      estimatedCurrentQuantity: item.estimatedCurrentQuantity,
+      estimatedConsumedQuantity: item.estimatedConsumedQuantity,
+      estimatedDepletionAt: item.estimatedDepletionAt,
+      depletionRule: item.depletionRule,
     };
   }
 

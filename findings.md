@@ -73,10 +73,18 @@
   `docs/superpowers/specs/2026-04-24-durability-depletion-design.md` and uses
   product-type-level rules, dynamic read-time estimates, and lot-level manual
   adjustments.
+- The implemented durability feature stores `defaultDepletionRule` on
+  `ProductType`, exposes `depletingItems` from pantry overview, and leaves
+  manual lot consumption as the only quantity mutation path.
+- Browser smoke verification over Docker created `Detergente smoke 411900` with
+  `4 lt`, estimated `1 lt` current stock after three completed monthly
+  intervals, then manual consumption reduced registered stock to `3 lt` and
+  dynamic estimated stock to `0 lt`.
 
 ## Skill Evaluation Findings
 - `create-implementation-plan` was useful and produced a concrete execution
-  artifact at `plan/feature-expiration-lots-1.md`.
+  artifact at `plan/feature-expiration-lots-1.md` and later
+  `plan/feature-durability-depletion-1.md`.
 - `frontend-skill` was useful as direction-setting guidance for the grouped UI
   and helped avoid collapsing the screen back into a generic CRUD card grid.
 - `audit` was usable only partially in this session. Its `SKILL.md` requires
@@ -106,5 +114,7 @@
 - `C:\Users\lince\Documents\GitHub\PantryList\docs\superpowers\specs\2026-04-21-expiration-lot-model-design.md`
 - `C:\Users\lince\Documents\GitHub\PantryList\docs\superpowers\specs\2026-04-24-durability-depletion-design.md`
 - `C:\Users\lince\Documents\GitHub\PantryList\plan\feature-expiration-lots-1.md`
+- `C:\Users\lince\Documents\GitHub\PantryList\plan\feature-durability-depletion-1.md`
 - `C:\Users\lince\Documents\GitHub\Codex\Output\pantrylist-expiration-smoke.png`
+- `C:\Users\lince\Documents\GitHub\Codex\Output\pantrylist-durability-smoke.png`
 - `C:\Users\lince\Documents\GitHub\Codex\Output\pantrylist-smoke.png`

@@ -8,8 +8,20 @@ export interface ProductTypePrimitives {
   baseName: string;
   category: ProductCategory;
   defaultUnit: QuantityUnit;
+  defaultDepletionRule?: DepletionRulePrimitives;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export type DepletionPeriod = 'day' | 'week' | 'month';
+
+export interface DepletionRulePrimitives {
+  enabled: boolean;
+  consumeAmount: number;
+  unit: QuantityUnit;
+  everyAmount: number;
+  everyPeriod: DepletionPeriod;
+  anchorDate: Date;
 }
 
 export class ProductType {
@@ -19,6 +31,7 @@ export class ProductType {
     private _baseName: string,
     private _category: ProductCategory,
     private _defaultUnit: QuantityUnit,
+    private _defaultDepletionRule: DepletionRulePrimitives | undefined,
     private readonly _createdAt: Date = new Date(),
     private _updatedAt: Date = new Date(),
   ) {}
@@ -28,6 +41,7 @@ export class ProductType {
     baseName: string,
     category: ProductCategory,
     defaultUnit: QuantityUnit,
+    defaultDepletionRule?: DepletionRulePrimitives,
   ): ProductType {
     const normalizedBaseName = baseName.trim();
 
@@ -41,6 +55,7 @@ export class ProductType {
       normalizedBaseName,
       category,
       defaultUnit,
+      normalizeDefaultDepletionRule(defaultDepletionRule, defaultUnit),
     );
   }
 
@@ -51,6 +66,10 @@ export class ProductType {
       primitives.baseName,
       primitives.category,
       primitives.defaultUnit,
+      normalizeDefaultDepletionRule(
+        primitives.defaultDepletionRule,
+        primitives.defaultUnit,
+      ),
       primitives.createdAt,
       primitives.updatedAt,
     );
@@ -76,12 +95,26 @@ export class ProductType {
     return this._defaultUnit;
   }
 
+  get defaultDepletionRule(): DepletionRulePrimitives | undefined {
+    return cloneDefaultDepletionRule(this._defaultDepletionRule);
+  }
+
   get createdAt(): Date {
     return this._createdAt;
   }
 
   get updatedAt(): Date {
     return this._updatedAt;
+  }
+
+  updateDefaultDepletionRule(
+    defaultDepletionRule?: DepletionRulePrimitives,
+  ): void {
+    this._defaultDepletionRule = normalizeDefaultDepletionRule(
+      defaultDepletionRule,
+      this._defaultUnit,
+    );
+    this._updatedAt = new Date();
   }
 
   toPrimitives(): ProductTypePrimitives {
@@ -91,8 +124,54 @@ export class ProductType {
       baseName: this._baseName,
       category: this._category,
       defaultUnit: this._defaultUnit,
+      defaultDepletionRule: cloneDefaultDepletionRule(
+        this._defaultDepletionRule,
+      ),
       createdAt: this._createdAt,
       updatedAt: this._updatedAt,
     };
   }
+}
+
+function normalizeDefaultDepletionRule(
+  rule: DepletionRulePrimitives | undefined,
+  defaultUnit: QuantityUnit,
+): DepletionRulePrimitives | undefined {
+  if (!rule) {
+    return undefined;
+  }
+
+  if (rule.consumeAmount <= 0) {
+    throw new Error('Depletion consume amount must be greater than zero');
+  }
+
+  if (rule.everyAmount <= 0) {
+    throw new Error('Depletion interval amount must be greater than zero');
+  }
+
+  if (rule.unit !== defaultUnit) {
+    throw new Error('Depletion rule unit must match product type default unit');
+  }
+
+  if (!['day', 'week', 'month'].includes(rule.everyPeriod)) {
+    throw new Error('Unsupported depletion interval period');
+  }
+
+  return {
+    ...rule,
+    anchorDate: new Date(rule.anchorDate),
+  };
+}
+
+function cloneDefaultDepletionRule(
+  rule: DepletionRulePrimitives | undefined,
+): DepletionRulePrimitives | undefined {
+  if (!rule) {
+    return undefined;
+  }
+
+  return {
+    ...rule,
+    anchorDate: new Date(rule.anchorDate),
+  };
 }

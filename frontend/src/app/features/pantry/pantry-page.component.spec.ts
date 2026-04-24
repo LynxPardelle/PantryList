@@ -99,6 +99,38 @@ describe('PantryPageComponent', () => {
     expect(label?.textContent).toContain('Busca el tipo base');
     expect(input).not.toBeNull();
   });
+
+  it('includes a product type depletion rule when registering a new durable product', () => {
+    component.setSelectionMode('new');
+    component.lotForm.patchValue({
+      newBaseName: 'Detergente liquido',
+      category: 'cleaning',
+      unit: 'lt',
+      quantity: 3,
+      enableDurability: true,
+      depletionConsumeAmount: 1,
+      depletionEveryAmount: 1,
+      depletionEveryPeriod: 'month',
+      depletionAnchorDate: '2026-04-24',
+    } as any);
+
+    component.submitLot();
+
+    expect(pantryService.registerLot).toHaveBeenCalledWith(
+      jasmine.objectContaining({
+        newProductType: jasmine.objectContaining({
+          defaultDepletionRule: {
+            enabled: true,
+            consumeAmount: 1,
+            unit: 'lt',
+            everyAmount: 1,
+            everyPeriod: 'month',
+            anchorDate: '2026-04-24',
+          },
+        }),
+      }),
+    );
+  });
 });
 
 class AuthFacadeStub {

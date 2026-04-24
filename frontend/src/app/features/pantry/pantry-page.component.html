@@ -52,6 +52,11 @@
         <strong>{{ summary.expiringTypes }}</strong>
         <small>tipos con presi&oacute;n de consumo</small>
       </article>
+      <article class="summary-card summary-card-depletion">
+        <span>Se agotan</span>
+        <strong>{{ summary.depletingTypes }}</strong>
+        <small>tipos con durabilidad activa</small>
+      </article>
       <article class="summary-card summary-card-critical">
         <span>Criticos</span>
         <strong>{{ summary.criticalLots }}</strong>
@@ -179,6 +184,55 @@
           <input type="date" formControlName="purchaseDate" />
         </label>
 
+        <fieldset class="durability-box field-full">
+          <legend>Durabilidad del tipo base</legend>
+          <label class="check-field">
+            <input type="checkbox" formControlName="enableDurability" />
+            <span>Calcular consumo estimado para este tipo</span>
+          </label>
+
+          @if (lotForm.controls.enableDurability.value) {
+            <div class="durability-grid">
+              <label class="field">
+                <span>Se usa</span>
+                <input type="number" formControlName="depletionConsumeAmount" min="0.01" step="0.1" />
+              </label>
+
+              <label class="field">
+                <span>Unidad</span>
+                <input
+                  type="text"
+                  [value]="lotForm.controls.selectionMode.value === 'existing' ? (selectedExistingType?.defaultUnit ?? lotForm.controls.unit.value) : lotForm.controls.unit.value"
+                  [readOnly]="true"
+                />
+              </label>
+
+              <label class="field">
+                <span>Cada</span>
+                <input type="number" formControlName="depletionEveryAmount" min="1" step="1" />
+              </label>
+
+              <label class="field">
+                <span>Periodo</span>
+                <select formControlName="depletionEveryPeriod">
+                  @for (period of depletionPeriodOptions; track period) {
+                    <option [value]="period">{{ depletionPeriodLabels[period] }}</option>
+                  }
+                </select>
+              </label>
+
+              <label class="field field-full">
+                <span>Contar desde</span>
+                <input type="date" formControlName="depletionAnchorDate" />
+              </label>
+            </div>
+          } @else {
+            <p class="helper-copy">
+              Si no activas durabilidad, este tipo no aparecer&aacute; en alertas de agotamiento.
+            </p>
+          }
+        </fieldset>
+
         @if (lotForm.invalid && lotForm.touched) {
           <p class="field-error field-full">
             Revisa la informaci&oacute;n del lote antes de guardarlo.
@@ -251,6 +305,51 @@
         }
       </article>
 
+      <article class="panel depletion-panel">
+        <div class="panel-header">
+          <div>
+            <p class="panel-kicker">Durabilidad</p>
+            <h2>Se agotan pronto</h2>
+          </div>
+        </div>
+
+        @if (depletingGroups$ | async; as depletingGroups) {
+          @if (depletingGroups.length > 0) {
+            <div class="depletion-stack">
+              @for (group of depletingGroups; track trackByProductTypeId($index, group)) {
+                <article class="depletion-card">
+                  <div>
+                    <p class="expiring-kicker">{{ categoryLabels[group.category] }}</p>
+                    <h3>{{ group.baseName }}</h3>
+                  </div>
+
+                  <div class="depletion-meter">
+                    <span>Estimado actual</span>
+                    <strong>{{ group.estimatedCurrentQuantity }} {{ group.defaultUnit }}</strong>
+                    <small>Registrado: {{ group.totalQuantity }} {{ group.defaultUnit }}</small>
+                  </div>
+
+                  <p class="depletion-rule-copy">
+                    Usa {{ group.depletionRule.consumeAmount }} {{ group.depletionRule.unit }}
+                    cada {{ group.depletionRule.everyAmount }}
+                    {{ depletionPeriodLabels[group.depletionRule.everyPeriod] }}.
+                  </p>
+
+                  <small class="depletion-date">
+                    Agotamiento estimado: {{ group.estimatedDepletionAt | date:'dd MMM y' }}
+                  </small>
+                </article>
+              }
+            </div>
+          } @else {
+            <section class="empty-state compact-empty-state">
+              <h3>No hay productos con agotamiento cercano.</h3>
+              <p>Solo aparecer&aacute;n aqu&iacute; los tipos con durabilidad activa y una estimaci&oacute;n baja.</p>
+            </section>
+          }
+        }
+      </article>
+
       <article class="panel pantry-panel">
         <div class="panel-header">
           <div>
@@ -281,6 +380,9 @@
                         @if (group.expiringSoonQuantity > 0) {
                           <span class="alert-pill">{{ group.expiringSoonQuantity }} por caducar</span>
                         }
+                        @if (group.hasDepletionRule) {
+                          <span class="depletion-pill">durabilidad activa</span>
+                        }
                       </div>
                       <h3>{{ group.baseName }}</h3>
                       <p>
@@ -294,10 +396,12 @@
                     </div>
 
                     <div class="group-summary-stats">
-                      <strong>{{ group.totalQuantity }}</strong>
+                      <strong>{{ group.estimatedCurrentQuantity ?? group.totalQuantity }}</strong>
                       <span>{{ group.defaultUnit }}</span>
                       <small>
-                        @if (group.nextExpirationAt) {
+                        @if (group.hasDepletionRule) {
+                          Estimado actual de {{ group.totalQuantity }} registrado
+                        } @else if (group.nextExpirationAt) {
                           Primero vence {{ group.nextExpirationAt | date:'dd MMM y' }}
                         } @else {
                           Sin caducidad registrada

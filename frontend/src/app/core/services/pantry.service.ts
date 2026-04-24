@@ -5,17 +5,22 @@ import { map, switchMap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import {
   ApiInventoryLot,
+  ApiDepletingProductGroup,
   ApiPantryLotSummary,
   ApiPantryOverview,
   ApiPantryOverviewItem,
   ApiProductType,
+  ApiProductTypeDepletionRule,
   ConsumeInventoryLotRequest,
   CreateInventoryLotRequest,
   CreateProductTypeRequest,
+  DepletingProductGroup,
   InventoryLot,
   PantryLotSummary,
   PantryOverview,
   PantryOverviewItem,
+  ProductTypeDepletionRule,
+  ProductTypeDepletionRuleRequest,
   ProductType,
   RegisterLotRequest,
 } from '../../shared/models/pantry.model';
@@ -55,6 +60,17 @@ export class PantryService {
       .pipe(map((productType) => this.normalizeProductType(productType)));
   }
 
+  updateProductTypeDepletionRule(
+    productTypeId: string,
+    defaultDepletionRule: ProductTypeDepletionRuleRequest,
+  ): Observable<ProductType> {
+    return this.http
+      .patch<ApiProductType>(`${this.productTypesUrl}/${productTypeId}/depletion-rule`, {
+        defaultDepletionRule,
+      })
+      .pipe(map((productType) => this.normalizeProductType(productType)));
+  }
+
   createInventoryLot(request: CreateInventoryLotRequest): Observable<InventoryLot> {
     return this.http
       .post<ApiInventoryLot>(this.inventoryLotsUrl, request)
@@ -67,14 +83,22 @@ export class PantryService {
         throw new Error('An existing product type must be selected');
       }
 
-      return this.createInventoryLot({
-        productTypeId: request.existingProductTypeId,
-        variantName: request.variantName,
-        quantity: request.quantity,
-        unit: request.unit,
-        expiresAt: request.expiresAt,
-        purchaseDate: request.purchaseDate,
-      });
+      const createLot = () =>
+        this.createInventoryLot({
+          productTypeId: request.existingProductTypeId!,
+          variantName: request.variantName,
+          quantity: request.quantity,
+          unit: request.unit,
+          expiresAt: request.expiresAt,
+          purchaseDate: request.purchaseDate,
+        });
+
+      return request.defaultDepletionRule
+        ? this.updateProductTypeDepletionRule(
+            request.existingProductTypeId,
+            request.defaultDepletionRule,
+          ).pipe(switchMap(createLot))
+        : createLot();
     }
 
     if (!request.newProductType) {
@@ -85,6 +109,7 @@ export class PantryService {
       baseName: request.newProductType.baseName,
       category: request.newProductType.category,
       defaultUnit: request.newProductType.defaultUnit,
+      defaultDepletionRule: request.newProductType.defaultDepletionRule,
     }).pipe(
       switchMap((productType) =>
         this.createInventoryLot({
@@ -115,6 +140,9 @@ export class PantryService {
   private normalizeProductType(productType: ApiProductType): ProductType {
     return {
       ...productType,
+      defaultDepletionRule: productType.defaultDepletionRule
+        ? this.normalizeDepletionRule(productType.defaultDepletionRule)
+        : undefined,
       createdAt: new Date(productType.createdAt),
       updatedAt: new Date(productType.updatedAt),
     };
@@ -152,6 +180,9 @@ export class PantryService {
           : null,
         lots: item.lots.map((lot) => this.normalizeLotSummary(lot)),
       })),
+      depletingItems: overview.depletingItems.map((item) =>
+        this.normalizeDepletingProductGroup(item),
+      ),
     };
   }
 
@@ -159,7 +190,32 @@ export class PantryService {
     return {
       ...item,
       nextExpirationAt: item.nextExpirationAt ? new Date(item.nextExpirationAt) : null,
+      depletionRule: item.depletionRule
+        ? this.normalizeDepletionRule(item.depletionRule)
+        : undefined,
+      estimatedDepletionAt: item.estimatedDepletionAt
+        ? new Date(item.estimatedDepletionAt)
+        : undefined,
       lots: item.lots.map((lot) => this.normalizeLotSummary(lot)),
+    };
+  }
+
+  private normalizeDepletingProductGroup(
+    item: ApiDepletingProductGroup,
+  ): DepletingProductGroup {
+    return {
+      ...item,
+      estimatedDepletionAt: new Date(item.estimatedDepletionAt),
+      depletionRule: this.normalizeDepletionRule(item.depletionRule),
+    };
+  }
+
+  private normalizeDepletionRule(
+    rule: ApiProductTypeDepletionRule,
+  ): ProductTypeDepletionRule {
+    return {
+      ...rule,
+      anchorDate: new Date(rule.anchorDate),
     };
   }
 }

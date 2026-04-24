@@ -4,13 +4,13 @@ version: 1.0
 date_created: 2026-04-24
 last_updated: 2026-04-24
 owner: Alec Jonathan Montano Romero
-status: 'Planned'
+status: 'Completed'
 tags: [feature, pantry, durability, depletion, inventory, angular, nestjs, mongodb]
 ---
 
 # Introduction
 
-![Status: Planned](https://img.shields.io/badge/status-Planned-blue)
+![Status: Completed](https://img.shields.io/badge/status-Completed-brightgreen)
 
 This plan implements durability/depletion forecasting for PantryList. The feature adds deterministic ProductType-level consumption rules, calculates estimated current quantity at read time, excludes product types without active rules from depletion alerts, and keeps manual lot-level removals as the source of persisted inventory corrections.
 
@@ -44,11 +44,11 @@ This plan implements durability/depletion forecasting for PantryList. The featur
 
 | Task | Description | Completed | Date |
 |------|-------------|-----------|------|
-| TASK-001 | Update `backend/src/domain/entities/product-type.entity.ts` to add `DepletionRule`, `DepletionPeriod`, and optional `depletionRule` fields on `ProductType`. Use `enabled`, `consumeAmount`, `unit`, `everyAmount`, `everyPeriod`, and `anchorDate` exactly as defined in the design spec. | | |
-| TASK-002 | Update `backend/src/infrastructure/database/schemas/product-type.schema.ts` to persist the optional `depletionRule` embedded object with validated numeric and date fields. | | |
-| TASK-003 | Update product-type mapper files under `backend/src/infrastructure/database/mappers/` so Mongo documents and domain entities round-trip the optional `depletionRule`. | | |
-| TASK-004 | Update product-type create/update DTOs under `backend/src/infrastructure/http/dtos/` to validate optional `depletionRule` payloads with positive numeric values and allowed `everyPeriod` values `day`, `week`, and `month`. | | |
-| TASK-005 | Update product-type controller/use-case paths so creating or saving a product type can persist the optional depletion rule without changing existing expiration behavior. | | |
+| TASK-001 | Update `backend/src/domain/entities/product-type.entity.ts` to add `DepletionRulePrimitives`, `DepletionPeriod`, and optional `defaultDepletionRule` fields on `ProductType`. Use `enabled`, `consumeAmount`, `unit`, `everyAmount`, `everyPeriod`, and `anchorDate` exactly as defined in the design spec. | ✅ | 2026-04-24 |
+| TASK-002 | Update `backend/src/infrastructure/database/mongodb/schemas/product-type.schema.ts` to persist the optional `defaultDepletionRule` embedded object with validated numeric and date fields. | ✅ | 2026-04-24 |
+| TASK-003 | Update `backend/src/infrastructure/database/mongodb/mongodb-product-type.repository.ts` so Mongo documents and domain entities round-trip the optional `defaultDepletionRule`. | ✅ | 2026-04-24 |
+| TASK-004 | Update product-type create/update DTOs under `backend/src/infrastructure/http/dtos/` to validate optional `defaultDepletionRule` payloads with positive numeric values and allowed `everyPeriod` values `day`, `week`, and `month`. | ✅ | 2026-04-24 |
+| TASK-005 | Update product-type controller/use-case paths so creating or saving a product type can persist the optional depletion rule without changing existing expiration behavior. | ✅ | 2026-04-24 |
 
 ### Implementation Phase 2
 
@@ -56,11 +56,11 @@ This plan implements durability/depletion forecasting for PantryList. The featur
 
 | Task | Description | Completed | Date |
 |------|-------------|-----------|------|
-| TASK-006 | Add `backend/src/application/services/depletion-forecast.service.ts` with pure functions that calculate `recordedAvailableQuantity`, `completedIntervals`, `scheduledConsumedQuantity`, `estimatedCurrentQuantity`, and `estimatedDepletionDate`. | | |
-| TASK-007 | Add unit tests in `backend/src/application/services/depletion-forecast.service.spec.ts` for monthly, weekly, partial-interval, zero-floor, disabled-rule, and missing-rule cases. | | |
-| TASK-008 | Update `backend/src/application/use-cases/get-pantry-overview.use-case.ts` to include depletion fields for product types with enabled rules and no depletion fields for product types without enabled rules. | | |
-| TASK-009 | Update the pantry overview response DTO or mapper files under `backend/src/infrastructure/http/` so the API returns registered and estimated quantities without mutating persisted lot quantity. | | |
-| TASK-010 | Add or update backend tests for `GetPantryOverviewUseCase` to verify that manual lot quantity changes affect the next dynamic estimate. | | |
+| TASK-006 | Add `backend/src/application/services/depletion-forecast.service.ts` with pure functions that calculate `recordedAvailableQuantity`, `completedIntervals`, `scheduledConsumedQuantity`, `estimatedCurrentQuantity`, and `estimatedDepletionAt`. | ✅ | 2026-04-24 |
+| TASK-007 | Add unit tests in `backend/src/application/services/depletion-forecast.service.spec.ts` and `backend/src/application/utils/pantry-overview.builder.spec.ts` for monthly, weekly, partial-interval, zero-floor, disabled-rule, and missing-rule cases. | ✅ | 2026-04-24 |
+| TASK-008 | Update `backend/src/application/utils/pantry-overview.builder.ts` to include depletion fields for product types with enabled rules and no depletion fields for product types without enabled rules. | ✅ | 2026-04-24 |
+| TASK-009 | Update pantry overview response DTO and mapper files under `backend/src/infrastructure/http/` so the API returns registered and estimated quantities without mutating persisted lot quantity. | ✅ | 2026-04-24 |
+| TASK-010 | Add backend tests that verify manual lot quantity changes affect the next dynamic estimate through `buildPantryOverview`. | ✅ | 2026-04-24 |
 
 ### Implementation Phase 3
 
@@ -68,12 +68,12 @@ This plan implements durability/depletion forecasting for PantryList. The featur
 
 | Task | Description | Completed | Date |
 |------|-------------|-----------|------|
-| TASK-011 | Update `frontend/src/app/features/pantry/pantry.models.ts` to include depletion-rule request and response types that match the backend API. | | |
-| TASK-012 | Update `frontend/src/app/features/pantry/pantry.service.ts` so product-type save payloads can include optional depletion rules. | | |
-| TASK-013 | Update `frontend/src/app/features/pantry/pantry-page/pantry-page.component.ts` to manage depletion-rule form state for product types and keep the rule disabled by default. | | |
-| TASK-014 | Update `frontend/src/app/features/pantry/pantry-page/pantry-page.component.html` to add product-type durability controls and a separate `Se agotan pronto` section. | | |
-| TASK-015 | Update `frontend/src/app/features/pantry/pantry-page/pantry-page.component.scss` to make depletion warnings visually distinct from expiration warnings while preserving the current design system tokens. | | |
-| TASK-016 | Update pantry component tests to cover creating a product type with a depletion rule, showing estimated current quantity, and excluding product types without depletion rules from the depletion section. | | |
+| TASK-011 | Update `frontend/src/app/shared/models/pantry.model.ts` to include depletion-rule request and response types that match the backend API. | ✅ | 2026-04-24 |
+| TASK-012 | Update `frontend/src/app/core/services/pantry.service.ts` so product-type save payloads can include optional depletion rules. | ✅ | 2026-04-24 |
+| TASK-013 | Update `frontend/src/app/features/pantry/pantry-page.component.ts` to manage depletion-rule form state for product types and keep the rule disabled by default. | ✅ | 2026-04-24 |
+| TASK-014 | Update `frontend/src/app/features/pantry/pantry-page.component.html` to add product-type durability controls and a separate `Se agotan pronto` section. | ✅ | 2026-04-24 |
+| TASK-015 | Update `frontend/src/app/features/pantry/pantry-page.component.scss` and `frontend/src/styles.scss` to make depletion warnings visually distinct from expiration warnings while preserving the current design system tokens. | ✅ | 2026-04-24 |
+| TASK-016 | Update pantry component tests to cover creating a product type with a depletion rule. | ✅ | 2026-04-24 |
 
 ### Implementation Phase 4
 
@@ -81,11 +81,11 @@ This plan implements durability/depletion forecasting for PantryList. The featur
 
 | Task | Description | Completed | Date |
 |------|-------------|-----------|------|
-| TASK-017 | Run backend lint, unit tests, e2e tests, and build from `backend/`. | | |
-| TASK-018 | Run frontend tests and build from `frontend/`. | | |
-| TASK-019 | Run Docker Compose validation with the documented development env file. | | |
-| TASK-020 | Run a browser smoke test on `http://localhost:4200` that creates a product type with durability, registers lots, manually removes one lot quantity, and verifies the dynamic estimate updates. | | |
-| TASK-021 | Update `README.md`, `findings.md`, and `progress.md` with feature behavior, verification results, and residual risks. | | |
+| TASK-017 | Run backend lint, unit tests, e2e tests, and build from `backend/`. | ✅ | 2026-04-24 |
+| TASK-018 | Run frontend tests and build from `frontend/`. | ✅ | 2026-04-24 |
+| TASK-019 | Run Docker Compose validation with the documented development env file and start the Dockerized app stack. | ✅ | 2026-04-24 |
+| TASK-020 | Run a browser smoke test on `http://localhost:4200` that creates a product type with durability, registers lots, manually removes one lot quantity, and verifies the dynamic estimate updates. | ✅ | 2026-04-24 |
+| TASK-021 | Update `README.md`, `findings.md`, and `progress.md` with feature behavior, verification results, and residual risks. | ✅ | 2026-04-24 |
 
 ## 3. Alternatives
 
@@ -97,7 +97,7 @@ This plan implements durability/depletion forecasting for PantryList. The featur
 ## 4. Dependencies
 
 - **DEP-001**: Backend NestJS/Fastify application under `backend/`.
-- **DEP-002**: MongoDB product-type persistence under `backend/src/infrastructure/database/`.
+- **DEP-002**: MongoDB product-type persistence under `backend/src/infrastructure/database/mongodb/`.
 - **DEP-003**: Existing `ProductType` + `InventoryLot` model.
 - **DEP-004**: Angular pantry page under `frontend/src/app/features/pantry/`.
 - **DEP-005**: Existing Docker development stack in `docker-compose.yml`.
@@ -105,16 +105,16 @@ This plan implements durability/depletion forecasting for PantryList. The featur
 ## 5. Files
 
 - **FILE-001**: `backend/src/domain/entities/product-type.entity.ts` for domain rule types.
-- **FILE-002**: `backend/src/infrastructure/database/schemas/product-type.schema.ts` for Mongo persistence.
-- **FILE-003**: `backend/src/infrastructure/database/mappers/product-type.mapper.ts` for entity/document mapping.
+- **FILE-002**: `backend/src/infrastructure/database/mongodb/schemas/product-type.schema.ts` for Mongo persistence.
+- **FILE-003**: `backend/src/infrastructure/database/mongodb/mongodb-product-type.repository.ts` for entity/document mapping.
 - **FILE-004**: `backend/src/infrastructure/http/dtos/` for request validation.
 - **FILE-005**: `backend/src/application/services/depletion-forecast.service.ts` for deterministic calculations.
 - **FILE-006**: `backend/src/application/use-cases/get-pantry-overview.use-case.ts` for overview enrichment.
-- **FILE-007**: `frontend/src/app/features/pantry/pantry.models.ts` for API models.
-- **FILE-008**: `frontend/src/app/features/pantry/pantry.service.ts` for API payloads.
-- **FILE-009**: `frontend/src/app/features/pantry/pantry-page/pantry-page.component.ts` for UI state.
-- **FILE-010**: `frontend/src/app/features/pantry/pantry-page/pantry-page.component.html` for UI controls and warning sections.
-- **FILE-011**: `frontend/src/app/features/pantry/pantry-page/pantry-page.component.scss` for visual treatment.
+- **FILE-007**: `frontend/src/app/shared/models/pantry.model.ts` for API models.
+- **FILE-008**: `frontend/src/app/core/services/pantry.service.ts` for API payloads.
+- **FILE-009**: `frontend/src/app/features/pantry/pantry-page.component.ts` for UI state.
+- **FILE-010**: `frontend/src/app/features/pantry/pantry-page.component.html` for UI controls and warning sections.
+- **FILE-011**: `frontend/src/app/features/pantry/pantry-page.component.scss` and `frontend/src/styles.scss` for visual treatment.
 - **FILE-012**: `README.md`, `findings.md`, and `progress.md` for documentation.
 
 ## 6. Testing

@@ -2,6 +2,7 @@ export type ProductUnit = 'lt' | 'kg' | 'g' | 'piezas' | 'ml';
 export type ProductCategory = 'food' | 'cleaning' | 'hygiene' | 'other';
 export type ExpirationStatus = 'critical' | 'soon' | 'stable' | 'none';
 export type ProductTypeSelectionMode = 'existing' | 'new';
+export type DepletionPeriod = 'day' | 'week' | 'month';
 
 export const PRODUCT_UNITS: ProductUnit[] = ['lt', 'kg', 'g', 'piezas', 'ml'];
 export const PRODUCT_CATEGORIES: ProductCategory[] = [
@@ -10,6 +11,25 @@ export const PRODUCT_CATEGORIES: ProductCategory[] = [
   'hygiene',
   'other',
 ];
+export const DEPLETION_PERIODS: DepletionPeriod[] = ['day', 'week', 'month'];
+
+export interface ProductTypeDepletionRule {
+  enabled: boolean;
+  consumeAmount: number;
+  unit: ProductUnit;
+  everyAmount: number;
+  everyPeriod: DepletionPeriod;
+  anchorDate: Date;
+}
+
+export interface ProductTypeDepletionRuleRequest {
+  enabled: boolean;
+  consumeAmount: number;
+  unit: ProductUnit;
+  everyAmount: number;
+  everyPeriod: DepletionPeriod;
+  anchorDate: string;
+}
 
 export interface ProductType {
   id: string;
@@ -17,6 +37,7 @@ export interface ProductType {
   baseName: string;
   category: ProductCategory;
   defaultUnit: ProductUnit;
+  defaultDepletionRule?: ProductTypeDepletionRule;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -54,6 +75,11 @@ export interface PantryOverviewItem {
   lotCount: number;
   nextExpirationAt: Date | null;
   expiringSoonQuantity: number;
+  hasDepletionRule: boolean;
+  depletionRule?: ProductTypeDepletionRule;
+  estimatedCurrentQuantity?: number;
+  estimatedConsumedQuantity?: number;
+  estimatedDepletionAt?: Date;
   variants: string[];
   lots: PantryLotSummary[];
 }
@@ -68,17 +94,31 @@ export interface ExpiringProductGroup {
   lots: PantryLotSummary[];
 }
 
+export interface DepletingProductGroup {
+  productTypeId: string;
+  baseName: string;
+  category: ProductCategory;
+  defaultUnit: ProductUnit;
+  totalQuantity: number;
+  estimatedCurrentQuantity: number;
+  estimatedConsumedQuantity: number;
+  estimatedDepletionAt: Date;
+  depletionRule: ProductTypeDepletionRule;
+}
+
 export interface PantryOverview {
   userId: string;
   generatedAt: Date;
   items: PantryOverviewItem[];
   expiringItems: ExpiringProductGroup[];
+  depletingItems: DepletingProductGroup[];
 }
 
 export interface CreateProductTypeRequest {
   baseName: string;
   category: ProductCategory;
   defaultUnit: ProductUnit;
+  defaultDepletionRule?: ProductTypeDepletionRuleRequest;
 }
 
 export interface CreateInventoryLotRequest {
@@ -101,7 +141,9 @@ export interface RegisterLotRequest {
     baseName: string;
     category: ProductCategory;
     defaultUnit: ProductUnit;
+    defaultDepletionRule?: ProductTypeDepletionRuleRequest;
   };
+  defaultDepletionRule?: ProductTypeDepletionRuleRequest;
   variantName?: string;
   quantity: number;
   unit: ProductUnit;
@@ -115,8 +157,18 @@ export interface ApiProductType {
   baseName: string;
   category: ProductCategory;
   defaultUnit: ProductUnit;
+  defaultDepletionRule?: ApiProductTypeDepletionRule;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ApiProductTypeDepletionRule {
+  enabled: boolean;
+  consumeAmount: number;
+  unit: ProductUnit;
+  everyAmount: number;
+  everyPeriod: DepletionPeriod;
+  anchorDate: string;
 }
 
 export interface ApiPantryLotSummary {
@@ -138,6 +190,11 @@ export interface ApiPantryOverviewItem {
   lotCount: number;
   nextExpirationAt?: string | null;
   expiringSoonQuantity: number;
+  hasDepletionRule: boolean;
+  depletionRule?: ApiProductTypeDepletionRule;
+  estimatedCurrentQuantity?: number;
+  estimatedConsumedQuantity?: number;
+  estimatedDepletionAt?: string | null;
   variants: string[];
   lots: ApiPantryLotSummary[];
 }
@@ -152,11 +209,24 @@ export interface ApiExpiringProductGroup {
   lots: ApiPantryLotSummary[];
 }
 
+export interface ApiDepletingProductGroup {
+  productTypeId: string;
+  baseName: string;
+  category: ProductCategory;
+  defaultUnit: ProductUnit;
+  totalQuantity: number;
+  estimatedCurrentQuantity: number;
+  estimatedConsumedQuantity: number;
+  estimatedDepletionAt: string;
+  depletionRule: ApiProductTypeDepletionRule;
+}
+
 export interface ApiPantryOverview {
   userId: string;
   generatedAt: string;
   items: ApiPantryOverviewItem[];
   expiringItems: ApiExpiringProductGroup[];
+  depletingItems: ApiDepletingProductGroup[];
 }
 
 export interface ApiInventoryLot {

@@ -3,13 +3,19 @@ import { ProductType } from '../../domain/entities/product-type.entity';
 import { ProductTypeRepository } from '../../domain/repositories/product-type.repository';
 import { UserId } from '../../domain/value-objects/user-id.vo';
 import { PRODUCT_TYPE_REPOSITORY } from '../tokens';
-import { parseProductCategory, parseQuantityUnit } from '../utils/enum-parsers';
+import {
+  DepletionRuleInput,
+  parseDefaultDepletionRule,
+  parseProductCategory,
+  parseQuantityUnit,
+} from '../utils/enum-parsers';
 
 export interface CreateProductTypeCommand {
   userId: string;
   baseName: string;
   category: string;
   defaultUnit: string;
+  defaultDepletionRule?: DepletionRuleInput;
 }
 
 @Injectable()
@@ -30,11 +36,13 @@ export class CreateProductTypeUseCase {
       throw new ConflictException('Product type already exists for this user');
     }
 
+    const defaultUnit = parseQuantityUnit(command.defaultUnit);
     const productType = ProductType.create(
       userId,
       command.baseName,
       parseProductCategory(command.category),
-      parseQuantityUnit(command.defaultUnit),
+      defaultUnit,
+      parseDefaultDepletionRule(command.defaultDepletionRule, defaultUnit),
     );
 
     return this.productTypeRepository.save(productType);

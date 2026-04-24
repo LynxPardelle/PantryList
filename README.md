@@ -1,8 +1,9 @@
 # PantryList
 
 PantryList es un MVP para registrar inventario del hogar por tipo base y por
-lote, con foco en caducidades visibles, consumo controlado por lote y una ruta
-de crecimiento razonable para despliegue posterior en Dokploy o AWS.
+lote, con foco en caducidades visibles, durabilidad estimada, consumo
+controlado por lote y una ruta de crecimiento razonable para despliegue
+posterior en Dokploy o AWS.
 
 ## Estado actual
 
@@ -11,6 +12,7 @@ de crecimiento razonable para despliegue posterior en Dokploy o AWS.
 - Registro de compras como lotes con `expiresAt` y `purchaseDate`
 - Vista agrupada por tipo base
 - Panel visible de productos proximos a caducar
+- Panel visible de productos que se agotan pronto por durabilidad estimada
 - Consumo explicito por lote, sin seleccion automatica
 - Backend NestJS 11 + Fastify + MongoDB/Mongoose
 - Frontend Angular 19 + NgRx + SSR
@@ -37,12 +39,18 @@ de crecimiento razonable para despliegue posterior en Dokploy o AWS.
 - `ProductType`
   - representa el tipo base que importa para planear el hogar
   - ejemplos: `Atun`, `Jamon de pierna de pavo`, `Shampoo anticaspa`
+  - puede incluir una regla opcional `defaultDepletionRule` para estimar
+    durabilidad por tipo base
 - `InventoryLot`
   - representa una compra o bloque homogeneo con cantidad, variante y
     caducidad propia
+  - no guarda reglas de durabilidad; las cantidades manuales del lote siguen
+    siendo la fuente persistida para ajustes reales
 - `PantryOverview`
   - agrega lotes por tipo base y entrega al frontend el resumen listo para
     renderizar
+  - calcula `estimatedCurrentQuantity`, `estimatedConsumedQuantity`,
+    `estimatedDepletionAt` y `depletingItems` en lectura, sin mutar inventario
 - El flujo legacy `/api/products` sigue presente solo como compatibilidad de
   transicion; la ruta principal nueva vive en `/api/product-types`,
   `/api/inventory-lots` y `/api/pantry/overview`
@@ -196,13 +204,14 @@ npm run migrate:product-types
 ## API nueva
 
 - `POST /api/product-types`
-- `GET /api/product-types?userId=...&search=...`
-- `GET /api/product-types/:id?userId=...`
+- `GET /api/product-types?search=...`
+- `GET /api/product-types/:id`
+- `PATCH /api/product-types/:id/depletion-rule`
 - `POST /api/inventory-lots`
-- `GET /api/inventory-lots?userId=...`
-- `GET /api/inventory-lots/expiring?userId=...&days=7`
+- `GET /api/inventory-lots`
+- `GET /api/inventory-lots/expiring?days=7`
 - `POST /api/inventory-lots/:id/consume`
-- `GET /api/pantry/overview?userId=...`
+- `GET /api/pantry/overview`
 
 ## Migracion
 
@@ -284,11 +293,19 @@ Verificacion de runtime:
 - `npm run build` de `frontend` ya no emitio warning de presupuesto para
   `pantry-page.component.scss` despues de mover primitivas visuales al
   stylesheet global
+- Smoke de durabilidad en navegador sobre Docker registro
+  `Detergente smoke 411900`; despues de crear el lote devolvio
+  `totalQuantity = 4`, `estimatedCurrentQuantity = 1`,
+  `estimatedConsumedQuantity = 3` y `depletingCount = 1`
+- El mismo smoke consumio manualmente `1 lt` desde el lote y el overview quedo
+  en `totalQuantity = 3`, `estimatedCurrentQuantity = 0`,
+  `estimatedConsumedQuantity = 3`, `hasDepletionRule = true`
 
 Evidencia visual existente:
 
 - `C:\Users\lince\Documents\GitHub\Codex\Output\pantrylist-expiration-smoke.png`
 - `C:\Users\lince\Documents\GitHub\Codex\Output\pantrylist-smoke.png`
+- `C:\Users\lince\Documents\GitHub\Codex\Output\pantrylist-durability-smoke.png`
 
 ## Seguridad
 
@@ -300,6 +317,8 @@ Evidencia visual existente:
 - El guardado de `ProductType` ahora usa un upsert por
   `(userId, normalizedBaseName)` para reducir la ventana de duplicados por
   carreras en la ruta normal de la aplicacion.
+- Las estimaciones de durabilidad se calculan dinamicamente al leer el overview
+  y no mutan cantidades ni borran lotes de forma automatica.
 - Riesgo residual: el proyecto sigue usando una frontera de sesion por
   `username` sin autenticacion real. Mientras eso siga asi, los endpoints que
   reciben `userId` desde el cliente no deben considerarse multiusuario seguros.
