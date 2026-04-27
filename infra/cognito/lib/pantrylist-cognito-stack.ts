@@ -150,6 +150,17 @@ export class PantryListCognitoStack extends cdk.Stack {
       userPoolClient.addDependency(dependency);
     });
 
+    const managedLoginBranding = new cognito.CfnManagedLoginBranding(
+      this,
+      'ManagedLoginBranding',
+      {
+        userPoolId: userPool.ref,
+        clientId: userPoolClient.ref,
+        useCognitoProvidedValues: true,
+      },
+    );
+    managedLoginBranding.addDependency(userPoolClient);
+
     const userPoolDomainUrl = `https://${domainPrefix}.auth.${cdk.Aws.REGION}.amazoncognito.com`;
 
     new cdk.CfnOutput(this, 'UserPoolId', {

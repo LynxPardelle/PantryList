@@ -302,6 +302,15 @@
   `npm audit --omit=dev`. Development watcher containers still install dev
   dependencies and can report dev-tooling audit findings that are not present
   in runtime dependency trees.
+- Cognito Managed Login v2 requires a Managed Login branding style on the app
+  client. The CDK stack now creates `AWS::Cognito::ManagedLoginBranding` with
+  Cognito-provided defaults so hosted login pages render instead of returning
+  `Login pages unavailable`.
+- Google social login is not fully usable until the Google OAuth web client
+  authorizes Cognito's social provider redirect URI:
+  `https://pantrylist-dev-765932874577.auth.us-east-1.amazoncognito.com/oauth2/idpresponse`.
+  The PantryList code and Cognito handoff are reaching Google; Google is
+  rejecting the external OAuth client configuration.
 
 ## Resources
 - `C:\Users\lince\Documents\GitHub\PantryList\README.md`
@@ -318,6 +327,7 @@
 - `C:\Users\lince\Documents\GitHub\PantryList\infra\cognito\README.md`
 - `C:\Users\lince\Documents\GitHub\PantryList\infra\cognito\scripts\Set-SocialProviderSecrets.ps1`
 - `C:\Users\lince\Documents\GitHub\PantryList\docs\reviews\2026-04-27-cognito-aws-infra-review.md`
+- `C:\Users\lince\Documents\GitHub\PantryList\docs\reviews\2026-04-27-cognito-social-smoke-audit.md`
 - `C:\Users\lince\Documents\GitHub\Codex\Output\pantrylist-expiration-smoke.png`
 - `C:\Users\lince\Documents\GitHub\Codex\Output\pantrylist-durability-smoke.png`
 - `C:\Users\lince\Documents\GitHub\Codex\Output\pantrylist-smoke.png`
