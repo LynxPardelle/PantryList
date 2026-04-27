@@ -7,7 +7,7 @@ import { Store } from '@ngrx/store';
 import { AuthFacade } from '../../core/services/auth.facade';
 import { PantryPageComponent } from './pantry-page.component';
 import { PantryService } from '../../core/services/pantry.service';
-import { ProductType } from '../../shared/models/pantry.model';
+import { PantryOverviewItem, ProductType } from '../../shared/models/pantry.model';
 
 describe('PantryPageComponent', () => {
   let fixture: ComponentFixture<PantryPageComponent>;
@@ -20,10 +20,12 @@ describe('PantryPageComponent', () => {
       'searchProductTypes',
       'registerLot',
       'consumeInventoryLot',
+      'updateProductTypeDepletionRule',
     ]);
     pantryService.searchProductTypes.and.returnValue(of([]));
     pantryService.registerLot.and.returnValue(of({} as any));
     pantryService.consumeInventoryLot.and.returnValue(of(null));
+    pantryService.updateProductTypeDepletionRule.and.returnValue(of({} as any));
     authFacade = new AuthFacadeStub();
 
     await TestBed.configureTestingModule({
@@ -100,6 +102,18 @@ describe('PantryPageComponent', () => {
     expect(input).not.toBeNull();
   });
 
+  it('shows a neutral lot unit preview until an existing type is selected', () => {
+    component.setSelectionMode('existing');
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const unitPreview = compiled.querySelector<HTMLInputElement>(
+      '#lotUnitPreview',
+    );
+
+    expect(unitPreview?.value).toBe('Selecciona un tipo base');
+  });
+
   it('includes a product type depletion rule when registering a new durable product', () => {
     component.setSelectionMode('new');
     component.lotForm.patchValue({
@@ -131,6 +145,62 @@ describe('PantryPageComponent', () => {
       }),
     );
   });
+
+  it('opens a product type depletion rule editor with the current rule values', () => {
+    const group = makePantryGroup({
+      defaultUnit: 'lt',
+      depletionRule: {
+        enabled: true,
+        consumeAmount: 0.5,
+        unit: 'lt',
+        everyAmount: 2,
+        everyPeriod: 'month',
+        anchorDate: new Date('2026-04-24T00:00:00.000Z'),
+      },
+    });
+
+    component.startEditingDepletionRule(group);
+
+    expect(component.editingDepletionProductTypeId).toBe('type-detergent');
+    expect(component.depletionRuleForm.getRawValue()).toEqual({
+      enabled: true,
+      consumeAmount: 0.5,
+      everyAmount: 2,
+      everyPeriod: 'month',
+      anchorDate: '2026-04-24',
+    });
+  });
+
+  it('saves edited product type depletion rules and reloads the pantry overview', () => {
+    const group = makePantryGroup({ defaultUnit: 'lt' });
+    const store = TestBed.inject(Store) as unknown as {
+      dispatch: jasmine.Spy;
+    };
+    component.startEditingDepletionRule(group);
+    component.depletionRuleForm.patchValue({
+      enabled: true,
+      consumeAmount: 0.75,
+      everyAmount: 3,
+      everyPeriod: 'week',
+      anchorDate: '2026-05-01',
+    });
+
+    component.saveDepletionRule(group);
+
+    expect(pantryService.updateProductTypeDepletionRule).toHaveBeenCalledWith(
+      'type-detergent',
+      {
+        enabled: true,
+        consumeAmount: 0.75,
+        unit: 'lt',
+        everyAmount: 3,
+        everyPeriod: 'week',
+        anchorDate: '2026-05-01',
+      },
+    );
+    expect(component.editingDepletionProductTypeId).toBeNull();
+    expect(store.dispatch).toHaveBeenCalled();
+  });
 });
 
 class AuthFacadeStub {
@@ -139,4 +209,23 @@ class AuthFacadeStub {
   logout(): void {
     // no-op
   }
+}
+
+function makePantryGroup(
+  overrides: Partial<PantryOverviewItem> = {},
+): PantryOverviewItem {
+  return {
+    productTypeId: 'type-detergent',
+    baseName: 'Detergente',
+    category: 'cleaning',
+    defaultUnit: 'lt',
+    totalQuantity: 3,
+    lotCount: 1,
+    nextExpirationAt: null,
+    expiringSoonQuantity: 0,
+    hasDepletionRule: Boolean(overrides.depletionRule),
+    variants: [],
+    lots: [],
+    ...overrides,
+  };
 }

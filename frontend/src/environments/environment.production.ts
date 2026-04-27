@@ -1,9 +1,9 @@
 export const environment = {
-  production: false,
+  production: true,
   apiUrl: '/api',
   appName: 'PantryList',
   version: '1.0.0',
-  enableDevTools: true,
-  enableHydration: false,
-  logLevel: 'debug'
+  enableDevTools: false,
+  enableHydration: true,
+  logLevel: 'info'
 };

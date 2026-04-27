@@ -98,6 +98,20 @@
   `4 lt`, estimated `1 lt` current stock after three completed monthly
   intervals, then manual consumption reduced registered stock to `3 lt` and
   dynamic estimated stock to `0 lt`.
+- The pantry UI now lets users edit product-type durability rules inline from
+  the expanded grouped pantry view. The rule remains product-type-level, not
+  lot-level, and manual quantity removal still happens on specific lots.
+- Existing-type lot registration now shows `Selecciona un tipo base` for the
+  unit preview until a real existing type is selected, avoiding the misleading
+  previous fallback to `piezas`.
+- Playwright E2E coverage now exercises the main durable-pantry loop against
+  `http://localhost:48673` using system Chrome by default: register, create
+  durable lot, consume manually, edit durability rule, verify shopping plan,
+  logout, and login persistence.
+- The Angular `NG0506` development warning was caused by hydration running in
+  the Docker `ng serve` workflow. Development now disables hydration, while the
+  production environment replacement keeps hydration enabled and NgRx DevTools
+  disabled.
 
 ## Skill Evaluation Findings
 - `create-implementation-plan` was useful and produced a concrete execution
@@ -113,6 +127,10 @@
   project.
 - `code-reviewer` is currently misconfigured locally. Exact error observed:
   `config profile 'code-reviewer' not found`.
+- `browser-use:browser` worked for final in-app verification after Docker
+  frontend restart. It confirmed the pantry page loaded, the neutral unit
+  preview appeared, and no fresh browser warnings/errors were logged after the
+  hydration window.
 
 ## Security Concerns To Keep Visible
 - The main pantry, lot, product-type, and legacy product HTTP controllers now
@@ -129,6 +147,11 @@
   candidates and they should be reviewed before running with `--apply`.
 - Password-reset email delivery is still a development logger, not a production
   email provider.
+- Frontend production dependencies currently audit clean with
+  `npm audit --omit=dev`. The full frontend audit still reports 11
+  development-tooling findings through Angular CLI/build dependencies; the only
+  automatic fix path offered by npm requires a breaking `@angular/cli@21.2.8`
+  migration and was intentionally not applied in this feature pass.
 
 ## Resources
 - `C:\Users\lince\Documents\GitHub\PantryList\README.md`

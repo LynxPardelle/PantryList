@@ -174,7 +174,8 @@
           <span>Unidad del lote</span>
           <input
             type="text"
-            [value]="lotForm.controls.selectionMode.value === 'existing' ? (selectedExistingType?.defaultUnit ?? lotForm.controls.unit.value) : lotForm.controls.unit.value"
+            id="lotUnitPreview"
+            [value]="getLotUnitPreview()"
             [readOnly]="true"
           />
         </label>
@@ -472,6 +473,119 @@
                       role="region"
                       [attr.aria-label]="'Lotes de ' + group.baseName"
                     >
+                      <section class="depletion-settings">
+                        <div class="depletion-settings-copy">
+                          <p class="panel-kicker">Regla del tipo base</p>
+                          <h4>Durabilidad de {{ group.baseName }}</h4>
+                          @if (group.depletionRule?.enabled) {
+                            <p>
+                              Usa {{ group.depletionRule?.consumeAmount }}
+                              {{ group.defaultUnit }} cada
+                              {{ group.depletionRule?.everyAmount }}
+                              {{ depletionPeriodLabels[group.depletionRule?.everyPeriod ?? 'month'] }}.
+                            </p>
+                          } @else {
+                            <p>Sin durabilidad activa para este tipo base.</p>
+                          }
+                        </div>
+
+                        @if (editingDepletionProductTypeId !== group.productTypeId) {
+                          <button
+                            type="button"
+                            class="secondary-button"
+                            (click)="startEditingDepletionRule(group)"
+                          >
+                            {{ group.depletionRule?.enabled ? 'Editar durabilidad' : 'Configurar durabilidad' }}
+                          </button>
+                        }
+                      </section>
+
+                      @if (editingDepletionProductTypeId === group.productTypeId) {
+                        <form
+                          class="depletion-editor"
+                          [formGroup]="depletionRuleForm"
+                          (ngSubmit)="saveDepletionRule(group)"
+                        >
+                          <label class="check-field field-full">
+                            <input type="checkbox" formControlName="enabled" />
+                            <span>Durabilidad activa para este tipo base</span>
+                          </label>
+
+                          @if (depletionRuleForm.controls.enabled.value) {
+                            <div class="durability-grid field-full">
+                              <label class="field">
+                                <span>Se usa</span>
+                                <input
+                                  type="number"
+                                  formControlName="consumeAmount"
+                                  min="0.01"
+                                  step="0.1"
+                                />
+                              </label>
+
+                              <label class="field">
+                                <span>Unidad</span>
+                                <input type="text" [value]="group.defaultUnit" [readOnly]="true" />
+                              </label>
+
+                              <label class="field">
+                                <span>Cada</span>
+                                <input
+                                  type="number"
+                                  formControlName="everyAmount"
+                                  min="1"
+                                  step="1"
+                                />
+                              </label>
+
+                              <label class="field">
+                                <span>Periodo</span>
+                                <select formControlName="everyPeriod">
+                                  @for (period of depletionPeriodOptions; track period) {
+                                    <option [value]="period">{{ depletionPeriodLabels[period] }}</option>
+                                  }
+                                </select>
+                              </label>
+
+                              <label class="field field-full">
+                                <span>Contar desde</span>
+                                <input type="date" formControlName="anchorDate" />
+                              </label>
+                            </div>
+                          } @else {
+                            <p class="helper-copy field-full">
+                              Al guardar, este tipo dejar&aacute; de aparecer en agotamiento y plan de compras.
+                            </p>
+                          }
+
+                          @if (depletionRuleError) {
+                            <p class="field-error field-full">{{ depletionRuleError }}</p>
+                          }
+
+                          <div class="depletion-editor-actions field-full">
+                            <button
+                              type="submit"
+                              class="primary-button"
+                              [disabled]="depletionRuleSavingProductTypeId === group.productTypeId"
+                            >
+                              {{
+                                depletionRuleSavingProductTypeId === group.productTypeId
+                                  ? 'Guardando...'
+                                  : 'Guardar durabilidad'
+                              }}
+                            </button>
+                            <button
+                              type="button"
+                              class="secondary-button"
+                              [disabled]="depletionRuleSavingProductTypeId === group.productTypeId"
+                              (click)="cancelEditingDepletionRule()"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </form>
+                      }
+
                       @for (lot of group.lots; track trackByLotId($index, lot)) {
                         <div class="lot-row" [attr.data-status]="lot.expirationStatus">
                           <div class="lot-copy">

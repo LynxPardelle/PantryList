@@ -1,7 +1,7 @@
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, NgZone } from '@angular/core';
 import { Router } from '@angular/router';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
-import { of, timer } from 'rxjs';
+import { Observable, of, timer } from 'rxjs';
 import {
   catchError,
   exhaustMap,
@@ -20,6 +20,7 @@ export class AuthEffects {
   private readonly actions$ = inject(Actions);
   private readonly authApiService = inject(AuthApiService);
   private readonly router = inject(Router);
+  private readonly ngZone = inject(NgZone);
 
   readonly bootstrapSession$ = createEffect(() =>
     this.actions$.pipe(
@@ -195,7 +196,7 @@ export class AuthEffects {
         AuthActions.refreshSessionSuccess,
       ),
       switchMap(() =>
-        timer(10 * 60 * 1000, 10 * 60 * 1000).pipe(
+        this.sessionRefreshTicker().pipe(
           map(() => AuthActions.refreshSession()),
           takeUntil(
             this.actions$.pipe(
@@ -272,5 +273,19 @@ export class AuthEffects {
     }
 
     return redirectTo;
+  }
+
+  private sessionRefreshTicker(): Observable<number> {
+    return new Observable<number>((subscriber) => {
+      const subscription = this.ngZone.runOutsideAngular(() =>
+        timer(10 * 60 * 1000, 10 * 60 * 1000).subscribe({
+          next: (value) => this.ngZone.run(() => subscriber.next(value)),
+          error: (error) => this.ngZone.run(() => subscriber.error(error)),
+          complete: () => this.ngZone.run(() => subscriber.complete()),
+        }),
+      );
+
+      return () => subscription.unsubscribe();
+    });
   }
 }

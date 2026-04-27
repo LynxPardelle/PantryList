@@ -321,6 +321,37 @@ button:focus-visible {
   margin: 0;
 }
 
+.depletion-settings,
+.depletion-editor-actions {
+  display: flex;
+  gap: 0.9rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.depletion-settings,
+.depletion-editor {
+  padding: 1rem;
+  border: 1px dashed rgba(96, 113, 74, 0.28);
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(221, 230, 207, 0.48), #fffaf2);
+}
+
+.depletion-settings h4,
+.depletion-settings p {
+  margin: 0;
+}
+
+.depletion-settings-copy,
+.depletion-editor {
+  display: grid;
+  gap: 1rem;
+}
+
+.depletion-settings-copy {
+  gap: 0.3rem;
+}
+
 .depletion-meter {
   display: grid;
   justify-items: end;
@@ -444,6 +475,12 @@ button:focus-visible {
   .depletion-card,
   .shopping-plan-row {
     grid-template-columns: 1fr;
+  }
+
+  .depletion-settings,
+  .depletion-editor-actions {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .depletion-meter,

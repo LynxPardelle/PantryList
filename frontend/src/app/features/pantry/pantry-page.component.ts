@@ -29,6 +29,7 @@ import {
   PRODUCT_CATEGORIES,
   PRODUCT_UNITS,
   ProductCategory,
+  PantryOverviewItem,
   ProductTypeDepletionRuleRequest,
   ProductType,
   ProductTypeSelectionMode,
@@ -120,6 +121,14 @@ export class PantryPageComponent implements OnInit {
     depletionAnchorDate: [toDateInputValue(new Date()), Validators.required],
   });
 
+  readonly depletionRuleForm = this.formBuilder.nonNullable.group({
+    enabled: [true],
+    consumeAmount: [1, [Validators.required, Validators.min(0.01)]],
+    everyAmount: [1, [Validators.required, Validators.min(1)]],
+    everyPeriod: ['month' as DepletionPeriod, Validators.required],
+    anchorDate: [toDateInputValue(new Date()), Validators.required],
+  });
+
   readonly existingTypeSuggestions$ =
     this.lotForm.controls.selectionMode.valueChanges.pipe(
       startWith(this.lotForm.controls.selectionMode.getRawValue()),
@@ -152,6 +161,9 @@ export class PantryPageComponent implements OnInit {
   registerError: string | null = null;
   submittingLot = false;
   consumeBusyLotId: string | null = null;
+  editingDepletionProductTypeId: string | null = null;
+  depletionRuleSavingProductTypeId: string | null = null;
+  depletionRuleError: string | null = null;
   readonly consumeErrors: Record<string, string> = {};
   private readonly expandedProductTypeIds = new Set<string>();
 
@@ -227,6 +239,62 @@ export class PantryPageComponent implements OnInit {
     }
 
     this.expandedProductTypeIds.add(productTypeId);
+  }
+
+  getLotUnitPreview(): string {
+    if (this.lotForm.controls.selectionMode.value === 'existing') {
+      return this.selectedExistingType?.defaultUnit ?? 'Selecciona un tipo base';
+    }
+
+    return this.lotForm.controls.unit.value;
+  }
+
+  startEditingDepletionRule(group: PantryOverviewItem): void {
+    const rule = group.depletionRule;
+    this.editingDepletionProductTypeId = group.productTypeId;
+    this.depletionRuleError = null;
+    this.depletionRuleForm.reset({
+      enabled: rule?.enabled ?? true,
+      consumeAmount: rule?.consumeAmount ?? 1,
+      everyAmount: rule?.everyAmount ?? 1,
+      everyPeriod: rule?.everyPeriod ?? 'month',
+      anchorDate: rule?.anchorDate
+        ? toDateInputValue(rule.anchorDate)
+        : toDateInputValue(new Date()),
+    });
+  }
+
+  cancelEditingDepletionRule(): void {
+    this.editingDepletionProductTypeId = null;
+    this.depletionRuleError = null;
+  }
+
+  saveDepletionRule(group: PantryOverviewItem): void {
+    const rule = this.buildEditedDepletionRule(group.defaultUnit);
+
+    if (!rule) {
+      return;
+    }
+
+    this.depletionRuleSavingProductTypeId = group.productTypeId;
+    this.depletionRuleError = null;
+
+    this.pantryService
+      .updateProductTypeDepletionRule(group.productTypeId, rule)
+      .pipe(
+        finalize(() => {
+          this.depletionRuleSavingProductTypeId = null;
+        }),
+      )
+      .subscribe({
+        next: () => {
+          this.editingDepletionProductTypeId = null;
+          this.loadOverview();
+        },
+        error: (error) => {
+          this.depletionRuleError = this.getErrorMessage(error);
+        },
+      });
   }
 
   submitLot(): void {
@@ -406,6 +474,51 @@ export class PantryPageComponent implements OnInit {
       everyAmount,
       everyPeriod: rawValue.depletionEveryPeriod,
       anchorDate: rawValue.depletionAnchorDate,
+    };
+  }
+
+  private buildEditedDepletionRule(
+    unit: ProductUnit,
+  ): ProductTypeDepletionRuleRequest | undefined {
+    const rawValue = this.depletionRuleForm.getRawValue();
+
+    if (!rawValue.enabled) {
+      return {
+        enabled: false,
+        consumeAmount: 1,
+        unit,
+        everyAmount: 1,
+        everyPeriod: 'month',
+        anchorDate: rawValue.anchorDate || toDateInputValue(new Date()),
+      };
+    }
+
+    if (this.depletionRuleForm.invalid) {
+      this.depletionRuleForm.markAllAsTouched();
+      this.depletionRuleError = 'Revisa la durabilidad antes de guardarla.';
+      return undefined;
+    }
+
+    const consumeAmount = Number(rawValue.consumeAmount);
+    const everyAmount = Number(rawValue.everyAmount);
+
+    if (!Number.isFinite(consumeAmount) || consumeAmount <= 0) {
+      this.depletionRuleError = 'La cantidad de durabilidad debe ser mayor a cero.';
+      return undefined;
+    }
+
+    if (!Number.isFinite(everyAmount) || everyAmount <= 0) {
+      this.depletionRuleError = 'El intervalo de durabilidad debe ser mayor a cero.';
+      return undefined;
+    }
+
+    return {
+      enabled: true,
+      consumeAmount: Number(consumeAmount.toFixed(2)),
+      unit,
+      everyAmount,
+      everyPeriod: rawValue.everyPeriod,
+      anchorDate: rawValue.anchorDate,
     };
   }
 

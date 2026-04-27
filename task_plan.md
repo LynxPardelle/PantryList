@@ -4,7 +4,7 @@
 Review PantryList end to end, define an AWS-aligned target architecture that fits the current Angular + NestJS + MongoDB codebase, and then implement the approved path to move the project toward a production-ready state while exercising the newly installed skills.
 
 ## Current Phase
-Phase 8
+Phase 9
 
 ## Phases
 
@@ -59,6 +59,14 @@ Phase 8
 - [x] Run browser smoke with register, durable lot creation, manual consumption, logout, and login persistence
 - **Status:** completed
 
+### Phase 9: Durability Editing & E2E Hardening
+- [x] Add automated Playwright E2E coverage for register, durable lot creation, manual consumption, durability-rule editing, shopping plan, logout, and login persistence
+- [x] Polish existing-type unit preview so it does not imply `piezas` before a type is selected
+- [x] Add inline product-type durability rule editing from the grouped pantry view
+- [x] Fix development hydration warning by disabling hydration for `ng serve` while keeping production hydration enabled
+- [x] Verify frontend, backend, Docker runtime, browser smoke, and dependency audit status
+- **Status:** completed
+
 ## Key Questions
 1. Which AWS integration path best fits PantryList's current maturity: container-first, serverless-first, or hybrid?
 2. What parts of the existing implementation are solid enough to preserve, and what parts are still mostly scaffold or incomplete?
@@ -71,6 +79,8 @@ Phase 8
 | Follow brainstorming before implementation | The installed skill requires design approval before any code changes |
 | Use file-based planning in the repo root | This task is multi-step and benefits from persistent execution memory |
 | Classify the repository as an incomplete MVP scaffold with some useful backend/domain work already present | The runtime wiring, frontend screens, DB adapters, and deployment path are substantially behind the documented intent |
+| Use Playwright E2E with the system Chrome channel | This gives repeatable browser coverage without downloading browser binaries into the repo workflow |
+| Disable hydration only for the development `ng serve` runtime | The Docker frontend runs as a client dev server, while production builds still need hydration for SSR/prerendered output |
 
 ## Errors Encountered
 | Error | Attempt | Resolution |
@@ -91,3 +101,8 @@ Phase 8
 - The latest validated product loop includes auth-backed pantry access,
   expiration lots, durability/depletion forecasts, and a deterministic
   shopping plan.
+- Playwright E2E is installed in the frontend dev toolchain and defaults to
+  `PLAYWRIGHT_BROWSER_CHANNEL=chrome`.
+- Production builds now use `environment.production.ts` with hydration enabled
+  and NgRx DevTools disabled; development keeps hydration disabled to avoid
+  Angular `NG0506` noise under `ng serve`.

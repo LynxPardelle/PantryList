@@ -226,6 +226,27 @@
     manually, logged out, logged back in, and verified the pantry still showed
     the lot at `2 lt` with one shopping-plan item.
 
+### Phase 13: Durability Editing & E2E Hardening
+- **Status:** completed
+- **Started:** 2026-04-27 Central Time
+- Actions taken:
+  - Installed `@playwright/test` with browser download skipped and configured
+    Playwright to use the system Chrome channel by default.
+  - Added `frontend/e2e/pantry-smoke.spec.ts` to cover register, durable lot
+    creation, manual consumption, inline durability-rule editing, shopping-plan
+    recalculation, logout, and login persistence.
+  - Fixed the existing-type unit preview so it shows `Selecciona un tipo base`
+    until the user actually selects a product type.
+  - Added inline product-type durability-rule editing in the expanded pantry
+    group, including enable/disable, amount, interval, period, and anchor date.
+  - Added unit coverage for the new pantry UI behaviors and for auth refresh
+    scheduling outside Angular's zone.
+  - Fixed the development `NG0506` hydration warning by disabling hydration for
+    the `ng serve` development runtime while keeping hydration enabled in the
+    new production environment file.
+  - Restarted the Docker frontend and verified the in-app browser produced no
+    fresh warnings or errors after the 10-second hydration window.
+
 ## Test Results
 | Test | Input | Expected | Actual | Status |
 |------|-------|----------|--------|--------|
@@ -270,6 +291,14 @@
 | Mongo repair script idempotence | `.\docker\mongodb\Repair-DockerMongoCredentials.ps1 -EnvFile .env.docker.local` | Script can rerun without deleting the local volume | Repair completed; `backend /api/healthz => 200`; `frontend /login => 200`; MongoDB healthy | ✓ |
 | Docker high-port config | `docker compose --env-file .env.docker.local --profile app up -d --force-recreate` | PantryList uses uncommon host ports and frees common project ports | `39173/api/healthz => 200`; `48673/login => 200`; old `3000` and `4200` not responding; old `27017` free | ✓ |
 | Browser high-port smoke | In-app browser at `http://localhost:48673/register` | Register, create durable lot, consume manually, logout/login, verify persistence | Durable detergent lot persisted at `2 lt`; `Plan de compras = 1`; console warnings/errors: none | ✓ |
+| Frontend E2E install | `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install --save-dev @playwright/test` | Add Playwright without downloading browser binaries | Added 3 packages; npm reported 11 dev-tooling audit findings | ✓ |
+| Frontend E2E smoke | `E2E_BASE_URL=http://localhost:48673 npm run test:e2e` | Register, create durable lot, consume, edit durability, verify plan, logout/login | 1 Playwright test passed | ✓ |
+| Frontend durability edit tests | `npm run test:ci` in `frontend/` | New pantry and auth effects specs pass | 15 tests passed | ✓ |
+| Frontend durability edit build | `npm run build` in `frontend/` | Production build compiles with environment replacement | Passed | ✓ |
+| Backend verification after frontend changes | `npm run lint`, `npx jest --runInBand`, `npm run build`, `npm run test:e2e` in `backend/` | Backend remains green | Lint passed; 10 suites/25 tests passed; build passed; e2e 1 suite/2 tests passed | ✓ |
+| Frontend production dependency audit | `npm audit --omit=dev --json` in `frontend/` | No production dependency vulnerabilities | `total = 0` | ✓ |
+| Frontend full dependency audit | `npm audit --json` and `npm audit fix` in `frontend/` | Identify and fix non-breaking vulnerabilities | 11 dev-tooling findings remain; `npm audit fix` reported no non-breaking fix and `--force` would install `@angular/cli@21.2.8` | REVIEW |
+| Docker frontend warning check | In-app browser reload after frontend restart | No fresh browser warnings/errors after 10 seconds | `freshWarningOrErrorCount = 0` | ✓ |
 
 ## Error Log
 | Timestamp | Error | Attempt | Resolution |
@@ -290,3 +319,8 @@
 | 2026-04-27 Central Time | Automatic `.env.docker.local` update attempted to append to a fixed-size PowerShell collection | 1 | Avoided printing secrets and updated the ignored local env file with `apply_patch` |
 | 2026-04-27 Central Time | `docker compose --env-file .env.docker.local --profile app up -d --force-recreate` timed out because Docker Desktop stopped exposing `dockerDesktopLinuxEngine` | 1 | Started Docker Desktop, waited for `docker info` to succeed, then recreated the stack successfully |
 | 2026-04-27 Central Time | Browser smoke initially tried unit value `litros`, but the form options use `lt` as the canonical unit value | 1 | Inspected the select options in the DOM, selected `lt`, and completed the durable-lot smoke |
+| 2026-04-27 Central Time | First Playwright E2E failed because `getByLabel('Caducidad')` matched both the pantry `main` and the date input | 1 | Scoped locators to `form.lot-form` and used exact label matching for the date input |
+| 2026-04-27 Central Time | New auth effects spec first failed with TypeScript generic errors in a mocked `NgZone` | 1 | Replaced the hand-rolled `NgZone` provider with the real Angular `NgZone` and a `spyOn` assertion |
+| 2026-04-27 Central Time | In-app browser still showed fresh Angular `NG0506` warnings after moving the auth refresh timer outside Angular | 2 | Traced the remaining issue to development hydration under `ng serve`; disabled hydration in dev and kept it enabled in production |
+| 2026-04-27 Central Time | `rg.exe` again failed with `Acceso denegado` while searching frontend sources | 1 | Switched to `Get-ChildItem -Recurse` plus `Select-String` |
+| 2026-04-27 Central Time | `npm audit` reported 11 frontend dev-tooling vulnerabilities after adding Playwright | 1 | `npm audit --omit=dev` returned 0 production vulnerabilities; `npm audit fix` had no non-breaking fix, and `--force` would require a breaking Angular CLI 21 migration |

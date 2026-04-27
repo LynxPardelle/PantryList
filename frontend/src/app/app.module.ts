@@ -57,7 +57,9 @@ import { environment } from '../environments/environment';
       : [])
   ],
   providers: [
-    provideClientHydration(withEventReplay()),
+    ...(environment.enableHydration
+      ? [provideClientHydration(withEventReplay())]
+      : []),
     {
       provide: SessionService,
       useExisting: AuthFacade,
