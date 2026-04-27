@@ -191,6 +191,24 @@
   - Reconciled stale documentation that still described client-supplied
     `userId` as the current identity boundary.
 
+### Phase 11: Docker Runtime Stabilization
+- **Status:** completed
+- **Started:** 2026-04-27 Central Time
+- Actions taken:
+  - Repaired the existing MongoDB named volume without deleting data by
+    temporarily mounting it in a no-port repair container and updating only the
+    configured root and app users to match `.env.docker.local`.
+  - Added `docker/mongodb/Repair-DockerMongoCredentials.ps1` so the recovery
+    path can be repeated without copying sensitive one-off shell commands.
+  - Removed duplicate Mongoose schema index declarations for normalized user
+    and legacy-claim lookup fields.
+  - Updated Docker Compose dev commands to `exec` the local Nest and Angular
+    binaries directly, avoiding misleading `npm error signal SIGTERM` log noise
+    on container restarts.
+  - Recreated the Dockerized backend/frontend and verified the stack over HTTP.
+  - Ran the credential repair script after the manual repair to verify the
+    scripted path is idempotent for the current local Docker volume.
+
 ## Test Results
 | Test | Input | Expected | Actual | Status |
 |------|-------|----------|--------|--------|
@@ -226,6 +244,13 @@
 | Backend shopping plan build | `npm run build` in `backend/` | Backend compiles | Passed | ✓ |
 | Backend shopping plan e2e | `npm run test:e2e` in `backend/` | Health endpoints pass | 1 suite passed, 2 tests passed | ✓ |
 | Docker shopping plan runtime smoke | `docker compose --env-file .env.docker.local --profile app up -d --build` | Backend, frontend, and MongoDB start | Images built; frontend started; backend blocked because `pantrylist-mongodb` is unhealthy with SCRAM authentication failure for the existing named volume | BLOCKED |
+| Docker Mongo credential repair | Temporary no-port MongoDB repair container over `pantrylist_mongodb_data` | Preserve data and align root/app users with `.env.docker.local` | Repair completed; normal MongoDB service became healthy | ✓ |
+| Backend schema-index lint | `npm run lint` in `backend/` | No lint errors | Passed | ✓ |
+| Backend schema-index tests | `npx jest --runInBand` in `backend/` | Backend tests pass after schema index cleanup | 10 suites passed, 25 tests passed | ✓ |
+| Backend schema-index build | `npm run build` in `backend/` | Backend compiles | Passed | ✓ |
+| Docker Compose config | `docker compose --env-file .env.docker.local --profile app config --quiet` | Compose file is valid | Passed | ✓ |
+| Docker runtime after repair | HTTP smoke and recent log scan | Backend, frontend, and MongoDB run without duplicate-index or auth failures | `backend /api/healthz => 200`, `frontend /login => 200`, specific bad log matches: none | ✓ |
+| Mongo repair script idempotence | `.\docker\mongodb\Repair-DockerMongoCredentials.ps1 -EnvFile .env.docker.local` | Script can rerun without deleting the local volume | Repair completed; `backend /api/healthz => 200`; `frontend /login => 200`; MongoDB healthy | ✓ |
 
 ## Error Log
 | Timestamp | Error | Attempt | Resolution |
@@ -239,4 +264,6 @@
 | 2026-04-24 Central Time | `pantrylist-backend` started with stale compiled logic after source edits, then failed with repeated `CannotDetermineTypeError`, `DATABASE_URL` validation, and Mongo conflicting update operators during lot creation | 1 | Cleared backend build artifacts before watch start, made nullable Mongoose schema fields explicit, provided a non-empty `DATABASE_URL` default for dev compose, and removed conflicting upsert paths in `MongoProductTypeRepository` |
 | 2026-04-24 Central Time | `docker compose --profile app up -d --build` initially failed with `failed to connect to the docker API at npipe:////./pipe/dockerDesktopLinuxEngine` because Docker Desktop was not running | 1 | Started Docker Desktop, waited until `docker info` succeeded, then rebuilt and started the app stack successfully |
 | 2026-04-27 Central Time | First frontend `npm run test:ci` attempt timed out without useful output | 1 | Re-ran with a longer timeout; Karma completed with `TOTAL: 11 SUCCESS` |
-| 2026-04-27 Central Time | Docker shopping plan runtime smoke built images but `pantrylist-mongodb` stayed unhealthy with `AuthenticationFailed: SCRAM authentication failed, storedKey mismatch` for the existing local Mongo named volume | 1 | Did not reset the Docker volume because that can delete local data; next safe choices are restoring the original Mongo credentials for that volume or explicitly approving a local Mongo volume reset |
+| 2026-04-27 Central Time | Docker shopping plan runtime smoke built images but `pantrylist-mongodb` stayed unhealthy with `AuthenticationFailed: SCRAM authentication failed, storedKey mismatch` for the existing local Mongo named volume | 1 | Repaired non-destructively by stopping MongoDB, mounting `pantrylist_mongodb_data` in a temporary no-port repair container, updating the configured root/app users, and restarting the normal authenticated stack |
+| 2026-04-27 Central Time | Backend Docker logs showed duplicate Mongoose schema index warnings for normalized user and legacy-claim lookup fields | 1 | Kept one explicit `Schema.index(...)` definition per normalized lookup field and removed path-level unique/index declarations that generated duplicate index definitions |
+| 2026-04-27 Central Time | Docker backend restart logs showed misleading `npm error signal SIGTERM` when watchers were stopped during container recreation | 1 | Updated Docker Compose dev commands to install dependencies first and then `exec` the local Nest/Angular binaries directly instead of wrapping long-running watchers with `npm` |

@@ -79,6 +79,14 @@
   durability rules. Each item recommends buying one consumption interval three
   days before `estimatedDepletionAt`, clamped to the current date when already
   due.
+- The existing Docker MongoDB volume can be recovered from credential drift
+  without deleting pantry data by stopping the normal MongoDB service, mounting
+  the named volume in a temporary no-port repair container, updating the root
+  and app users, and restarting the authenticated Compose stack. The repeatable
+  repo entrypoint is `docker/mongodb/Repair-DockerMongoCredentials.ps1`.
+- Docker dev commands are cleaner when dependency installation remains in the
+  shell wrapper but the long-running Nest/Angular watcher is launched with
+  `exec` against the local binary instead of via `npm`.
 - Browser smoke verification over Docker created `Detergente smoke 411900` with
   `4 lt`, estimated `1 lt` current stock after three completed monthly
   intervals, then manual consumption reduced registered stock to `3 lt` and
@@ -103,9 +111,10 @@
 - The main pantry, lot, product-type, and legacy product HTTP controllers now
   use `AccessTokenGuard` and `@CurrentUser()` instead of trusting frontend
   `userId` parameters.
-- After the 2026-04-22 triple audit, missing or blank `userId` now returns
-  `400` on the audited read endpoints instead of surfacing a server error, but
-  that does not change the underlying lack of real authentication.
+- Historical note: before auth-backed controllers, the 2026-04-22 audit hardened
+  blank `userId` inputs to return `400` instead of surfacing server errors. The
+  current path now uses PantryList JWT accounts rather than client-supplied
+  identity parameters.
 - The legacy-claim seeding script excludes only owner strings already present
   in `users.id` because the current schema does not expose a stronger legacy
   marker. If orphaned pantry rows exist with stale `user.id` values but no
@@ -120,6 +129,7 @@
 - `C:\Users\lince\Documents\GitHub\PantryList\docs\superpowers\specs\2026-04-24-durability-depletion-design.md`
 - `C:\Users\lince\Documents\GitHub\PantryList\plan\feature-expiration-lots-1.md`
 - `C:\Users\lince\Documents\GitHub\PantryList\plan\feature-durability-depletion-1.md`
+- `C:\Users\lince\Documents\GitHub\PantryList\plan\feature-shopping-plan-1.md`
 - `C:\Users\lince\Documents\GitHub\Codex\Output\pantrylist-expiration-smoke.png`
 - `C:\Users\lince\Documents\GitHub\Codex\Output\pantrylist-durability-smoke.png`
 - `C:\Users\lince\Documents\GitHub\Codex\Output\pantrylist-smoke.png`

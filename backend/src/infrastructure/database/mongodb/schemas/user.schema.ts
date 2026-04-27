@@ -16,13 +16,13 @@ export class UserDocument {
   @Prop({ required: true, unique: true })
   email: string;
 
-  @Prop({ required: true, unique: true, index: true })
+  @Prop({ required: true })
   normalizedEmail: string;
 
   @Prop({ required: true, unique: true })
   username: string;
 
-  @Prop({ required: true, unique: true, index: true })
+  @Prop({ required: true })
   normalizedUsername: string;
 
   @Prop({ required: true, enum: Object.values(UserAccountStatus), index: true })

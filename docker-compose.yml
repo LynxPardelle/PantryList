@@ -64,7 +64,7 @@ services:
     command:
       - sh
       - -c
-      - rm -rf dist tsconfig.tsbuildinfo && npm ci --include=dev && npm run start:dev
+      - rm -rf dist tsconfig.tsbuildinfo && npm ci --include=dev && exec ./node_modules/.bin/nest start --watch
 
   frontend:
     profiles:
@@ -88,7 +88,7 @@ services:
     command:
       - sh
       - -c
-      - npm ci --include=dev && npm start -- --host 0.0.0.0 --port 4200
+      - npm ci --include=dev && exec ./node_modules/.bin/ng serve --proxy-config proxy.conf.cjs --host 0.0.0.0 --port 4200
 
 volumes:
   mongodb_data:

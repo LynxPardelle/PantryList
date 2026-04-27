@@ -115,24 +115,19 @@ docker compose --env-file .env.docker.local up -d mongodb
   artefactos compilados stale.
 - Si `pantrylist-mongodb` queda `unhealthy` y los logs muestran
   `SCRAM authentication failed` o `storedKey mismatch`, tu volumen persistente
-  fue inicializado con credenciales de una version anterior del stack. En ese
-  caso tienes dos caminos:
-- Mantener los datos existentes: usa en `.env.docker.local` exactamente las
-  credenciales con las que se creo ese volumen historico.
-- Si ese volumen viene del compose mas antiguo con `admin/password123`, puedes
-  mantenerlo sin borrar datos forzando el backend a usar `DATABASE_URL` legacy:
+  fue inicializado con credenciales de una version anterior del stack. Primero
+  intenta la reparacion no destructiva; el script no imprime secretos y actualiza
+  solo usuarios de MongoDB para que coincidan con `.env.docker.local`:
 
-```env
-MONGO_INITDB_ROOT_USERNAME=admin
-MONGO_INITDB_ROOT_PASSWORD=password123
-MONGO_APP_USERNAME=admin
-MONGO_APP_PASSWORD=password123
-MONGO_HOST=
-DATABASE_URL=mongodb://admin:password123@mongodb:27017/pantrylist?authSource=admin
+```powershell
+.\docker\mongodb\Repair-DockerMongoCredentials.ps1 -EnvFile .env.docker.local
 ```
 
-- Reiniciar solo el entorno Docker local: si puedes perder esos datos de
-  desarrollo, baja el stack y elimina el volumen antes de volver a levantarlo.
+- Si conoces las credenciales historicas exactas con las que se creo el volumen,
+  tambien puedes restaurarlas en `.env.docker.local` y reiniciar el stack.
+- Reiniciar solo el entorno Docker local es la opcion destructiva: si puedes
+  perder esos datos de desarrollo, baja el stack y elimina el volumen antes de
+  volver a levantarlo.
 
 ```bash
 docker compose --profile app down

@@ -17,7 +17,7 @@ export class LegacyAccountClaimDocument {
   @Prop({ required: true, unique: true })
   legacyUsername: string;
 
-  @Prop({ required: true, unique: true, index: true })
+  @Prop({ required: true })
   normalizedLegacyUsername: string;
 
   @Prop({

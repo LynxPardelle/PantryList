@@ -4,7 +4,7 @@
 Review PantryList end to end, define an AWS-aligned target architecture that fits the current Angular + NestJS + MongoDB codebase, and then implement the approved path to move the project toward a production-ready state while exercising the newly installed skills.
 
 ## Current Phase
-Phase 6
+Phase 7
 
 ## Phases
 
@@ -45,6 +45,13 @@ Phase 6
 - [x] Verify backend/frontend tests and builds
 - **Status:** completed
 
+### Phase 7: Docker Runtime Stabilization
+- [x] Repair the existing MongoDB named volume without deleting application data
+- [x] Remove duplicate Mongoose schema index warnings
+- [x] Reduce misleading Docker restart log noise from npm-wrapped watchers
+- [x] Verify backend/frontend/Mongo runtime over Docker Compose
+- **Status:** completed
+
 ## Key Questions
 1. Which AWS integration path best fits PantryList's current maturity: container-first, serverless-first, or hybrid?
 2. What parts of the existing implementation are solid enough to preserve, and what parts are still mostly scaffold or incomplete?
@@ -69,9 +76,9 @@ Phase 6
 - Keep AWS additions aligned to the existing codebase rather than forcing a full rewrite.
 - User chose the MVP-first path before AWS-specific expansion.
 - Docker Compose is the primary local full-stack workflow. If the named MongoDB
-  volume credentials drift from the active `.env.docker.local`, runtime smoke is
-  blocked until the original credentials are restored or a local volume reset is
-  explicitly approved.
+  volume credentials drift from the active `.env.docker.local`, prefer a
+  non-destructive credential repair against the stopped local volume before
+  considering a local volume reset.
 - The latest validated product loop includes auth-backed pantry access,
   expiration lots, durability/depletion forecasts, and a deterministic
   shopping plan.
