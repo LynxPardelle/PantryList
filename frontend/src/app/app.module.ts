@@ -8,14 +8,8 @@ import { StoreDevtoolsModule } from '@ngrx/store-devtools';
 
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
-import { ClaimImportedAccountPageComponent } from './features/auth/claim-imported-account-page.component';
-import { ForgotPasswordPageComponent } from './features/auth/forgot-password-page.component';
 import { LoginPageComponent } from './features/auth/login-page.component';
-import { RegisterPageComponent } from './features/auth/register-page.component';
-import { ResetPasswordPageComponent } from './features/auth/reset-password-page.component';
 import { PantryPageComponent } from './features/pantry/pantry-page.component';
-import { AuthFacade } from './core/services/auth.facade';
-import { SessionService } from './core/services/session.service';
 import { authReducer } from './store/auth/auth.reducer';
 import { AuthEffects } from './store/auth/auth.effects';
 import { productReducer } from './store/product/product.reducer';
@@ -27,11 +21,7 @@ import { environment } from '../environments/environment';
 @NgModule({
   declarations: [
     AppComponent,
-    ClaimImportedAccountPageComponent,
-    ForgotPasswordPageComponent,
     LoginPageComponent,
-    RegisterPageComponent,
-    ResetPasswordPageComponent,
     PantryPageComponent,
   ],
   imports: [
@@ -60,10 +50,6 @@ import { environment } from '../environments/environment';
     ...(environment.enableHydration
       ? [provideClientHydration(withEventReplay())]
       : []),
-    {
-      provide: SessionService,
-      useExisting: AuthFacade,
-    },
   ],
   bootstrap: [AppComponent]
 })

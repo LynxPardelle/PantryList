@@ -46,18 +46,6 @@ import {
   InventoryLotSchema,
 } from './infrastructure/database/mongodb/schemas/inventory-lot.schema';
 import {
-  LegacyAccountClaimDocument,
-  LegacyAccountClaimSchema,
-} from './infrastructure/database/mongodb/schemas/legacy-account-claim.schema';
-import {
-  PasswordCredentialDocument,
-  PasswordCredentialSchema,
-} from './infrastructure/database/mongodb/schemas/password-credential.schema';
-import {
-  PasswordResetTokenDocument,
-  PasswordResetTokenSchema,
-} from './infrastructure/database/mongodb/schemas/password-reset-token.schema';
-import {
   ProductDocument,
   ProductSchema,
 } from './infrastructure/database/mongodb/schemas/product.schema';
@@ -65,10 +53,6 @@ import {
   ProductTypeDocument,
   ProductTypeSchema,
 } from './infrastructure/database/mongodb/schemas/product-type.schema';
-import {
-  RefreshSessionDocument,
-  RefreshSessionSchema,
-} from './infrastructure/database/mongodb/schemas/refresh-session.schema';
 import {
   UserDocument,
   UserSchema,
@@ -132,10 +116,11 @@ const buildMongoUri = (configService: ConfigService): string => {
         API_PREFIX: Joi.string().default('api'),
         CORS_ORIGIN: Joi.string().default('http://localhost:4200'),
         HELMET_ENABLED: Joi.string().valid('true', 'false').default('true'),
-        JWT_ACCESS_SECRET: Joi.string().optional(),
-        JWT_REFRESH_SECRET: Joi.string().optional(),
-        JWT_ACCESS_TTL_SECONDS: Joi.number().integer().positive().default(900),
-        JWT_REFRESH_TTL_SECONDS: Joi.number()
+        AUTH_ACCESS_COOKIE_TTL_SECONDS: Joi.number()
+          .integer()
+          .positive()
+          .default(900),
+        AUTH_REFRESH_COOKIE_TTL_SECONDS: Joi.number()
           .integer()
           .positive()
           .default(2592000),
@@ -222,19 +207,6 @@ const buildMongoUri = (configService: ConfigService): string => {
       { name: ProductTypeDocument.name, schema: ProductTypeSchema },
       { name: InventoryLotDocument.name, schema: InventoryLotSchema },
       { name: UserDocument.name, schema: UserSchema },
-      {
-        name: PasswordCredentialDocument.name,
-        schema: PasswordCredentialSchema,
-      },
-      { name: RefreshSessionDocument.name, schema: RefreshSessionSchema },
-      {
-        name: PasswordResetTokenDocument.name,
-        schema: PasswordResetTokenSchema,
-      },
-      {
-        name: LegacyAccountClaimDocument.name,
-        schema: LegacyAccountClaimSchema,
-      },
     ]),
   ],
   controllers: [

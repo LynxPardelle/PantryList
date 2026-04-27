@@ -125,7 +125,7 @@ docker compose --env-file .env.docker.local up -d mongodb
   cambies el frontend a `http://localhost:39173`. Primero valida el backend, ya
   que `localhost:48673/api` es el contrato correcto en desarrollo.
 - Si `pantrylist-backend` queda en bucle con errores de TypeScript por modulos
-  faltantes (`@nestjs/jwt`, `@fastify/cookie`, `argon2`), el contenedor tenia
+  faltantes de Node/Nest, el contenedor tenia
   un `node_modules` de Docker desincronizado. El `docker-compose.yml` de
   desarrollo ahora ejecuta `npm ci --include=dev` al arrancar para reparar ese
   volumen antes de levantar NestJS y Angular.
@@ -172,6 +172,8 @@ SWAGGER_TITLE=PantryList API
 SWAGGER_DESCRIPTION=PantryList API
 SWAGGER_VERSION=1.0.0
 COGNITO_ENABLED=false
+AUTH_ACCESS_COOKIE_TTL_SECONDS=900
+AUTH_REFRESH_COOKIE_TTL_SECONDS=2592000
 ```
 
 ### 2. Arranca el backend fuera de Docker

@@ -30,24 +30,9 @@ export const selectLoginPending = createSelector(
   (state) => state.loginPending,
 );
 
-export const selectRegisterPending = createSelector(
-  selectAuthState,
-  (state) => state.registerPending,
-);
-
 export const selectRefreshPending = createSelector(
   selectAuthState,
   (state) => state.refreshPending,
-);
-
-export const selectClaimPending = createSelector(
-  selectAuthState,
-  (state) => state.claimPending,
-);
-
-export const selectPasswordRecoveryPending = createSelector(
-  selectAuthState,
-  (state) => state.passwordRecoveryPending,
 );
 
 export const selectAuthError = createSelector(

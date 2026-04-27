@@ -6,25 +6,15 @@ import {
   selectAuthError,
   selectAuthInfoMessage,
   selectBootstrapPending,
-  selectClaimPending,
   selectCurrentUser,
   selectCurrentUsername,
   selectRefreshPending,
   selectAuthState,
   selectIsAuthenticated,
   selectLoginPending,
-  selectPasswordRecoveryPending,
-  selectRegisterPending,
   selectSessionStatus,
 } from '../../store/auth/auth.selectors';
 import { AuthState } from '../../store/auth/auth.state';
-import {
-  ClaimImportedAccountRequest,
-  ForgotPasswordRequest,
-  LoginRequest,
-  RegisterRequest,
-  ResetPasswordRequest,
-} from '../../shared/models/auth.model';
 
 @Injectable({
   providedIn: 'root',
@@ -36,10 +26,7 @@ export class AuthFacade {
     currentUser: null,
     bootstrapPending: false,
     loginPending: false,
-    registerPending: false,
     refreshPending: false,
-    claimPending: false,
-    passwordRecoveryPending: false,
     authError: null,
     infoMessage: null,
   };
@@ -51,12 +38,7 @@ export class AuthFacade {
   readonly isAuthenticated$ = this.store.select(selectIsAuthenticated);
   readonly bootstrapPending$ = this.store.select(selectBootstrapPending);
   readonly loginPending$ = this.store.select(selectLoginPending);
-  readonly registerPending$ = this.store.select(selectRegisterPending);
   readonly refreshPending$ = this.store.select(selectRefreshPending);
-  readonly claimPending$ = this.store.select(selectClaimPending);
-  readonly passwordRecoveryPending$ = this.store.select(
-    selectPasswordRecoveryPending,
-  );
   readonly authError$ = this.store.select(selectAuthError);
   readonly infoMessage$ = this.store.select(selectAuthInfoMessage);
   readonly authMessage$ = this.infoMessage$;
@@ -109,33 +91,6 @@ export class AuthFacade {
 
   startCognitoLogin(provider?: string | null, redirectTo?: string | null): void {
     this.login(provider, redirectTo);
-  }
-
-  signIn(_credentials: LoginRequest, redirectTo?: string | null): void {
-    this.login(null, redirectTo);
-  }
-
-  register(payload: RegisterRequest, redirectTo?: string | null): void {
-    this.store.dispatch(AuthActions.register({ payload, redirectTo }));
-  }
-
-  forgotPassword(payload: ForgotPasswordRequest): void {
-    this.store.dispatch(AuthActions.forgotPassword({ payload }));
-  }
-
-  requestPasswordReset(payload: ForgotPasswordRequest): void {
-    this.forgotPassword(payload);
-  }
-
-  resetPassword(payload: ResetPasswordRequest): void {
-    this.store.dispatch(AuthActions.resetPassword({ payload }));
-  }
-
-  claimImportedAccount(
-    payload: ClaimImportedAccountRequest,
-    redirectTo?: string | null,
-  ): void {
-    this.store.dispatch(AuthActions.claimImportedAccount({ payload, redirectTo }));
   }
 
   logout(): void {

@@ -320,6 +320,33 @@
   - Wrote the local review artifact
     `docs/reviews/2026-04-27-cognito-auth-comprehensive-review.md`.
 
+### Phase 17: Cognito Auth Cleanup
+- **Status:** completed
+- **Started:** 2026-04-27 Central Time
+- Actions taken:
+  - Created `plan/feature-cognito-auth-cleanup-1.md`.
+  - Removed inactive backend local password/JWT auth use cases, session
+    service, auth-session result type, password/JWT/token ports, local auth
+    DAOs, local auth schemas, local auth entities/value objects, and password
+    or JWT infrastructure adapters.
+  - Removed local auth tokens from `backend/src/application/tokens.ts` and
+    local auth schemas from the active Mongoose module.
+  - Replaced JWT-named cookie duration env validation with
+    `AUTH_ACCESS_COOKIE_TTL_SECONDS` and
+    `AUTH_REFRESH_COOKIE_TTL_SECONDS`.
+  - Removed inactive Angular register, forgot password, reset password, and
+    claim imported account components.
+  - Removed inactive local auth NgRx actions, reducer branches, selectors,
+    facade methods, request models, and the legacy localStorage
+    `SessionService`.
+  - Removed unused backend dependencies `@nestjs/jwt` and `argon2`.
+  - Updated env examples and Compose files with the neutral auth cookie TTL env
+    names.
+  - Wrote `docs/reviews/2026-04-27-cognito-auth-cleanup-review.md`.
+  - Ran a lightweight secret scan; the generated JSON returned `count: 0` and
+    `findings: []`, then was deleted because it contained an absolute local
+    path.
+
 ## Test Results
 | Test | Input | Expected | Actual | Status |
 |------|-------|----------|--------|--------|
@@ -398,6 +425,19 @@
 | Cognito disabled fail-closed smoke | `Invoke-WebRequest http://localhost:48673/api/auth/cognito/login?provider=Google` | Local dev without Cognito config should not fall back to local passwords | `503` | ✓ |
 | Stale local JWT cookie smoke | `Invoke-WebRequest http://localhost:48673/api/auth/me` with `Cookie=pantrylist_access_token=stale-local-jwt` | Stale local JWT should return unauthorized, not server error | `401` | ✓ |
 | Secret scan after Cognito | `python C:\Users\lince\.codex\skills\security-compliance\scripts\secret_scan.py . --json --output ...` | No likely secrets in tracked workspace | JSON output had `count = 0` and `findings = []` | ✓ |
+| Backend auth cleanup lint | `npm run lint` in `backend/` | No lint errors after deleting local auth source | Passed | ✓ |
+| Backend auth cleanup unit tests | `npx jest --runInBand` in `backend/` | All remaining backend tests pass after local auth cleanup | 17 suites passed, 47 tests passed | ✓ |
+| Backend auth cleanup build | `npm run build` in `backend/` | NestJS build compiles after dependency cleanup | Passed | ✓ |
+| Backend auth cleanup e2e | `npm run test:e2e` in `backend/` | Health e2e tests pass | 1 suite passed, 2 tests passed | ✓ |
+| Frontend auth cleanup tests | `npm run test:ci` in `frontend/` | Angular specs pass after removing inactive screens/actions | `TOTAL: 17 SUCCESS` | ✓ |
+| Frontend auth cleanup build | `npm run build` in `frontend/` | Angular SSR build compiles | Passed | ✓ |
+| Frontend auth cleanup E2E | `$env:E2E_BASE_URL='http://localhost:48673'; npm run test:e2e` in `frontend/` | Cognito login launcher smoke still passes | 1 Playwright test passed | ✓ |
+| Backend production audit after auth cleanup | `npm audit --omit=dev --json` in `backend/` | No production dependency vulnerabilities | `total = 0`; `prod = 146`; `total dependencies = 858` | ✓ |
+| Frontend production audit after auth cleanup | `npm audit --omit=dev --json` in `frontend/` | No production dependency vulnerabilities | `total = 0`; `prod = 100`; `total dependencies = 1046` | ✓ |
+| Development Compose config after auth cleanup | `docker compose --env-file .env.docker.example --profile app config --quiet` | Compose dev config resolves with neutral auth cookie TTL vars | Passed | ✓ |
+| Production Compose config after auth cleanup | `docker compose -f docker-compose.prod.yml --env-file .env.production.example config --quiet` | Compose prod config resolves with Cognito env and neutral auth cookie TTL vars | Passed | ✓ |
+| Docker HTTP smoke after auth cleanup | backend health, frontend login, stale JWT cookie, Cognito-disabled login | Current local stack should stay stable | backend `200`; frontend `200`; stale JWT `401`; Cognito login disabled `503` | ✓ |
+| Secret scan after auth cleanup | `python C:\Users\lince\.codex\skills\security-compliance\scripts\secret_scan.py . --json --output ...` | No likely secrets in tracked workspace | JSON output had `count = 0` and `findings = []` | ✓ |
 
 ## Error Log
 | Timestamp | Error | Attempt | Resolution |

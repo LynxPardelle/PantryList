@@ -196,13 +196,14 @@ export class AuthCookieService {
 
   private getAccessCookieMaxAgeSeconds(): number {
     return Number(
-      this.configService.get<string>('JWT_ACCESS_TTL_SECONDS') ?? '900',
+      this.configService.get<string>('AUTH_ACCESS_COOKIE_TTL_SECONDS') ?? '900',
     );
   }
 
   private getRefreshCookieMaxAgeSeconds(): number {
     return Number(
-      this.configService.get<string>('JWT_REFRESH_TTL_SECONDS') ?? '2592000',
+      this.configService.get<string>('AUTH_REFRESH_COOKIE_TTL_SECONDS') ??
+        '2592000',
     );
   }
 

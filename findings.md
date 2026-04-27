@@ -165,6 +165,16 @@
 - The current Playwright E2E smoke verifies the Cognito login launcher with a
   stubbed Hosted UI redirect. Full Google/Facebook sign-in cannot be verified
   until real AWS Cognito environment values and provider secrets exist.
+- The Cognito cleanup removed inactive local password/JWT auth source from the
+  active codebase: local password registration/login/reset use cases,
+  local refresh-session issuance, password/JWT/token ports, local auth Mongo
+  DAOs and schemas, password/JWT infrastructure adapters, frontend local auth
+  screens, local auth NgRx actions/state/selectors, and unused `@nestjs/jwt` /
+  `argon2` backend dependencies.
+- Cookie duration configuration now uses `AUTH_ACCESS_COOKIE_TTL_SECONDS` and
+  `AUTH_REFRESH_COOKIE_TTL_SECONDS` instead of JWT-named variables. Cognito
+  token validity remains controlled by Cognito; these values only control
+  PantryList cookie max age.
 
 ## Skill Evaluation Findings
 - `create-implementation-plan` was useful and produced a concrete execution
@@ -195,6 +205,8 @@
   comment was posted because this task is not currently attached to a GitHub
   issue and the skill requires a dry run plus explicit confirmation before
   writing comments.
+- The Cognito cleanup review is recorded locally in
+  `docs/reviews/2026-04-27-cognito-auth-cleanup-review.md`.
 
 ## Security Concerns To Keep Visible
 - The main pantry, lot, product-type, and legacy product HTTP controllers now
@@ -228,6 +240,9 @@
 - Do not keep a local-password fallback once Cognito is enabled; two
   authentication authorities would make account recovery, session revocation,
   and social-provider linking harder to reason about.
+- Local password fallback code has now been removed from active source. Future
+  imported-account recovery should be redesigned around verified Cognito users
+  instead of restoring local password claims.
 - Real Cognito deployment must use least-privilege environment handling:
   provider secrets and optional Cognito client secret should be set only in the
   deployment environment, never in tracked `.env` examples or docs.
@@ -249,6 +264,7 @@
 - `C:\Users\lince\Documents\GitHub\PantryList\plan\feature-shopping-plan-1.md`
 - `C:\Users\lince\Documents\GitHub\PantryList\plan\feature-cognito-auth-replacement-1.md`
 - `C:\Users\lince\Documents\GitHub\PantryList\docs\reviews\2026-04-27-cognito-auth-comprehensive-review.md`
+- `C:\Users\lince\Documents\GitHub\PantryList\docs\reviews\2026-04-27-cognito-auth-cleanup-review.md`
 - `C:\Users\lince\Documents\GitHub\Codex\Output\pantrylist-expiration-smoke.png`
 - `C:\Users\lince\Documents\GitHub\Codex\Output\pantrylist-durability-smoke.png`
 - `C:\Users\lince\Documents\GitHub\Codex\Output\pantrylist-smoke.png`

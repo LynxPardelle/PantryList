@@ -30,10 +30,3 @@ export enum UserAccountStatus {
   ACTIVE = 'active',
   DISABLED = 'disabled',
 }
-
-export enum LegacyAccountClaimStatus {
-  UNCLAIMED = 'unclaimed',
-  CLAIMING = 'claiming',
-  CLAIMED = 'claimed',
-  LOCKED = 'locked',
-}

@@ -4,7 +4,7 @@
 Review PantryList end to end, define an AWS-aligned target architecture that fits the current Angular + NestJS + MongoDB codebase, and then implement the approved path to move the project toward a production-ready state while exercising the newly installed skills.
 
 ## Current Phase
-Phase 12
+Phase 13
 
 ## Phases
 
@@ -93,6 +93,14 @@ Phase 12
 - [x] Verify backend, frontend, Docker, E2E, and production dependency audits
 - **Status:** completed
 
+### Phase 13: Cognito Auth Cleanup
+- [x] Remove inactive backend local password/JWT auth use cases, adapters, entities, schemas, and tokens
+- [x] Remove inactive frontend register, forgot password, reset password, and claim imported account screens/actions/state
+- [x] Remove unused backend local-auth dependencies
+- [x] Rename auth cookie TTL configuration away from JWT terminology
+- [x] Verify tests, builds, audits, Compose config, HTTP smoke, and secret scan
+- **Status:** completed
+
 ## Key Questions
 1. Which AWS integration path best fits PantryList's current maturity: container-first, serverless-first, or hybrid?
 2. What parts of the existing implementation are solid enough to preserve, and what parts are still mostly scaffold or incomplete?
@@ -111,6 +119,7 @@ Phase 12
 | Keep local production-like smoke isolated under a separate Compose project and high host port | This lets the dev stack remain available at `48673` while validating a production topology at `48675` |
 | Replace local PantryList authentication with Cognito before production | The user wants Google/Facebook and future account recovery through a managed identity authority rather than keeping local passwords |
 | Remove local password auth from the active route/provider graph now instead of keeping fallback behavior | The project is not deployed to production yet, and a single auth authority avoids split recovery, revocation, and account-linking behavior |
+| Delete inactive local auth source after Cognito implementation | Keeping dormant password/JWT code increases future confusion and the risk of accidentally restoring a second auth authority |
 
 ## Errors Encountered
 | Error | Attempt | Resolution |
@@ -144,8 +153,9 @@ Phase 12
   equal to the verified Cognito `sub`.
 - Cognito is now the active authentication design in code. Local password
   registration, login, password reset, local JWT issuance, and local refresh
-  sessions remain in obsolete source files only for future cleanup; they are not
-  wired into active backend providers or active frontend routes.
+  sessions were removed from active source after the cleanup phase.
 - A real Google/Facebook sign-in smoke test still requires AWS Cognito User
   Pool, app client, Hosted UI domain, callback/logout URLs, and social provider
   secrets configured outside git.
+- If legacy imported pantry ownership must be claimed later, design a
+  Cognito-native claim flow instead of restoring local password claims.

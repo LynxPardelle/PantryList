@@ -51,6 +51,9 @@ callbacks are:
 - For local HTTP-only smoke tests, temporarily set `AUTH_COOKIE_SECURE=false`.
 - Set `AUTH_COOKIE_DOMAIN` only if you need cookies shared across a parent
   domain. Leave it unset for a single Dokploy app domain.
+- `AUTH_ACCESS_COOKIE_TTL_SECONDS` and `AUTH_REFRESH_COOKIE_TTL_SECONDS` only
+  control PantryList cookie max age. Cognito token validity is configured in
+  the Cognito app client.
 
 ## Local Smoke
 

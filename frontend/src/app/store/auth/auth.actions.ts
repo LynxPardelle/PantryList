@@ -1,11 +1,5 @@
 import { createAction, props } from '@ngrx/store';
-import {
-  AuthUser,
-  ClaimImportedAccountRequest,
-  ForgotPasswordRequest,
-  RegisterRequest,
-  ResetPasswordRequest,
-} from '../../shared/models/auth.model';
+import { AuthUser } from '../../shared/models/auth.model';
 
 export const bootstrapSession = createAction('[Auth] Bootstrap Session');
 
@@ -35,66 +29,6 @@ export const loginSuccess = createAction(
 
 export const loginFailure = createAction(
   '[Auth] Login Failure',
-  props<{ error: string }>(),
-);
-
-export const register = createAction(
-  '[Auth] Register',
-  props<{ payload: RegisterRequest; redirectTo?: string | null }>(),
-);
-
-export const registerSuccess = createAction(
-  '[Auth] Register Success',
-  props<{ user: AuthUser; redirectTo?: string | null }>(),
-);
-
-export const registerFailure = createAction(
-  '[Auth] Register Failure',
-  props<{ error: string }>(),
-);
-
-export const forgotPassword = createAction(
-  '[Auth] Forgot Password',
-  props<{ payload: ForgotPasswordRequest }>(),
-);
-
-export const forgotPasswordSuccess = createAction(
-  '[Auth] Forgot Password Success',
-  props<{ message: string }>(),
-);
-
-export const forgotPasswordFailure = createAction(
-  '[Auth] Forgot Password Failure',
-  props<{ error: string }>(),
-);
-
-export const resetPassword = createAction(
-  '[Auth] Reset Password',
-  props<{ payload: ResetPasswordRequest }>(),
-);
-
-export const resetPasswordSuccess = createAction(
-  '[Auth] Reset Password Success',
-  props<{ message: string }>(),
-);
-
-export const resetPasswordFailure = createAction(
-  '[Auth] Reset Password Failure',
-  props<{ error: string }>(),
-);
-
-export const claimImportedAccount = createAction(
-  '[Auth] Claim Imported Account',
-  props<{ payload: ClaimImportedAccountRequest; redirectTo?: string | null }>(),
-);
-
-export const claimImportedAccountSuccess = createAction(
-  '[Auth] Claim Imported Account Success',
-  props<{ user: AuthUser; redirectTo?: string | null }>(),
-);
-
-export const claimImportedAccountFailure = createAction(
-  '[Auth] Claim Imported Account Failure',
   props<{ error: string }>(),
 );
 

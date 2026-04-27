@@ -12,8 +12,6 @@ export const authReducer = createReducer(
   on(
     AuthActions.bootstrapSessionSuccess,
     AuthActions.loginSuccess,
-    AuthActions.registerSuccess,
-    AuthActions.claimImportedAccountSuccess,
     AuthActions.refreshSessionSuccess,
     (state, { user }) => ({
       ...state,
@@ -21,9 +19,7 @@ export const authReducer = createReducer(
       currentUser: user,
       bootstrapPending: false,
       loginPending: false,
-      registerPending: false,
       refreshPending: false,
-      claimPending: false,
       authError: null,
     }),
   ),
@@ -51,53 +47,6 @@ export const authReducer = createReducer(
   on(AuthActions.loginFailure, (state, { error }) => ({
     ...state,
     loginPending: false,
-    authError: error,
-  })),
-  on(AuthActions.register, (state) => ({
-    ...state,
-    registerPending: true,
-    authError: null,
-    infoMessage: null,
-  })),
-  on(AuthActions.registerFailure, (state, { error }) => ({
-    ...state,
-    registerPending: false,
-    authError: error,
-  })),
-  on(AuthActions.forgotPassword, AuthActions.resetPassword, (state) => ({
-    ...state,
-    passwordRecoveryPending: true,
-    authError: null,
-    infoMessage: null,
-  })),
-  on(
-    AuthActions.forgotPasswordSuccess,
-    AuthActions.resetPasswordSuccess,
-    (state, { message }) => ({
-      ...state,
-      passwordRecoveryPending: false,
-      authError: null,
-      infoMessage: message,
-    }),
-  ),
-  on(
-    AuthActions.forgotPasswordFailure,
-    AuthActions.resetPasswordFailure,
-    (state, { error }) => ({
-      ...state,
-      passwordRecoveryPending: false,
-      authError: error,
-    }),
-  ),
-  on(AuthActions.claimImportedAccount, (state) => ({
-    ...state,
-    claimPending: true,
-    authError: null,
-    infoMessage: null,
-  })),
-  on(AuthActions.claimImportedAccountFailure, (state, { error }) => ({
-    ...state,
-    claimPending: false,
     authError: error,
   })),
   on(AuthActions.refreshSession, (state) => ({
