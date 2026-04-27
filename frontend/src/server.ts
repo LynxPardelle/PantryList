@@ -50,12 +50,21 @@ app.use('/api', express.json(), async (req, res, next) => {
     const response = await fetch(targetUrl, requestInit);
 
     res.status(response.status);
+    const setCookieHeaders = getSetCookieHeaders(response.headers);
+
     response.headers.forEach((value, key) => {
-      if (key === 'content-length' || key === 'content-encoding') {
+      if (
+        key === 'content-length' ||
+        key === 'content-encoding' ||
+        key === 'set-cookie'
+      ) {
         return;
       }
 
       res.setHeader(key, value);
+    });
+    setCookieHeaders.forEach((cookie) => {
+      res.append('set-cookie', cookie);
     });
 
     const payload = Buffer.from(await response.arrayBuffer());
@@ -106,3 +115,17 @@ if (isMainModule(import.meta.url)) {
 }
 
 export default app;
+
+function getSetCookieHeaders(headers: Headers): string[] {
+  const headersWithSetCookie = headers as Headers & {
+    getSetCookie?: () => string[];
+    raw?: () => Record<string, string[]>;
+  };
+  const setCookieHeaders = headersWithSetCookie.getSetCookie?.();
+
+  if (setCookieHeaders?.length) {
+    return setCookieHeaders;
+  }
+
+  return headersWithSetCookie.raw?.()['set-cookie'] ?? [];
+}

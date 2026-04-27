@@ -112,6 +112,17 @@
   the Docker `ng serve` workflow. Development now disables hydration, while the
   production environment replacement keeps hydration enabled and NgRx DevTools
   disabled.
+- Production-like Docker is now validated separately from the development
+  stack. The current local smoke topology uses frontend `48675`, backend
+  internal port `3000`, and MongoDB internal port `27017`.
+- Production Compose should pass Mongo connection pieces rather than a
+  hand-built `DATABASE_URL` when credentials are generated. This avoids invalid
+  URIs when passwords include URL-reserved characters.
+- The frontend SSR server is the public production entrypoint. It proxies
+  `/api` to `BACKEND_URL` and now preserves multiple backend `Set-Cookie`
+  headers, which is required for PantryList auth cookies.
+- Docker runtime images now use `node:22-alpine`, matching the newer Node line
+  used on this machine more closely than the prior Node 20 image.
 
 ## Skill Evaluation Findings
 - `create-implementation-plan` was useful and produced a concrete execution
@@ -131,6 +142,9 @@
   frontend restart. It confirmed the pantry page loaded, the neutral unit
   preview appeared, and no fresh browser warnings/errors were logged after the
   hydration window.
+- `senior-devops` was useful for clarifying the production-like shape:
+  build/test/package/deploy/verify, internal services, healthchecks, required
+  secrets, and rollback-friendly separation from the development stack.
 
 ## Security Concerns To Keep Visible
 - The main pantry, lot, product-type, and legacy product HTTP controllers now
@@ -152,6 +166,12 @@
   development-tooling findings through Angular CLI/build dependencies; the only
   automatic fix path offered by npm requires a breaking `@angular/cli@21.2.8`
   migration and was intentionally not applied in this feature pass.
+- Backend production dependencies also audit clean with
+  `npm audit --omit=dev`. Docker build output pruned dev dependencies in the
+  runtime image and reported `found 0 vulnerabilities` for runtime dependency
+  trees.
+- For local HTTP-only production smoke tests, `AUTH_COOKIE_SECURE=false` is
+  required. Dokploy/HTTPS deployments should keep `AUTH_COOKIE_SECURE=true`.
 
 ## Resources
 - `C:\Users\lince\Documents\GitHub\PantryList\README.md`

@@ -1,3 +1,5 @@
+name: pantrylist-prod
+
 services:
   mongodb:
     image: mongo:7.0
@@ -37,11 +39,20 @@ services:
       NODE_ENV: production
       PORT: 3000
       DATABASE_NAME: ${DATABASE_NAME:-pantrylist}
-      DATABASE_URL: mongodb://${MONGO_APP_USERNAME:?set MONGO_APP_USERNAME}:${MONGO_APP_PASSWORD:?set MONGO_APP_PASSWORD}@mongodb:27017/${DATABASE_NAME:-pantrylist}?authSource=${DATABASE_NAME:-pantrylist}
+      MONGO_HOST: mongodb
+      MONGO_PORT: 27017
+      MONGO_APP_DATABASE: ${DATABASE_NAME:-pantrylist}
+      MONGO_APP_USERNAME: ${MONGO_APP_USERNAME:?set MONGO_APP_USERNAME}
+      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:?set MONGO_APP_PASSWORD}
       API_PREFIX: ${API_PREFIX:-api}
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:${FRONTEND_PORT:-4000}}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:${FRONTEND_PORT:-48674}}
       HELMET_ENABLED: ${HELMET_ENABLED:-true}
       SWAGGER_ENABLED: ${SWAGGER_ENABLED:-false}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?set JWT_ACCESS_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?set JWT_REFRESH_SECRET}
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-true}
+      AUTH_COOKIE_SAME_SITE: ${AUTH_COOKIE_SAME_SITE:-lax}
+      AUTH_COOKIE_DOMAIN: ${AUTH_COOKIE_DOMAIN:-}
     expose:
       - "3000"
     depends_on:
@@ -73,7 +84,7 @@ services:
       PORT: 4000
       BACKEND_URL: ${BACKEND_URL:-http://backend:3000}
     ports:
-      - "${FRONTEND_PORT:-4000}:4000"
+      - "${FRONTEND_PORT:-48674}:4000"
     depends_on:
       backend:
         condition: service_healthy

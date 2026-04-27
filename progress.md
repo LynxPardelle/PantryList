@@ -247,6 +247,29 @@
   - Restarted the Docker frontend and verified the in-app browser produced no
     fresh warnings or errors after the 10-second hydration window.
 
+### Phase 14: Production-Like Docker & Dokploy Readiness
+- **Status:** completed
+- **Started:** 2026-04-27 Central Time
+- Actions taken:
+  - Updated backend and frontend Dockerfiles from `node:20-alpine` to
+    `node:22-alpine`.
+  - Hardened `docker-compose.prod.yml` as an isolated `pantrylist-prod`
+    topology with high default frontend port `48674`, internal backend/MongoDB,
+    required JWT secrets, cookie controls, and component Mongo connection env
+    variables.
+  - Changed production Compose to pass Mongo credentials as components instead
+    of interpolating `DATABASE_URL`, so generated passwords with URL-reserved
+    characters are encoded by the backend.
+  - Updated the frontend SSR `/api` proxy to preserve multiple `Set-Cookie`
+    headers from the backend.
+  - Consolidated production Angular environment replacement to the existing
+    `environment.prod.ts` file and removed the duplicate
+    `environment.production.ts`.
+  - Added `.env.production.example` and `docs/deployment/dokploy.md` for
+    Dokploy/local production-like setup.
+  - Built and smoke-tested an isolated production-like stack on
+    `http://localhost:48675` while keeping the development stack on `48673`.
+
 ## Test Results
 | Test | Input | Expected | Actual | Status |
 |------|-------|----------|--------|--------|
@@ -299,6 +322,15 @@
 | Frontend production dependency audit | `npm audit --omit=dev --json` in `frontend/` | No production dependency vulnerabilities | `total = 0` | ✓ |
 | Frontend full dependency audit | `npm audit --json` and `npm audit fix` in `frontend/` | Identify and fix non-breaking vulnerabilities | 11 dev-tooling findings remain; `npm audit fix` reported no non-breaking fix and `--force` would install `@angular/cli@21.2.8` | REVIEW |
 | Docker frontend warning check | In-app browser reload after frontend restart | No fresh browser warnings/errors after 10 seconds | `freshWarningOrErrorCount = 0` | ✓ |
+| Production Compose config | `docker compose -f docker-compose.prod.yml --env-file .env.production.example config --quiet` | Compose file resolves with documented env example | Passed | ✓ |
+| Frontend build after prod config | `npm run build` in `frontend/` | Angular SSR build compiles with production file replacement | Passed | ✓ |
+| Backend build after prod config | `npm run build` in `backend/` | NestJS production output compiles | Passed | ✓ |
+| Production-like Docker build | `docker compose -p pantrylist-prod-smoke2 -f docker-compose.prod.yml up -d --build` with ephemeral local env vars | Images build and services become healthy | MongoDB, backend, and frontend healthy; frontend published on `48675` | ✓ |
+| Production-like HTTP health | `http://localhost:48675/healthz` and `/api/healthz` | Frontend and proxied backend health return 200 | Both returned 200 | ✓ |
+| Production-like E2E | `E2E_BASE_URL=http://localhost:48675 npm run test:e2e` | Register/login/cookies/durable pantry flow works through frontend SSR proxy | 1 Playwright test passed | ✓ |
+| Frontend tests after prod config | `npm run test:ci` in `frontend/` | Angular tests stay green | 15 tests passed | ✓ |
+| Backend tests after prod config | `npm run lint`, `npx jest --runInBand`, `npm run build`, `npm run test:e2e` in `backend/` | Backend checks stay green | Lint passed; 10 suites/25 tests passed; build passed; e2e 1 suite/2 tests passed | ✓ |
+| Production dependency audits after prod config | `npm audit --omit=dev --json` in `frontend/` and `backend/` | No production dependency vulnerabilities | Both returned `total = 0` | ✓ |
 
 ## Error Log
 | Timestamp | Error | Attempt | Resolution |
@@ -324,3 +356,5 @@
 | 2026-04-27 Central Time | In-app browser still showed fresh Angular `NG0506` warnings after moving the auth refresh timer outside Angular | 2 | Traced the remaining issue to development hydration under `ng serve`; disabled hydration in dev and kept it enabled in production |
 | 2026-04-27 Central Time | `rg.exe` again failed with `Acceso denegado` while searching frontend sources | 1 | Switched to `Get-ChildItem -Recurse` plus `Select-String` |
 | 2026-04-27 Central Time | `npm audit` reported 11 frontend dev-tooling vulnerabilities after adding Playwright | 1 | `npm audit --omit=dev` returned 0 production vulnerabilities; `npm audit fix` had no non-breaking fix, and `--force` would require a breaking Angular CLI 21 migration |
+| 2026-04-27 Central Time | First production-like Docker attempt left backend unhealthy with `"DATABASE_URL" must be a valid uri` | 1 | Root cause: Compose interpolated an unencoded random Mongo password into `DATABASE_URL`; changed prod Compose to pass Mongo components and let backend URL-encode credentials |
+| 2026-04-27 Central Time | `docker compose -p pantrylist-prod-smoke -f docker-compose.prod.yml ps` failed without required env vars | 1 | Used `docker ps --filter name=pantrylist-prod-smoke2` for status checks, which does not require Compose interpolation |

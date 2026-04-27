@@ -160,7 +160,7 @@ const buildMongoUri = (configService: ConfigService): string => {
         AUTH_COOKIE_SAME_SITE: Joi.string()
           .valid('lax', 'strict', 'none')
           .default('lax'),
-        AUTH_COOKIE_DOMAIN: Joi.string().optional(),
+        AUTH_COOKIE_DOMAIN: Joi.string().allow('').optional(),
         SWAGGER_ENABLED: Joi.string().valid('true', 'false').default('false'),
         SWAGGER_TITLE: Joi.string().default('PantryList API'),
         SWAGGER_DESCRIPTION: Joi.string().default(

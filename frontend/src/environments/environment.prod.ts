@@ -4,5 +4,6 @@ export const environment = {
   appName: 'PantryList',
   version: '1.0.0',
   enableDevTools: false,
+  enableHydration: true,
   logLevel: 'error'
 };

@@ -348,24 +348,31 @@ Evidencia visual existente:
 
 ## Dokploy
 
-Para Dokploy no hace falta usar el flujo local con Docker Compose.
+Para Dokploy no hace falta usar el flujo local de desarrollo con `ng serve` y
+watchers. Usa `docker-compose.prod.yml`, que construye imagenes de runtime,
+sirve el frontend SSR en un proceso Node estable y mantiene backend/MongoDB
+solo en la red interna.
 
 - Backend: configura `DATABASE_URL`, `DATABASE_NAME`, `API_PREFIX`,
   `CORS_ORIGIN`, `HELMET_ENABLED` y `SWAGGER_ENABLED`.
 - Frontend SSR: si se despliega el servidor SSR, puedes definir `BACKEND_URL`
   para que el proxy del servidor apunte al backend correcto.
-- Frontend estatico: si Dokploy sirve frontend y backend bajo el mismo dominio,
-  `environment.prod.ts` ya usa `'/api'`.
+- Frontend SSR/proxy: el navegador llama `/api` en el mismo dominio del
+  frontend; el servidor SSR reenvia esas llamadas a `BACKEND_URL`.
 - Si quieres una topologia de produccion local o una base para Dokploy segun el
   spec aprobado del `2026-04-23`, usa `docker-compose.prod.yml`.
 - Ese compose mantiene `frontend` SSR publico, `backend` solo por red interna y
   MongoDB sin bind mounts de codigo.
 - Variables obligatorias para ese flujo: `MONGO_INITDB_ROOT_USERNAME`,
-  `MONGO_INITDB_ROOT_PASSWORD`, `MONGO_APP_USERNAME` y `MONGO_APP_PASSWORD`.
+  `MONGO_INITDB_ROOT_PASSWORD`, `MONGO_APP_USERNAME`, `MONGO_APP_PASSWORD`,
+  `JWT_ACCESS_SECRET` y `JWT_REFRESH_SECRET`.
 - Variables utiles para override: `DATABASE_NAME`, `FRONTEND_PORT`,
-  `CORS_ORIGIN`, `API_PREFIX` y `BACKEND_URL`.
+  `CORS_ORIGIN`, `API_PREFIX`, `BACKEND_URL`, `AUTH_COOKIE_SECURE`,
+  `AUTH_COOKIE_SAME_SITE` y `AUTH_COOKIE_DOMAIN`.
+- Revisa `docs/deployment/dokploy.md` y copia
+  `.env.production.example` a un archivo local no versionado para pruebas.
 - Smoke local de produccion:
 
 ```bash
-docker compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml --env-file .env.production.local up -d --build
 ```
