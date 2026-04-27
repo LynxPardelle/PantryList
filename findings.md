@@ -186,10 +186,9 @@
 - The social provider redirect URI that must be configured in Google/Facebook
   is the Cognito domain plus `/oauth2/idpresponse`. The PantryList app callback
   remains `/api/auth/cognito/callback`; these URLs are intentionally different.
-- CDK deployment was not run. The repo now has the deployable infrastructure
-  scaffold and docs, but real deployment still requires explicit AWS
-  account/region, a globally unique Cognito domain prefix, and actual
-  Google/Facebook provider credentials.
+- CDK deployment has now been run in `us-east-1`. The stack began as a
+  Cognito-only deployment and was later updated with Google and Facebook IdPs
+  after provider secrets existed in Secrets Manager.
 
 ## Skill Evaluation Findings
 - `create-implementation-plan` was useful and produced a concrete execution
@@ -230,9 +229,9 @@
   - AWS Cognito prefix domains and Managed Login versioning.
   - AWS Cognito social IdP guidance for `/oauth2/idpresponse`.
 - AWS CLI is configured for the target account and default region `us-east-1`;
-  the Cognito-only CDK stack now exists there and outputs a User Pool, app
-  client, Managed Login domain, local callback URL, and social provider
-  `/oauth2/idpresponse` URL.
+  the CDK stack now exists there and outputs a User Pool, app client, Managed
+  Login domain, local callback URL, social provider `/oauth2/idpresponse` URL,
+  and `AllowedProviders=COGNITO,Google,Facebook`.
 - `gcloud` was not available in this terminal, and Meta provider credentials
   require the user's authenticated Meta Developer console. Do not fabricate or
   guess Google/Facebook client IDs or secrets.
@@ -243,6 +242,9 @@
     Cognito domain's `/oauth2/idpresponse` endpoint.
   - Meta app setup and Facebook Login configuration are managed through the
     Meta for Developers app dashboard.
+- Google/Facebook provider secrets were written to AWS Secrets Manager under
+  `/pantrylist/dev/...` names. Secret values were not committed to git and were
+  not retrieved back for verification.
 
 ## Security Concerns To Keep Visible
 - The main pantry, lot, product-type, and legacy product HTTP controllers now
@@ -285,15 +287,17 @@
 - Cognito Hosted UI callback/logout URLs must exactly match the deployed
   domain. Mismatched local, Dokploy, and Cognito console settings will fail
   login even if the PantryList code is correct.
-- Local Docker is now configured outside git to use the deployed Cognito stack,
-  but only `COGNITO` is allowed until Google/Facebook IdPs are added to the
-  User Pool client. This prevents broken or misleading social-provider launches.
+- Local Docker is now configured outside git to use the deployed Cognito stack
+  with `COGNITO`, `Google`, and `Facebook` allowed.
 - The Angular login screen now reads `/api/auth/cognito/providers`, so provider
   buttons follow runtime configuration instead of hardcoding Google/Facebook
   before those IdPs exist in Cognito.
 - Provider secrets should be entered through AWS Console or the
   `infra/cognito/scripts/Set-SocialProviderSecrets.ps1` helper so values are
   not stored in shell history, source files, or tracked CDK context.
+- Because provider secrets were pasted into the conversation for setup, rotate
+  the Google and Facebook client secrets after the first successful login smoke,
+  then update Secrets Manager and redeploy the CDK stack.
 - Production dependency audits for backend and frontend pass with
   `npm audit --omit=dev`. Development watcher containers still install dev
   dependencies and can report dev-tooling audit findings that are not present

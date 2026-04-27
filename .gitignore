@@ -12,6 +12,7 @@ yarn-error.log*
 .env.test.local
 .env.production.local
 infra/cognito/cdk.context.json
+infra/cognito/Deploy-SocialProviders.local.ps1
 
 # Build outputs
 dist/

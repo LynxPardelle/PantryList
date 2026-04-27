@@ -82,8 +82,8 @@ Prefer entering real secret values outside shell history when possible, for
 example through the AWS Console or an approved secret-management workflow.
 
 You can also use the bundled helper. It prompts for secrets securely, writes
-them to AWS Secrets Manager, and can write local CDK context with non-secret
-provider IDs:
+them to AWS Secrets Manager, and can write a local deploy script with non-secret
+provider IDs and secret names:
 
 ```powershell
 .\scripts\Set-SocialProviderSecrets.ps1 `
@@ -91,11 +91,11 @@ provider IDs:
   -Facebook `
   -Region us-east-1 `
   -Stage dev `
-  -WriteLocalContext
+  -WriteDeployScript
 ```
 
-`cdk.context.json` is ignored by git. It can contain provider client IDs and
-secret names, but it must never contain provider client secrets.
+`Deploy-SocialProviders.local.ps1` is ignored by git. It can contain provider
+client IDs and secret names, but it must never contain provider client secrets.
 
 ## Install And Validate
 

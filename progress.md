@@ -392,6 +392,21 @@
     Google/Facebook secret entry into AWS Secrets Manager.
   - Updated Cognito docs with Google and Facebook credential setup guidance.
 
+### Phase 20: Cognito Social Provider Activation
+- **Status:** completed
+- **Started:** 2026-04-27 Central Time
+- Actions taken:
+  - Stored the provided Google and Facebook provider secrets in AWS Secrets
+    Manager without committing secret values.
+  - Synthesized the CDK stack with explicit `--context` provider arguments.
+  - Deployed Google and Facebook IdPs into the existing Cognito User Pool.
+  - Updated ignored local Docker env values to allow `COGNITO`, `Google`, and
+    `Facebook`.
+  - Recreated backend/frontend containers and verified the runtime provider
+    endpoint plus provider-specific Hosted UI redirects.
+  - Corrected the helper and docs to generate/use an explicit local deploy
+    script instead of relying on `cdk.context.json` for user context.
+
 ## Test Results
 | Test | Input | Expected | Actual | Status |
 |------|-------|----------|--------|--------|
@@ -502,6 +517,14 @@
 | Login provider config endpoint | `curl.exe http://localhost:39173/api/auth/cognito/providers` | Local runtime exposes only deployed providers | `{"providers":["COGNITO"]}` | ✓ |
 | Frontend provider-aware tests | `npm run test:ci -- --include src/app/core/services/auth-api.service.spec.ts` in `frontend/` | Auth API provider normalization remains covered | `TOTAL: 18 SUCCESS`; npm warned that `include` is not a valid npm config and the full suite ran | ✓ |
 | Frontend provider-aware build | `npm run build` in `frontend/` | Angular compiles with provider-aware login UI | Passed | ✓ |
+| Social provider secrets existence | `aws secretsmanager list-secrets --region us-east-1 --filters Key=name,Values=/pantrylist/dev/google-client-secret,/pantrylist/dev/facebook-client-secret --query "SecretList[].Name" --output table` | Secret names exist without retrieving values | Both expected secret names returned | ✓ |
+| Social provider CDK synth | `npx cdk synth --context enableGoogle=true ... --context enableFacebook=true ...` in `infra/cognito/` | Template contains Google/Facebook IdPs and dynamic Secrets Manager references | Synth passed and output `AllowedProviders=COGNITO,Google,Facebook` | ✓ |
+| Social provider CDK deploy | `npx cdk deploy --require-approval never --context enableGoogle=true ... --context enableFacebook=true ...` in `infra/cognito/` | Existing Cognito stack updates with Google/Facebook IdPs | `GoogleProvider` and `FacebookProvider` created; `WebUserPoolClient` updated; stack update complete | ✓ |
+| Social provider outputs verification | `aws cloudformation describe-stacks --stack-name pantrylist-dev-cognito --region us-east-1 --query "Stacks[0].Outputs[?OutputKey=='AllowedProviders' || OutputKey=='SocialProviderRedirectUri']" --output table` | Stack exposes all enabled providers and social redirect URL | `AllowedProviders=COGNITO,Google,Facebook`; social redirect is Cognito `/oauth2/idpresponse` URL | ✓ |
+| Local provider endpoint after social deploy | `curl.exe http://localhost:39173/api/auth/cognito/providers` | Runtime exposes all enabled providers | `{"providers":["COGNITO","Google","Facebook"]}` | ✓ |
+| Provider-specific redirect smoke | `curl.exe -D - http://localhost:39173/api/auth/cognito/login?provider=<provider>` for `COGNITO`, `Google`, and `Facebook` | Each provider starts Hosted UI flow with HTTP `302` | All three returned `HTTP/1.1 302 Found` with provider-specific Cognito authorize URLs | ✓ |
+| Social secret helper parse | `[scriptblock]::Create((Get-Content -Raw infra\cognito\scripts\Set-SocialProviderSecrets.ps1))` | Helper script parses after deploy-script generation fix | `PowerShell script parsed` | ✓ |
+| Secret scan after social activation | `python C:\Users\lince\.codex\skills\security-compliance\scripts\secret_scan.py . --json` | No provider secrets or likely secrets in tracked workspace | JSON output had `count = 0` and `findings = []` | ✓ |
 
 ## Error Log
 | Timestamp | Error | Attempt | Resolution |
@@ -534,3 +557,5 @@
 | 2026-04-27 Central Time | The old full pantry E2E was no longer valid after replacing local register/login with Cognito redirects | 1 | Replaced it with `frontend/e2e/auth-cognito-smoke.spec.ts`, which stubs the Hosted UI redirect and verifies the Cognito provider launcher |
 | 2026-04-27 Central Time | PowerShell rejected the Bash-style command `E2E_BASE_URL=http://localhost:48673 npm run test:e2e` | 1 | Re-ran as `$env:E2E_BASE_URL='http://localhost:48673'; npm run test:e2e`; Playwright passed |
 | 2026-04-27 Central Time | Cognito login returned a `Location` header with `HTTP/1.1 200 OK` | 1 | Root cause was relying on implicit Fastify redirect status from a Nest controller; changed both login and callback redirects to `reply.redirect(url, 302)` and verified `HTTP/1.1 302 Found` |
+| 2026-04-27 Central Time | `npm run synth` did not apply values written to ignored `cdk.context.json` for social provider activation | 1 | Stopped relying on `cdk.context.json` for user context, deployed with explicit `--context` arguments, and updated the helper/docs to generate a local deploy script instead |
+| 2026-04-27 Central Time | First helper update wrote an invalid PowerShell string while trying to emit a trailing backtick for a generated deploy script | 1 | Replaced the inline escaped-backtick string with an explicit `[char]96` suffix and verified the script parses |

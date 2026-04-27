@@ -74,6 +74,10 @@ from CDK. Example names:
 Never commit provider client secrets, Cognito client secrets, or local
 environment files.
 
+If a provider client secret is ever pasted into chat, issue trackers, shell
+history, screenshots, or logs, rotate it in the provider console, update AWS
+Secrets Manager, and redeploy CDK.
+
 ## Getting Google Credentials
 
 Use Google Cloud Console. Create or select a project, configure the OAuth
@@ -119,17 +123,18 @@ cd infra/cognito
   -Facebook `
   -Region us-east-1 `
   -Stage dev `
-  -WriteLocalContext
+  -WriteDeployScript
 ```
 
 The script prompts for Google/Facebook IDs and secrets, writes only the secrets
-to AWS Secrets Manager, and writes local non-secret CDK context to
-`infra/cognito/cdk.context.json`, which is ignored by git.
+to AWS Secrets Manager, and can write a local deploy script with non-secret CDK
+context arguments to `infra/cognito/Deploy-SocialProviders.local.ps1`, which is
+ignored by git.
 
 Then redeploy:
 
 ```powershell
-npx cdk deploy --require-approval never
+.\Deploy-SocialProviders.local.ps1
 ```
 
 Finally set runtime providers:

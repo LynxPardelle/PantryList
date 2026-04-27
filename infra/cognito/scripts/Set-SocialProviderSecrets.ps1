@@ -3,7 +3,7 @@ param(
   [string]$Stage = "dev",
   [switch]$Google,
   [switch]$Facebook,
-  [switch]$WriteLocalContext
+  [switch]$WriteDeployScript
 )
 
 $ErrorActionPreference = "Stop"
@@ -99,11 +99,44 @@ if ($Facebook) {
   $context.facebookClientSecretName = $facebookSecretName
 }
 
-if ($WriteLocalContext) {
-  $contextPath = Join-Path $PSScriptRoot "..\cdk.context.json"
-  $context | ConvertTo-Json -Depth 5 | Set-Content -Path $contextPath -Encoding utf8
-  Write-Host "Wrote local CDK context to $contextPath"
+function Convert-ContextToArguments {
+  param([System.Collections.IDictionary]$Context)
+
+  $arguments = @()
+  foreach ($key in $Context.Keys) {
+    $value = $Context[$key]
+    if ($value -is [bool]) {
+      $value = $value.ToString().ToLowerInvariant()
+    }
+
+    $arguments += "--context $key=$value"
+  }
+
+  $arguments
+}
+
+$deployArguments = Convert-ContextToArguments -Context $context
+
+if ($WriteDeployScript) {
+  $deployScriptPath = Join-Path $PSScriptRoot "..\Deploy-SocialProviders.local.ps1"
+  $deployScriptLines = @(
+    '$ErrorActionPreference = "Stop"',
+    'npx cdk deploy --require-approval never `'
+  )
+
+  for ($index = 0; $index -lt $deployArguments.Count; $index++) {
+    $suffix = if ($index -lt ($deployArguments.Count - 1)) {
+      " $([char]96)"
+    } else {
+      ""
+    }
+    $deployScriptLines += "  $($deployArguments[$index])$suffix"
+  }
+
+  $deployScriptLines | Set-Content -Path $deployScriptPath -Encoding utf8
+  Write-Host "Wrote local deploy script to $deployScriptPath"
 }
 
 Write-Host "Social provider secrets were written to AWS Secrets Manager in $Region."
-Write-Host "Next: run 'npx cdk deploy --require-approval never' from infra/cognito."
+Write-Host "Next deploy command:"
+Write-Host ("npx cdk deploy --require-approval never " + ($deployArguments -join ' '))
