@@ -347,6 +347,31 @@
     `findings: []`, then was deleted because it contained an absolute local
     path.
 
+### Phase 18: Cognito AWS Infrastructure
+- **Status:** completed
+- **Started:** 2026-04-27 Central Time
+- Actions taken:
+  - Verified official AWS Cognito/CDK docs for app client callback URL rules,
+    supported identity providers, social IdP provider details, domain prefix
+    setup, and Managed Login versioning.
+  - Added `infra/cognito`, a local AWS CDK TypeScript app for the Cognito User
+    Pool, Managed Login v2 prefix domain, OAuth app client, local callback
+    URLs, optional Dokploy callback URLs, and optional Google/Facebook IdPs.
+  - Configured Google/Facebook IdPs to reference AWS Secrets Manager secret
+    names instead of literal provider secrets.
+  - Added `infra/cognito/cdk.context.example.json` and ignored local
+    `infra/cognito/cdk.context.json`.
+  - Added `infra/cognito/README.md` with bootstrap, synth, deploy, provider
+    secret, and output-to-env steps.
+  - Added `docs/deployment/cognito.md` to explain the difference between
+    PantryList app callback URLs and Cognito social-provider
+    `/oauth2/idpresponse` URLs.
+  - Updated README and Dokploy docs to point to the CDK app.
+  - Wrote `docs/reviews/2026-04-27-cognito-aws-infra-review.md`.
+  - Did not run `cdk deploy`; deployment still needs explicit AWS account,
+    region, globally unique Cognito domain prefix, and real provider
+    credentials.
+
 ## Test Results
 | Test | Input | Expected | Actual | Status |
 |------|-------|----------|--------|--------|
@@ -438,6 +463,14 @@
 | Production Compose config after auth cleanup | `docker compose -f docker-compose.prod.yml --env-file .env.production.example config --quiet` | Compose prod config resolves with Cognito env and neutral auth cookie TTL vars | Passed | ✓ |
 | Docker HTTP smoke after auth cleanup | backend health, frontend login, stale JWT cookie, Cognito-disabled login | Current local stack should stay stable | backend `200`; frontend `200`; stale JWT `401`; Cognito login disabled `503` | ✓ |
 | Secret scan after auth cleanup | `python C:\Users\lince\.codex\skills\security-compliance\scripts\secret_scan.py . --json --output ...` | No likely secrets in tracked workspace | JSON output had `count = 0` and `findings = []` | ✓ |
+| Cognito CDK dependency install | `npm install` in `infra/cognito/` | Install CDK dependencies without audit findings | Added 26 packages; `found 0 vulnerabilities` | ✓ |
+| Cognito CDK build | `npm run build` in `infra/cognito/` | TypeScript CDK app compiles | Passed | ✓ |
+| Cognito CDK base synth | `npm run synth` in `infra/cognito/` | Synthesizes User Pool, Managed Login domain, app client, and outputs | Passed | ✓ |
+| Cognito CDK social-provider synth | `npx cdk synth --context enableGoogle=true ... --context enableFacebook=true ...` | Synthesizes Google/Facebook IdPs with Secrets Manager dynamic references and Dokploy callback URLs | Passed | ✓ |
+| Cognito CDK production dependency audit | `npm audit --omit=dev --json` in `infra/cognito/` | No production dependency vulnerabilities | `total = 0`; `prod = 44`; `total dependencies = 64` | ✓ |
+| Backend build after Cognito infra docs | `npm run build` in `backend/` | Backend still compiles | Passed | ✓ |
+| Frontend build after Cognito infra docs | `npm run build` in `frontend/` | Frontend still compiles | Passed | ✓ |
+| Secret scan after Cognito infra | `python C:\Users\lince\.codex\skills\security-compliance\scripts\secret_scan.py . --json --output ...` | No likely secrets in tracked workspace | JSON output had `count = 0` and `findings = []` | ✓ |
 
 ## Error Log
 | Timestamp | Error | Attempt | Resolution |

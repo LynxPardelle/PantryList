@@ -45,6 +45,10 @@ callbacks are:
 - `http://localhost:48674/api/auth/cognito/callback`
 - `http://localhost:48674/login`
 
+The repeatable Cognito infrastructure lives in `infra/cognito`. See
+`docs/deployment/cognito.md` for the CDK deploy flow and the separate
+Google/Facebook `/oauth2/idpresponse` provider redirect URL.
+
 ## Cookie Settings
 
 - Keep `AUTH_COOKIE_SECURE=true` for HTTPS deployments.

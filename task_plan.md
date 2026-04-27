@@ -4,7 +4,7 @@
 Review PantryList end to end, define an AWS-aligned target architecture that fits the current Angular + NestJS + MongoDB codebase, and then implement the approved path to move the project toward a production-ready state while exercising the newly installed skills.
 
 ## Current Phase
-Phase 13
+Phase 14
 
 ## Phases
 
@@ -101,6 +101,13 @@ Phase 13
 - [x] Verify tests, builds, audits, Compose config, HTTP smoke, and secret scan
 - **Status:** completed
 
+### Phase 14: Cognito AWS Infrastructure
+- [x] Add CDK app for Cognito User Pool, Managed Login domain, OAuth app client, local callbacks, and optional Dokploy callbacks
+- [x] Add optional Google/Facebook IdPs with Secrets Manager dynamic references
+- [x] Document social provider `/oauth2/idpresponse` setup and PantryList callback env values
+- [x] Verify CDK build, synth, social-provider synth, dependency audit, backend build, and frontend build
+- **Status:** completed
+
 ## Key Questions
 1. Which AWS integration path best fits PantryList's current maturity: container-first, serverless-first, or hybrid?
 2. What parts of the existing implementation are solid enough to preserve, and what parts are still mostly scaffold or incomplete?
@@ -120,6 +127,8 @@ Phase 13
 | Replace local PantryList authentication with Cognito before production | The user wants Google/Facebook and future account recovery through a managed identity authority rather than keeping local passwords |
 | Remove local password auth from the active route/provider graph now instead of keeping fallback behavior | The project is not deployed to production yet, and a single auth authority avoids split recovery, revocation, and account-linking behavior |
 | Delete inactive local auth source after Cognito implementation | Keeping dormant password/JWT code increases future confusion and the risk of accidentally restoring a second auth authority |
+| Use CDK for Cognito instead of hand-only console configuration | The auth infrastructure needs repeatable User Pool, app client, domain, callback URLs, and IdP setup across local/Dokploy environments |
+| Store Google/Facebook provider secrets in AWS Secrets Manager and reference them by name from CDK | Provider client secrets must not be committed to git or copied into CDK context files |
 
 ## Errors Encountered
 | Error | Attempt | Resolution |
@@ -159,3 +168,6 @@ Phase 13
   secrets configured outside git.
 - If legacy imported pantry ownership must be claimed later, design a
   Cognito-native claim flow instead of restoring local password claims.
+- Cognito infrastructure is now scaffolded under `infra/cognito`. No AWS deploy
+  has been run yet; deployment still needs explicit AWS account/region, a
+  globally unique domain prefix, and real provider credentials.

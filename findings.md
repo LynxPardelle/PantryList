@@ -175,6 +175,21 @@
   `AUTH_REFRESH_COOKIE_TTL_SECONDS` instead of JWT-named variables. Cognito
   token validity remains controlled by Cognito; these values only control
   PantryList cookie max age.
+- `infra/cognito` now contains a CDK app that synthesizes a Cognito User Pool,
+  Managed Login v2 prefix domain, OAuth app client, local callback/logout URLs,
+  optional Dokploy callback/logout URLs, and optional Google/Facebook social
+  IdPs.
+- The CDK stack references Google/Facebook provider secrets by AWS Secrets
+  Manager secret name. The synthesized template uses dynamic references such as
+  `{{resolve:secretsmanager:/pantrylist/dev/google-client-secret:SecretString:::}}`
+  instead of storing secret values in git.
+- The social provider redirect URI that must be configured in Google/Facebook
+  is the Cognito domain plus `/oauth2/idpresponse`. The PantryList app callback
+  remains `/api/auth/cognito/callback`; these URLs are intentionally different.
+- CDK deployment was not run. The repo now has the deployable infrastructure
+  scaffold and docs, but real deployment still requires explicit AWS
+  account/region, a globally unique Cognito domain prefix, and actual
+  Google/Facebook provider credentials.
 
 ## Skill Evaluation Findings
 - `create-implementation-plan` was useful and produced a concrete execution
@@ -207,6 +222,13 @@
   writing comments.
 - The Cognito cleanup review is recorded locally in
   `docs/reviews/2026-04-27-cognito-auth-cleanup-review.md`.
+- Official AWS docs used for Cognito infrastructure design:
+  - AWS CDK Cognito OAuth app client support for authorization-code flow,
+    callback URLs, logout URLs, and scopes.
+  - AWS CloudFormation `AWS::Cognito::UserPoolIdentityProvider` provider
+    details for Google and Facebook.
+  - AWS Cognito prefix domains and Managed Login versioning.
+  - AWS Cognito social IdP guidance for `/oauth2/idpresponse`.
 
 ## Security Concerns To Keep Visible
 - The main pantry, lot, product-type, and legacy product HTTP controllers now
@@ -265,6 +287,9 @@
 - `C:\Users\lince\Documents\GitHub\PantryList\plan\feature-cognito-auth-replacement-1.md`
 - `C:\Users\lince\Documents\GitHub\PantryList\docs\reviews\2026-04-27-cognito-auth-comprehensive-review.md`
 - `C:\Users\lince\Documents\GitHub\PantryList\docs\reviews\2026-04-27-cognito-auth-cleanup-review.md`
+- `C:\Users\lince\Documents\GitHub\PantryList\docs\deployment\cognito.md`
+- `C:\Users\lince\Documents\GitHub\PantryList\infra\cognito\README.md`
+- `C:\Users\lince\Documents\GitHub\PantryList\docs\reviews\2026-04-27-cognito-aws-infra-review.md`
 - `C:\Users\lince\Documents\GitHub\Codex\Output\pantrylist-expiration-smoke.png`
 - `C:\Users\lince\Documents\GitHub\Codex\Output\pantrylist-durability-smoke.png`
 - `C:\Users\lince\Documents\GitHub\Codex\Output\pantrylist-smoke.png`

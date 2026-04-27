@@ -223,6 +223,18 @@ npm run build
 npm run migrate:product-types
 ```
 
+### Cognito AWS/CDK
+
+```bash
+cd infra/cognito
+npm ci
+npm run build
+npm run synth
+```
+
+La configuracion repetible de Cognito vive en `infra/cognito`; la guia de
+despliegue esta en `docs/deployment/cognito.md`.
+
 ## API nueva
 
 - `GET /api/auth/cognito/login`
@@ -391,6 +403,8 @@ solo en la red interna.
   `COGNITO_ENABLED=true`, `COGNITO_ISSUER`, `COGNITO_DOMAIN`,
   `COGNITO_CLIENT_ID`, `COGNITO_REDIRECT_URI` y
   `COGNITO_LOGOUT_REDIRECT_URI`.
+- Para crear esos valores con infraestructura versionada, usa el CDK app en
+  `infra/cognito`.
 - Variables utiles para override: `DATABASE_NAME`, `FRONTEND_PORT`,
   `CORS_ORIGIN`, `API_PREFIX`, `BACKEND_URL`, `AUTH_COOKIE_SECURE`,
   `AUTH_COOKIE_SAME_SITE` y `AUTH_COOKIE_DOMAIN`.
