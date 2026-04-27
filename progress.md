@@ -76,8 +76,8 @@
     - added an explicit label for the existing-type search field
     - changed `takeUntilDestroyed()` usage to the explicit `DestroyRef` pattern
   - Fixed backend issues found in review:
-    - `GET /api/product-types/:id` now requires `userId` and returns `404` for
-      another user's resource
+    - Historical pre-auth guard: `GET /api/product-types/:id` required
+      `userId` and returned `404` for another user's resource
     - `GET /api/inventory-lots/expiring` now validates `days` and respects
       windows larger than 7 days
     - product-type persistence now upserts by `(userId, normalizedBaseName)` in
@@ -173,6 +173,24 @@
   - Verified the feature with unit tests, lint, builds, Docker Compose, and a
     browser smoke test over the Dockerized stack.
 
+## Session: 2026-04-27
+
+### Phase 10: Deterministic Shopping Plan
+- **Status:** completed
+- **Started:** 2026-04-27 Central Time
+- Actions taken:
+  - Created `plan/feature-shopping-plan-1.md` for the next deterministic
+    planning slice after durability.
+  - Added backend TDD coverage for `shoppingPlanItems` in pantry overview.
+  - Extended pantry overview with shopping plan items for product types that
+    have active durability rules.
+  - Added a first-pass rule: recommend buying one depletion interval three
+    days before estimated depletion, clamped to today when already due.
+  - Added Angular models, service normalization, selector state, summary count,
+    and a separate `Plan de compras` panel.
+  - Reconciled stale documentation that still described client-supplied
+    `userId` as the current identity boundary.
+
 ## Test Results
 | Test | Input | Expected | Actual | Status |
 |------|-------|----------|--------|--------|
@@ -184,9 +202,9 @@
 | Frontend build | `npm run build` | SSR build compiles | Passed with SCSS budget warning | ✓ |
 | Frontend login smoke | `Invoke-WebRequest http://localhost:4200/login` | HTTP 200 | `StatusCode = 200` | ✓ |
 | Expiring API window | `days=7` vs `days=30` | Wider window should include additional stable lot | `days=7 => 2 lots`, `days=30 => 3 lots` | ✓ |
-| Product type ownership guard | `GET /api/product-types/:id` variants | Missing `userId` => `400`, wrong user => `404`, owner => `200` | Observed exactly | ✓ |
-| Overview validation guard | `GET /api/pantry/overview` without `userId` | Should reject invalid request | Returned `400` | ✓ |
-| Inventory list validation guard | `GET /api/inventory-lots?userId=` | Should reject blank user id | Returned `400` | ✓ |
+| Historical product type ownership guard | `GET /api/product-types/:id` variants before auth-backed controllers | Missing `userId` => `400`, wrong user => `404`, owner => `200` | Observed exactly at the time | ✓ |
+| Historical overview validation guard | `GET /api/pantry/overview` without `userId` before auth-backed controllers | Should reject invalid request | Returned `400` at the time | ✓ |
+| Historical inventory list validation guard | `GET /api/inventory-lots?userId=` before auth-backed controllers | Should reject blank user id | Returned `400` at the time | ✓ |
 | Frontend style budget | `npm run build` in `frontend/` | No component style warning | Passed cleanly | ✓ |
 | Claim retry recovery spec | `npx jest src/application/use-cases/claim-imported-account.use-case.spec.ts --runInBand` | Claim recovery tests pass | 3 tests passed | ✓ |
 | Legacy claim script typecheck | `npx tsc --pretty false --noEmit .\scripts\seed-legacy-account-claims.ts` | Script compiles without TS errors | Passed | ✓ |
@@ -202,6 +220,12 @@
 | Frontend durability build | `npm run build` in `frontend/` | Build compiles without SCSS budget warning | Passed | ✓ |
 | Docker app stack | `docker compose --profile app up -d --build` | Backend, frontend, and MongoDB start | `backend=200 frontend=200`; MongoDB healthy | ✓ |
 | Durability browser smoke | Register, create durable detergent, consume manually | Dynamic estimate should use persisted lot quantity and scheduled depletion | Create: `4 -> estimated 1`; consume: `3 -> estimated 0` | ✓ |
+| Backend shopping plan tests | `npm test -- --runInBand` in `backend/` | Pantry overview includes sorted shopping plan coverage | 10 suites passed, 25 tests passed | ✓ |
+| Frontend shopping plan tests | `npm run test:ci` in `frontend/` | Angular service normalizes shopping plan dates | 11 tests passed | ✓ |
+| Frontend shopping plan build | `npm run build` in `frontend/` | Build compiles without SCSS budget warning | Passed | ✓ |
+| Backend shopping plan build | `npm run build` in `backend/` | Backend compiles | Passed | ✓ |
+| Backend shopping plan e2e | `npm run test:e2e` in `backend/` | Health endpoints pass | 1 suite passed, 2 tests passed | ✓ |
+| Docker shopping plan runtime smoke | `docker compose --env-file .env.docker.local --profile app up -d --build` | Backend, frontend, and MongoDB start | Images built; frontend started; backend blocked because `pantrylist-mongodb` is unhealthy with SCRAM authentication failure for the existing named volume | BLOCKED |
 
 ## Error Log
 | Timestamp | Error | Attempt | Resolution |
@@ -214,3 +238,5 @@
 | 2026-04-23 Central Time | `docker compose --profile app up -d --build` left `pantrylist-backend` compiling with missing modules and later blocked on `pantrylist-mongodb` health | 1 | Updated dev compose startup to run `npm ci --include=dev` as `root`; remaining blocker is a legacy Mongo named volume whose stored credentials do not match the current env, requiring either the original credentials or a local Docker volume reset |
 | 2026-04-24 Central Time | `pantrylist-backend` started with stale compiled logic after source edits, then failed with repeated `CannotDetermineTypeError`, `DATABASE_URL` validation, and Mongo conflicting update operators during lot creation | 1 | Cleared backend build artifacts before watch start, made nullable Mongoose schema fields explicit, provided a non-empty `DATABASE_URL` default for dev compose, and removed conflicting upsert paths in `MongoProductTypeRepository` |
 | 2026-04-24 Central Time | `docker compose --profile app up -d --build` initially failed with `failed to connect to the docker API at npipe:////./pipe/dockerDesktopLinuxEngine` because Docker Desktop was not running | 1 | Started Docker Desktop, waited until `docker info` succeeded, then rebuilt and started the app stack successfully |
+| 2026-04-27 Central Time | First frontend `npm run test:ci` attempt timed out without useful output | 1 | Re-ran with a longer timeout; Karma completed with `TOTAL: 11 SUCCESS` |
+| 2026-04-27 Central Time | Docker shopping plan runtime smoke built images but `pantrylist-mongodb` stayed unhealthy with `AuthenticationFailed: SCRAM authentication failed, storedKey mismatch` for the existing local Mongo named volume | 1 | Did not reset the Docker volume because that can delete local data; next safe choices are restoring the original Mongo credentials for that volume or explicitly approving a local Mongo volume reset |

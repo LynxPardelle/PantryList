@@ -4,7 +4,7 @@
 Review PantryList end to end, define an AWS-aligned target architecture that fits the current Angular + NestJS + MongoDB codebase, and then implement the approved path to move the project toward a production-ready state while exercising the newly installed skills.
 
 ## Current Phase
-Phase 5
+Phase 6
 
 ## Phases
 
@@ -35,9 +35,15 @@ Phase 5
 
 ### Phase 5: Delivery
 - [x] Summarize architectural changes, verification, and remaining risks
-- [x] Save durable cross-session decisions to Codex.md
-- [ ] Hand off with recommended next steps
-- **Status:** in_progress
+- [x] Save durable project decisions in PantryList docs
+- [x] Hand off with recommended next steps
+- **Status:** completed
+
+### Phase 6: Product Planning Loop
+- [x] Add deterministic shopping plan from durability forecasts
+- [x] Keep expiration, depletion, and shopping planning separate in the UI
+- [x] Verify backend/frontend tests and builds
+- **Status:** completed
 
 ## Key Questions
 1. Which AWS integration path best fits PantryList's current maturity: container-first, serverless-first, or hybrid?
@@ -62,5 +68,10 @@ Phase 5
 - Re-read this file before major design or implementation decisions.
 - Keep AWS additions aligned to the existing codebase rather than forcing a full rewrite.
 - User chose the MVP-first path before AWS-specific expansion.
-- Docker is not the primary local workflow on this machine.
-- The only known blocker for a live end-to-end smoke test is the lack of a reachable MongoDB instance.
+- Docker Compose is the primary local full-stack workflow. If the named MongoDB
+  volume credentials drift from the active `.env.docker.local`, runtime smoke is
+  blocked until the original credentials are restored or a local volume reset is
+  explicitly approved.
+- The latest validated product loop includes auth-backed pantry access,
+  expiration lots, durability/depletion forecasts, and a deterministic
+  shopping plan.

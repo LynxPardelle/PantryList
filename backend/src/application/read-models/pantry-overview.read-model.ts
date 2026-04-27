@@ -37,6 +37,23 @@ export interface DepletingProductGroup {
   depletionRule: DepletionRulePrimitives;
 }
 
+export type ShoppingPlanUrgency = 'depleted' | 'critical' | 'upcoming';
+
+export interface ShoppingPlanItem {
+  productTypeId: string;
+  baseName: string;
+  category: ProductCategory;
+  defaultUnit: QuantityUnit;
+  totalQuantity: number;
+  estimatedCurrentQuantity: number;
+  estimatedConsumedQuantity: number;
+  estimatedDepletionAt: Date;
+  recommendedPurchaseAt: Date;
+  suggestedPurchaseQuantity: number;
+  urgency: ShoppingPlanUrgency;
+  depletionRule: DepletionRulePrimitives;
+}
+
 export interface PantryOverviewItem {
   productTypeId: string;
   baseName: string;
@@ -61,4 +78,5 @@ export interface PantryOverview {
   items: PantryOverviewItem[];
   expiringItems: ExpiringProductGroup[];
   depletingItems: DepletingProductGroup[];
+  shoppingPlanItems: ShoppingPlanItem[];
 }

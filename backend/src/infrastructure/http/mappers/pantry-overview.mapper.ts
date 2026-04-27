@@ -3,12 +3,14 @@ import {
   ExpiringProductGroup,
   PantryLotSummary,
   PantryOverview,
+  ShoppingPlanItem,
 } from '../../../application/read-models/pantry-overview.read-model';
 import {
   DepletingProductGroupResponseDto,
   ExpiringProductGroupResponseDto,
   PantryLotSummaryResponseDto,
   PantryOverviewResponseDto,
+  ShoppingPlanItemResponseDto,
 } from '../dtos/pantry-overview-response.dto';
 
 export class PantryOverviewMapper {
@@ -39,6 +41,9 @@ export class PantryOverviewMapper {
       depletingItems: overview.depletingItems.map((item) =>
         this.toDepletingGroupResponse(item),
       ),
+      shoppingPlanItems: overview.shoppingPlanItems.map((item) =>
+        this.toShoppingPlanItemResponse(item),
+      ),
     };
   }
 
@@ -68,6 +73,25 @@ export class PantryOverviewMapper {
       estimatedCurrentQuantity: item.estimatedCurrentQuantity,
       estimatedConsumedQuantity: item.estimatedConsumedQuantity,
       estimatedDepletionAt: item.estimatedDepletionAt,
+      depletionRule: item.depletionRule,
+    };
+  }
+
+  static toShoppingPlanItemResponse(
+    item: ShoppingPlanItem,
+  ): ShoppingPlanItemResponseDto {
+    return {
+      productTypeId: item.productTypeId,
+      baseName: item.baseName,
+      category: item.category,
+      defaultUnit: item.defaultUnit,
+      totalQuantity: item.totalQuantity,
+      estimatedCurrentQuantity: item.estimatedCurrentQuantity,
+      estimatedConsumedQuantity: item.estimatedConsumedQuantity,
+      estimatedDepletionAt: item.estimatedDepletionAt,
+      recommendedPurchaseAt: item.recommendedPurchaseAt,
+      suggestedPurchaseQuantity: item.suggestedPurchaseQuantity,
+      urgency: item.urgency,
       depletionRule: item.depletionRule,
     };
   }

@@ -11,6 +11,7 @@ import {
   ApiPantryOverviewItem,
   ApiProductType,
   ApiProductTypeDepletionRule,
+  ApiShoppingPlanItem,
   ConsumeInventoryLotRequest,
   CreateInventoryLotRequest,
   CreateProductTypeRequest,
@@ -23,6 +24,7 @@ import {
   ProductTypeDepletionRuleRequest,
   ProductType,
   RegisterLotRequest,
+  ShoppingPlanItem,
 } from '../../shared/models/pantry.model';
 
 @Injectable({
@@ -183,6 +185,9 @@ export class PantryService {
       depletingItems: overview.depletingItems.map((item) =>
         this.normalizeDepletingProductGroup(item),
       ),
+      shoppingPlanItems: (overview.shoppingPlanItems ?? []).map((item) =>
+        this.normalizeShoppingPlanItem(item),
+      ),
     };
   }
 
@@ -206,6 +211,15 @@ export class PantryService {
     return {
       ...item,
       estimatedDepletionAt: new Date(item.estimatedDepletionAt),
+      depletionRule: this.normalizeDepletionRule(item.depletionRule),
+    };
+  }
+
+  private normalizeShoppingPlanItem(item: ApiShoppingPlanItem): ShoppingPlanItem {
+    return {
+      ...item,
+      estimatedDepletionAt: new Date(item.estimatedDepletionAt),
+      recommendedPurchaseAt: new Date(item.recommendedPurchaseAt),
       depletionRule: this.normalizeDepletionRule(item.depletionRule),
     };
   }

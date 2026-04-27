@@ -80,6 +80,82 @@ describe('buildPantryOverview depletion forecasts', () => {
     expect(overview.depletingItems).toEqual([]);
   });
 
+  it('builds a sorted shopping plan from active depletion forecasts', () => {
+    const depletedSoap = makeProductType({
+      id: 'type-depleted-soap',
+      baseName: 'Jabon de manos',
+      defaultDepletionRule: {
+        enabled: true,
+        consumeAmount: 1,
+        unit: QuantityUnit.LITER,
+        everyAmount: 1,
+        everyPeriod: 'day',
+        anchorDate: new Date('2026-04-20T00:00:00.000Z'),
+      },
+    });
+    const upcomingDetergent = makeProductType({
+      id: 'type-detergent',
+      baseName: 'Detergente',
+      defaultDepletionRule: {
+        enabled: true,
+        consumeAmount: 1,
+        unit: QuantityUnit.LITER,
+        everyAmount: 1,
+        everyPeriod: 'week',
+        anchorDate: new Date('2026-04-17T00:00:00.000Z'),
+      },
+    });
+    const noRuleTuna = makeProductType({
+      id: 'type-tuna',
+      baseName: 'Atun',
+      defaultDepletionRule: undefined,
+    });
+
+    const overview = buildPantryOverview(
+      userId,
+      [upcomingDetergent, noRuleTuna, depletedSoap],
+      [
+        makeInventoryLot({
+          id: 'lot-detergent',
+          productTypeId: 'type-detergent',
+          quantity: 2,
+          unit: QuantityUnit.LITER,
+        }),
+        makeInventoryLot({
+          id: 'lot-tuna',
+          productTypeId: 'type-tuna',
+          quantity: 12,
+          unit: QuantityUnit.PIECE,
+        }),
+        makeInventoryLot({
+          id: 'lot-soap',
+          productTypeId: 'type-depleted-soap',
+          quantity: 2,
+          unit: QuantityUnit.LITER,
+        }),
+      ],
+      referenceDate,
+    );
+
+    expect(overview.shoppingPlanItems).toEqual([
+      expect.objectContaining({
+        productTypeId: 'type-depleted-soap',
+        baseName: 'Jabon de manos',
+        urgency: 'depleted',
+        suggestedPurchaseQuantity: 1,
+        recommendedPurchaseAt: referenceDate,
+      }),
+      expect.objectContaining({
+        productTypeId: 'type-detergent',
+        baseName: 'Detergente',
+        urgency: 'upcoming',
+        suggestedPurchaseQuantity: 1,
+        recommendedPurchaseAt: new Date('2026-04-28T00:00:00.000Z'),
+        estimatedDepletionAt: new Date('2026-05-01T00:00:00.000Z'),
+      }),
+    ]);
+  });
+
   function makeProductType(input: {
     id: string;
     baseName: string;

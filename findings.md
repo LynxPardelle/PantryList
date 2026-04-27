@@ -30,6 +30,7 @@
 | Keep AI suggestions out of this phase | The user preferred deterministic behavior first and possible AI features later |
 | Seed legacy account claims with insertion-only semantics | The current migration spec requires one claim per distinct legacy owner string without resetting records already in `claiming` or `claimed` |
 | Model durability/depletion rules on `ProductType`, not `InventoryLot` | Durability applies to the base product type. Lots participate only when their product type has an active rule, while manual removals remain lot-specific quantity adjustments |
+| Derive the first shopping plan from depletion forecasts | A deterministic replenishment schedule is the smallest useful next step after durability and avoids adding AI or cloud infrastructure before the local product loop is stronger |
 
 ## Visual/Browser Findings
 - Playwright-based browser smoke testing validated the grouped pantry flow and
@@ -54,10 +55,8 @@
 - The frontend now prevents overlapping consume requests, resets the unit when
   switching from an existing type to a new type, and labels the existing-type
   search input explicitly.
-- The backend now rejects `GET /api/product-types/:id` without `userId` and
-  returns `404` for a different user's `userId`, but the broader username-only
-  trust model remains a real security limitation until proper authentication is
-  introduced.
+- The older query/body `userId` ownership checks were superseded by the current
+  auth-backed controllers, which derive identity from the access token.
 - The product-type save path now upserts by `(userId, normalizedBaseName)` in
   the normal application path, which reduces duplicate creation races even
   though the Mongo index is still non-unique for migration compatibility.
@@ -76,6 +75,10 @@
 - The implemented durability feature stores `defaultDepletionRule` on
   `ProductType`, exposes `depletingItems` from pantry overview, and leaves
   manual lot consumption as the only quantity mutation path.
+- Pantry overview now exposes `shoppingPlanItems` for product types with active
+  durability rules. Each item recommends buying one consumption interval three
+  days before `estimatedDepletionAt`, clamped to the current date when already
+  due.
 - Browser smoke verification over Docker created `Detergente smoke 411900` with
   `4 lt`, estimated `1 lt` current stock after three completed monthly
   intervals, then manual consumption reduced registered stock to `3 lt` and
@@ -97,9 +100,9 @@
   `config profile 'code-reviewer' not found`.
 
 ## Security Concerns To Keep Visible
-- The app still trusts a client-supplied `userId` as its working identity.
-  That is acceptable for this MVP, but it is not sufficient for a real
-  multi-user deployment.
+- The main pantry, lot, product-type, and legacy product HTTP controllers now
+  use `AccessTokenGuard` and `@CurrentUser()` instead of trusting frontend
+  `userId` parameters.
 - After the 2026-04-22 triple audit, missing or blank `userId` now returns
   `400` on the audited read endpoints instead of surfacing a server error, but
   that does not change the underlying lack of real authentication.
@@ -108,6 +111,8 @@
   marker. If orphaned pantry rows exist with stale `user.id` values but no
   matching `users` document, the script will still surface them as claim
   candidates and they should be reviewed before running with `--apply`.
+- Password-reset email delivery is still a development logger, not a production
+  email provider.
 
 ## Resources
 - `C:\Users\lince\Documents\GitHub\PantryList\README.md`

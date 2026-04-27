@@ -7,12 +7,14 @@ posterior en Dokploy o AWS.
 
 ## Estado actual
 
-- Login ligero por `username` en frontend
+- Cuentas propias de PantryList con email obligatorio, password hasheado,
+  JWT y cookies `HttpOnly`
 - Modelo nuevo `ProductType` + `InventoryLot`
 - Registro de compras como lotes con `expiresAt` y `purchaseDate`
 - Vista agrupada por tipo base
 - Panel visible de productos proximos a caducar
 - Panel visible de productos que se agotan pronto por durabilidad estimada
+- Plan de compras deterministico basado en agotamiento estimado
 - Consumo explicito por lote, sin seleccion automatica
 - Backend NestJS 11 + Fastify + MongoDB/Mongoose
 - Frontend Angular 19 + NgRx + SSR
@@ -51,6 +53,8 @@ posterior en Dokploy o AWS.
     renderizar
   - calcula `estimatedCurrentQuantity`, `estimatedConsumedQuantity`,
     `estimatedDepletionAt` y `depletingItems` en lectura, sin mutar inventario
+  - expone `shoppingPlanItems` como cronograma simple de reposicion: comprar
+    tres dias antes del agotamiento estimado, o hoy si ya esta vencido
 - El flujo legacy `/api/products` sigue presente solo como compatibilidad de
   transicion; la ruta principal nueva vive en `/api/product-types`,
   `/api/inventory-lots` y `/api/pantry/overview`
@@ -285,14 +289,14 @@ Verificacion de runtime:
   lotes para el grupo de prueba
 - `GET /api/inventory-lots/expiring?userId=lot-api-user&days=30` devolvio `3`
   lotes para el mismo grupo despues de registrar un lote estable adicional
-- `GET /api/product-types/:id` sin `userId` devolvio `400`
-- `GET /api/product-types/:id?userId=someone-else` devolvio `404`
-- `GET /api/product-types/:id?userId=lot-api-user` devolvio `200`
-- `GET /api/pantry/overview` sin `userId` devolvio `400`
-- `GET /api/inventory-lots?userId=` devolvio `400`
+- Las verificaciones antiguas con `userId` por query quedaron superadas por
+  la autenticacion actual con cookies y `AccessTokenGuard`.
 - `npm run build` de `frontend` ya no emitio warning de presupuesto para
   `pantry-page.component.scss` despues de mover primitivas visuales al
   stylesheet global
+- `GET /api/pantry/overview` ahora incluye `shoppingPlanItems` para tipos con
+  durabilidad activa; el plan sugiere una compra de una ventana de consumo y
+  ordena por `recommendedPurchaseAt`
 - Smoke de durabilidad en navegador sobre Docker registro
   `Detergente smoke 411900`; despues de crear el lote devolvio
   `totalQuantity = 4`, `estimatedCurrentQuantity = 1`,
@@ -312,16 +316,16 @@ Evidencia visual existente:
 - El backend usa Fastify y fuerza `fastify@5.8.5` con `overrides` para evitar
   el advisory que afectaba a `5.8.4`.
 - MongoDB en Docker queda expuesto solo en `127.0.0.1:27017`.
-- `GET /api/product-types/:id` ahora exige `userId` y no revela recursos de
-  otro usuario por solo conocer el UUID.
+- Las rutas principales de pantry, lotes, tipos base y productos legacy usan
+  `AccessTokenGuard` y derivan el usuario desde `@CurrentUser()`, no desde
+  `userId` enviado por el cliente.
 - El guardado de `ProductType` ahora usa un upsert por
   `(userId, normalizedBaseName)` para reducir la ventana de duplicados por
   carreras en la ruta normal de la aplicacion.
 - Las estimaciones de durabilidad se calculan dinamicamente al leer el overview
   y no mutan cantidades ni borran lotes de forma automatica.
-- Riesgo residual: el proyecto sigue usando una frontera de sesion por
-  `username` sin autenticacion real. Mientras eso siga asi, los endpoints que
-  reciben `userId` desde el cliente no deben considerarse multiusuario seguros.
+- Riesgo residual: el flujo de recuperacion de password usa `LogMailSenderService`
+  en desarrollo; falta integrar un proveedor real de email antes de produccion.
 - Riesgo residual: el skill `audit` pide `/impeccable`, pero ese skill no esta
   disponible en esta sesion. La auditoria se ejecuto manualmente siguiendo sus
   criterios verificables.

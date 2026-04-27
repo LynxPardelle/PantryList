@@ -57,6 +57,11 @@
         <strong>{{ summary.depletingTypes }}</strong>
         <small>tipos con durabilidad activa</small>
       </article>
+      <article class="summary-card summary-card-shopping">
+        <span>Plan de compras</span>
+        <strong>{{ summary.shoppingPlanTypes }}</strong>
+        <small>reposiciones calculadas</small>
+      </article>
       <article class="summary-card summary-card-critical">
         <span>Criticos</span>
         <strong>{{ summary.criticalLots }}</strong>
@@ -345,6 +350,56 @@
             <section class="empty-state compact-empty-state">
               <h3>No hay productos con agotamiento cercano.</h3>
               <p>Solo aparecer&aacute;n aqu&iacute; los tipos con durabilidad activa y una estimaci&oacute;n baja.</p>
+            </section>
+          }
+        }
+      </article>
+
+      <article class="panel shopping-plan-panel">
+        <div class="panel-header">
+          <div>
+            <p class="panel-kicker">Reposici&oacute;n</p>
+            <h2>Plan de compras</h2>
+          </div>
+        </div>
+
+        @if (shoppingPlanItems$ | async; as shoppingPlanItems) {
+          @if (shoppingPlanItems.length > 0) {
+            <div class="shopping-plan-stack">
+              @for (item of shoppingPlanItems; track trackByProductTypeId($index, item)) {
+                <article class="shopping-plan-row" [attr.data-urgency]="item.urgency">
+                  <div class="shopping-plan-date">
+                    <span>{{ item.recommendedPurchaseAt | date:'MMM' }}</span>
+                    <strong>{{ item.recommendedPurchaseAt | date:'dd' }}</strong>
+                  </div>
+
+                  <div class="shopping-plan-copy">
+                    <div class="group-tags">
+                      <span class="category-pill">{{ categoryLabels[item.category] }}</span>
+                      <span class="shopping-urgency-pill" [attr.data-urgency]="item.urgency">
+                        {{ shoppingPlanUrgencyLabels[item.urgency] }}
+                      </span>
+                    </div>
+                    <h3>{{ item.baseName }}</h3>
+                    <p>
+                      Sugerido: comprar {{ item.suggestedPurchaseQuantity }}
+                      {{ item.defaultUnit }} antes de agotarse el
+                      {{ item.estimatedDepletionAt | date:'dd MMM y' }}.
+                    </p>
+                  </div>
+
+                  <div class="shopping-plan-stock">
+                    <span>Estimado actual</span>
+                    <strong>{{ item.estimatedCurrentQuantity }} {{ item.defaultUnit }}</strong>
+                    <small>Registrado: {{ item.totalQuantity }} {{ item.defaultUnit }}</small>
+                  </div>
+                </article>
+              }
+            </div>
+          } @else {
+            <section class="empty-state compact-empty-state">
+              <h3>A&uacute;n no hay compras calculadas.</h3>
+              <p>Activa durabilidad en un tipo base para construir un calendario de reposici&oacute;n.</p>
             </section>
           }
         }

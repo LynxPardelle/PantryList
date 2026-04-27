@@ -3,6 +3,7 @@ export type ProductCategory = 'food' | 'cleaning' | 'hygiene' | 'other';
 export type ExpirationStatus = 'critical' | 'soon' | 'stable' | 'none';
 export type ProductTypeSelectionMode = 'existing' | 'new';
 export type DepletionPeriod = 'day' | 'week' | 'month';
+export type ShoppingPlanUrgency = 'depleted' | 'critical' | 'upcoming';
 
 export const PRODUCT_UNITS: ProductUnit[] = ['lt', 'kg', 'g', 'piezas', 'ml'];
 export const PRODUCT_CATEGORIES: ProductCategory[] = [
@@ -106,12 +107,28 @@ export interface DepletingProductGroup {
   depletionRule: ProductTypeDepletionRule;
 }
 
+export interface ShoppingPlanItem {
+  productTypeId: string;
+  baseName: string;
+  category: ProductCategory;
+  defaultUnit: ProductUnit;
+  totalQuantity: number;
+  estimatedCurrentQuantity: number;
+  estimatedConsumedQuantity: number;
+  estimatedDepletionAt: Date;
+  recommendedPurchaseAt: Date;
+  suggestedPurchaseQuantity: number;
+  urgency: ShoppingPlanUrgency;
+  depletionRule: ProductTypeDepletionRule;
+}
+
 export interface PantryOverview {
   userId: string;
   generatedAt: Date;
   items: PantryOverviewItem[];
   expiringItems: ExpiringProductGroup[];
   depletingItems: DepletingProductGroup[];
+  shoppingPlanItems: ShoppingPlanItem[];
 }
 
 export interface CreateProductTypeRequest {
@@ -221,12 +238,28 @@ export interface ApiDepletingProductGroup {
   depletionRule: ApiProductTypeDepletionRule;
 }
 
+export interface ApiShoppingPlanItem {
+  productTypeId: string;
+  baseName: string;
+  category: ProductCategory;
+  defaultUnit: ProductUnit;
+  totalQuantity: number;
+  estimatedCurrentQuantity: number;
+  estimatedConsumedQuantity: number;
+  estimatedDepletionAt: string;
+  recommendedPurchaseAt: string;
+  suggestedPurchaseQuantity: number;
+  urgency: ShoppingPlanUrgency;
+  depletionRule: ApiProductTypeDepletionRule;
+}
+
 export interface ApiPantryOverview {
   userId: string;
   generatedAt: string;
   items: ApiPantryOverviewItem[];
   expiringItems: ApiExpiringProductGroup[];
   depletingItems: ApiDepletingProductGroup[];
+  shoppingPlanItems: ApiShoppingPlanItem[];
 }
 
 export interface ApiInventoryLot {

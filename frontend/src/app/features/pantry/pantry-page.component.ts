@@ -33,6 +33,7 @@ import {
   ProductType,
   ProductTypeSelectionMode,
   ProductUnit,
+  ShoppingPlanUrgency,
 } from '../../shared/models/pantry.model';
 import * as PantryActions from '../../store/pantry/pantry.actions';
 import {
@@ -42,6 +43,7 @@ import {
   selectPantryGroupsSorted,
   selectPantryLoading,
   selectPantrySummary,
+  selectShoppingPlanItems,
 } from '../../store/pantry/pantry.selectors';
 
 @Component({
@@ -65,6 +67,7 @@ export class PantryPageComponent implements OnInit {
   readonly summary$ = this.store.select(selectPantrySummary);
   readonly expiringGroups$ = this.store.select(selectExpiringGroups);
   readonly depletingGroups$ = this.store.select(selectDepletingGroups);
+  readonly shoppingPlanItems$ = this.store.select(selectShoppingPlanItems);
   readonly pantryGroups$ = this.store.select(selectPantryGroupsSorted);
 
   readonly searchingTypeSuggestions$ = new BehaviorSubject(false);
@@ -91,6 +94,12 @@ export class PantryPageComponent implements OnInit {
     day: 'dias',
     week: 'semanas',
     month: 'meses',
+  };
+
+  readonly shoppingPlanUrgencyLabels: Record<ShoppingPlanUrgency, string> = {
+    depleted: 'Comprar ya',
+    critical: 'Esta semana',
+    upcoming: 'Próxima compra',
   };
 
   readonly lotForm = this.formBuilder.nonNullable.group({

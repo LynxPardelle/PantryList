@@ -7,6 +7,7 @@ export interface PantrySummary {
   totalLots: number;
   expiringTypes: number;
   depletingTypes: number;
+  shoppingPlanTypes: number;
   criticalLots: number;
 }
 
@@ -43,15 +44,22 @@ export const selectDepletingGroups = createSelector(
   (overview) => overview?.depletingItems ?? [],
 );
 
+export const selectShoppingPlanItems = createSelector(
+  selectPantryOverview,
+  (overview) => overview?.shoppingPlanItems ?? [],
+);
+
 export const selectPantrySummary = createSelector(
   selectPantryGroups,
   selectExpiringGroups,
   selectDepletingGroups,
-  (groups, expiringGroups, depletingGroups): PantrySummary => ({
+  selectShoppingPlanItems,
+  (groups, expiringGroups, depletingGroups, shoppingPlanItems): PantrySummary => ({
     totalTypes: groups.length,
     totalLots: groups.reduce((sum, group) => sum + group.lotCount, 0),
     expiringTypes: expiringGroups.length,
     depletingTypes: depletingGroups.length,
+    shoppingPlanTypes: shoppingPlanItems.length,
     criticalLots: groups.reduce(
       (sum, group) =>
         sum +

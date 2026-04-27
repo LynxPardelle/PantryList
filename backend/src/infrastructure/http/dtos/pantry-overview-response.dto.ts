@@ -95,6 +95,44 @@ export class DepletingProductGroupResponseDto {
   depletionRule: DepletionRuleResponseDto;
 }
 
+export class ShoppingPlanItemResponseDto {
+  @ApiProperty()
+  productTypeId: string;
+
+  @ApiProperty()
+  baseName: string;
+
+  @ApiProperty()
+  category: string;
+
+  @ApiProperty()
+  defaultUnit: string;
+
+  @ApiProperty()
+  totalQuantity: number;
+
+  @ApiProperty()
+  estimatedCurrentQuantity: number;
+
+  @ApiProperty()
+  estimatedConsumedQuantity: number;
+
+  @ApiProperty()
+  estimatedDepletionAt: Date;
+
+  @ApiProperty()
+  recommendedPurchaseAt: Date;
+
+  @ApiProperty()
+  suggestedPurchaseQuantity: number;
+
+  @ApiProperty()
+  urgency: string;
+
+  @ApiProperty({ type: DepletionRuleResponseDto })
+  depletionRule: DepletionRuleResponseDto;
+}
+
 export class PantryOverviewItemResponseDto {
   @ApiProperty()
   productTypeId: string;
@@ -157,4 +195,7 @@ export class PantryOverviewResponseDto {
 
   @ApiProperty({ type: [DepletingProductGroupResponseDto] })
   depletingItems: DepletingProductGroupResponseDto[];
+
+  @ApiProperty({ type: [ShoppingPlanItemResponseDto] })
+  shoppingPlanItems: ShoppingPlanItemResponseDto[];
 }

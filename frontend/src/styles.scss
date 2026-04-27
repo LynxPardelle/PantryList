@@ -311,8 +311,13 @@ button:focus-visible {
   background: linear-gradient(135deg, rgba(221, 230, 207, 0.72), #fffaf2);
 }
 
+.summary-card-shopping {
+  background: linear-gradient(135deg, rgba(232, 209, 170, 0.72), #fffaf2);
+}
+
 .depletion-card h3,
-.depletion-rule-copy {
+.depletion-rule-copy,
+.shopping-plan-copy p {
   margin: 0;
 }
 
@@ -337,6 +342,92 @@ button:focus-visible {
   justify-self: end;
 }
 
+.shopping-plan-row {
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr) minmax(150px, 0.38fr);
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 24px;
+  background: linear-gradient(135deg, rgba(255, 250, 242, 0.95), rgba(232, 209, 170, 0.34));
+}
+
+.shopping-plan-stack {
+  display: grid;
+  gap: 1rem;
+}
+
+.shopping-plan-row h3 {
+  margin: 0;
+}
+
+.shopping-plan-row[data-urgency='depleted'],
+.shopping-plan-row[data-urgency='critical'] {
+  background: linear-gradient(135deg, rgba(249, 224, 203, 0.9), #fffaf2);
+}
+
+.shopping-plan-date {
+  display: grid;
+  justify-items: center;
+  gap: 0.1rem;
+  padding: 0.75rem 0.45rem;
+  border-radius: 18px;
+  background: var(--color-surface);
+  color: var(--color-accent-deep);
+}
+
+.shopping-plan-date span {
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.shopping-plan-date strong {
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.shopping-plan-copy,
+.shopping-plan-stock {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.shopping-plan-copy p,
+.shopping-plan-stock,
+.shopping-plan-stock small {
+  color: var(--color-text-muted);
+}
+
+.shopping-plan-stock {
+  justify-items: end;
+  text-align: right;
+}
+
+.shopping-plan-stock strong {
+  color: var(--color-text);
+  font-size: 1.35rem;
+}
+
+.shopping-urgency-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.34rem 0.78rem;
+  background: rgba(96, 113, 74, 0.12);
+  color: #465238;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.shopping-urgency-pill[data-urgency='depleted'],
+.shopping-urgency-pill[data-urgency='critical'] {
+  background: rgba(169, 57, 39, 0.14);
+  color: var(--color-danger-text);
+}
+
 .empty-state {
   border-style: dashed;
   border-radius: 24px;
@@ -350,11 +441,14 @@ button:focus-visible {
 
 @media (max-width: 760px) {
   .durability-grid,
-  .depletion-card {
+  .depletion-card,
+  .shopping-plan-row {
     grid-template-columns: 1fr;
   }
 
-  .depletion-meter {
+  .depletion-meter,
+  .shopping-plan-stock,
+  .shopping-plan-date {
     justify-items: start;
     text-align: left;
   }

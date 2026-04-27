@@ -8,7 +8,11 @@ import {
   PantryLotSummary,
   PantryOverview,
   PantryOverviewItem,
+  ShoppingPlanItem,
+  ShoppingPlanUrgency,
 } from '../read-models/pantry-overview.read-model';
+
+const SHOPPING_PLAN_LEAD_DAYS = 3;
 
 export function buildPantryOverview(
   userId: string,
@@ -143,12 +147,50 @@ export function buildPantryOverview(
     }))
     .sort(compareDepletingGroup);
 
+  const shoppingPlanItems = items
+    .filter(
+      (item) =>
+        item.hasDepletionRule &&
+        item.depletionRule &&
+        item.estimatedCurrentQuantity !== undefined &&
+        item.estimatedConsumedQuantity !== undefined &&
+        item.estimatedDepletionAt,
+    )
+    .map<ShoppingPlanItem>((item) => {
+      const estimatedDepletionAt = item.estimatedDepletionAt ?? referenceDate;
+      const recommendedPurchaseAt = clampToReferenceDate(
+        subtractDays(estimatedDepletionAt, SHOPPING_PLAN_LEAD_DAYS),
+        referenceDate,
+      );
+
+      return {
+        productTypeId: item.productTypeId,
+        baseName: item.baseName,
+        category: item.category,
+        defaultUnit: item.defaultUnit,
+        totalQuantity: item.totalQuantity,
+        estimatedCurrentQuantity: item.estimatedCurrentQuantity ?? 0,
+        estimatedConsumedQuantity: item.estimatedConsumedQuantity ?? 0,
+        estimatedDepletionAt,
+        recommendedPurchaseAt,
+        suggestedPurchaseQuantity: item.depletionRule!.consumeAmount,
+        urgency: getShoppingPlanUrgency(
+          item.estimatedCurrentQuantity ?? 0,
+          recommendedPurchaseAt,
+          referenceDate,
+        ),
+        depletionRule: item.depletionRule!,
+      };
+    })
+    .sort(compareShoppingPlanItem);
+
   return {
     userId,
     generatedAt: referenceDate,
     items,
     expiringItems,
     depletingItems,
+    shoppingPlanItems,
   };
 }
 
@@ -224,6 +266,21 @@ function compareDepletingGroup(
   return compareText(left.baseName, right.baseName);
 }
 
+function compareShoppingPlanItem(
+  left: ShoppingPlanItem,
+  right: ShoppingPlanItem,
+): number {
+  const dateDifference =
+    left.recommendedPurchaseAt.getTime() -
+    right.recommendedPurchaseAt.getTime();
+
+  if (dateDifference !== 0) {
+    return dateDifference;
+  }
+
+  return compareText(left.baseName, right.baseName);
+}
+
 function compareLotSummary(
   left: PantryLotSummary,
   right: PantryLotSummary,
@@ -249,4 +306,26 @@ function compareLotSummary(
 
 function compareText(left: string, right: string): number {
   return left.localeCompare(right, 'es', { sensitivity: 'base' });
+}
+
+function subtractDays(date: Date, days: number): Date {
+  const nextDate = new Date(date);
+  nextDate.setDate(nextDate.getDate() - days);
+  return nextDate;
+}
+
+function clampToReferenceDate(date: Date, referenceDate: Date): Date {
+  return date < referenceDate ? new Date(referenceDate) : date;
+}
+
+function getShoppingPlanUrgency(
+  estimatedCurrentQuantity: number,
+  recommendedPurchaseAt: Date,
+  referenceDate: Date,
+): ShoppingPlanUrgency {
+  if (estimatedCurrentQuantity <= 0) {
+    return 'depleted';
+  }
+
+  return recommendedPurchaseAt <= referenceDate ? 'critical' : 'upcoming';
 }
