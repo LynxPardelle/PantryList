@@ -87,6 +87,13 @@
 - Docker dev commands are cleaner when dependency installation remains in the
   shell wrapper but the long-running Nest/Angular watcher is launched with
   `exec` against the local binary instead of via `npm`.
+- Docker development now publishes PantryList on high, configurable localhost
+  ports to avoid collisions with other projects: MongoDB `37917`, backend
+  `39173`, and frontend `48673`. Internal container ports remain unchanged.
+- High-port browser smoke verified a fictitious local PantryList account,
+  durable detergent lot creation, manual lot consumption from `3 lt` to `2 lt`,
+  shopping-plan recalculation from July to June, logout/login persistence, and
+  an empty browser console warning/error list.
 - Browser smoke verification over Docker created `Detergente smoke 411900` with
   `4 lt`, estimated `1 lt` current stock after three completed monthly
   intervals, then manual consumption reduced registered stock to `3 lt` and

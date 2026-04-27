@@ -11,7 +11,7 @@ services:
       MONGO_APP_USERNAME: ${MONGO_APP_USERNAME:-pantrylist_app}
       MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:-change-this-app-password}
     ports:
-      - "127.0.0.1:27017:27017"
+      - "127.0.0.1:${PANTRYLIST_MONGO_HOST_PORT:-37917}:27017"
     volumes:
       - mongodb_data:/data/db
       - ./docker/mongodb/initdb:/docker-entrypoint-initdb.d:ro
@@ -47,11 +47,11 @@ services:
       MONGO_APP_USERNAME: ${MONGO_APP_USERNAME:-pantrylist_app}
       MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:-change-this-app-password}
       API_PREFIX: ${API_PREFIX:-api}
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:4200}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:48673}
       HELMET_ENABLED: ${HELMET_ENABLED:-true}
       SWAGGER_ENABLED: ${SWAGGER_ENABLED:-false}
     ports:
-      - "3000:3000"
+      - "127.0.0.1:${PANTRYLIST_BACKEND_HOST_PORT:-39173}:3000"
     user: root
     depends_on:
       mongodb:
@@ -78,7 +78,7 @@ services:
       NODE_ENV: ${NODE_ENV:-development}
       API_PROXY_TARGET: http://backend:3000
     ports:
-      - "4200:4200"
+      - "127.0.0.1:${PANTRYLIST_FRONTEND_HOST_PORT:-48673}:4200"
     user: root
     volumes:
       - ./frontend:/app

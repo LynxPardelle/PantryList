@@ -209,6 +209,23 @@
   - Ran the credential repair script after the manual repair to verify the
     scripted path is idempotent for the current local Docker volume.
 
+### Phase 12: Docker Port Isolation & Browser Smoke
+- **Status:** completed
+- **Started:** 2026-04-27 Central Time
+- Actions taken:
+  - Changed Docker host port defaults to avoid common conflicts:
+    MongoDB `37917`, backend `39173`, and frontend `48673`.
+  - Kept internal container ports unchanged so backend, frontend proxy, and
+    MongoDB service networking continue to use the standard container ports.
+  - Updated `.env.docker.example`, local `.env.docker.local`, Docker Compose,
+    and README guidance for the new host ports.
+  - Restarted Docker Desktop after the daemon disappeared during the first
+    recreate attempt, then recreated the stack successfully.
+  - Ran a browser smoke through `http://localhost:48673/register`: registered a
+    fictitious local account, created a durable detergent lot, consumed `1 lt`
+    manually, logged out, logged back in, and verified the pantry still showed
+    the lot at `2 lt` with one shopping-plan item.
+
 ## Test Results
 | Test | Input | Expected | Actual | Status |
 |------|-------|----------|--------|--------|
@@ -251,6 +268,8 @@
 | Docker Compose config | `docker compose --env-file .env.docker.local --profile app config --quiet` | Compose file is valid | Passed | ✓ |
 | Docker runtime after repair | HTTP smoke and recent log scan | Backend, frontend, and MongoDB run without duplicate-index or auth failures | `backend /api/healthz => 200`, `frontend /login => 200`, specific bad log matches: none | ✓ |
 | Mongo repair script idempotence | `.\docker\mongodb\Repair-DockerMongoCredentials.ps1 -EnvFile .env.docker.local` | Script can rerun without deleting the local volume | Repair completed; `backend /api/healthz => 200`; `frontend /login => 200`; MongoDB healthy | ✓ |
+| Docker high-port config | `docker compose --env-file .env.docker.local --profile app up -d --force-recreate` | PantryList uses uncommon host ports and frees common project ports | `39173/api/healthz => 200`; `48673/login => 200`; old `3000` and `4200` not responding; old `27017` free | ✓ |
+| Browser high-port smoke | In-app browser at `http://localhost:48673/register` | Register, create durable lot, consume manually, logout/login, verify persistence | Durable detergent lot persisted at `2 lt`; `Plan de compras = 1`; console warnings/errors: none | ✓ |
 
 ## Error Log
 | Timestamp | Error | Attempt | Resolution |
@@ -267,3 +286,7 @@
 | 2026-04-27 Central Time | Docker shopping plan runtime smoke built images but `pantrylist-mongodb` stayed unhealthy with `AuthenticationFailed: SCRAM authentication failed, storedKey mismatch` for the existing local Mongo named volume | 1 | Repaired non-destructively by stopping MongoDB, mounting `pantrylist_mongodb_data` in a temporary no-port repair container, updating the configured root/app users, and restarting the normal authenticated stack |
 | 2026-04-27 Central Time | Backend Docker logs showed duplicate Mongoose schema index warnings for normalized user and legacy-claim lookup fields | 1 | Kept one explicit `Schema.index(...)` definition per normalized lookup field and removed path-level unique/index declarations that generated duplicate index definitions |
 | 2026-04-27 Central Time | Docker backend restart logs showed misleading `npm error signal SIGTERM` when watchers were stopped during container recreation | 1 | Updated Docker Compose dev commands to install dependencies first and then `exec` the local Nest/Angular binaries directly instead of wrapping long-running watchers with `npm` |
+| 2026-04-27 Central Time | First PowerShell port-free check failed because `"port $port:"` was parsed as an invalid variable reference | 1 | Retried with `"port ${port}:"`, confirming `37917`, `39173`, and `48673` were free |
+| 2026-04-27 Central Time | Automatic `.env.docker.local` update attempted to append to a fixed-size PowerShell collection | 1 | Avoided printing secrets and updated the ignored local env file with `apply_patch` |
+| 2026-04-27 Central Time | `docker compose --env-file .env.docker.local --profile app up -d --force-recreate` timed out because Docker Desktop stopped exposing `dockerDesktopLinuxEngine` | 1 | Started Docker Desktop, waited for `docker info` to succeed, then recreated the stack successfully |
+| 2026-04-27 Central Time | Browser smoke initially tried unit value `litros`, but the form options use `lt` as the canonical unit value | 1 | Inspected the select options in the DOM, selected `lt`, and completed the durable-lot smoke |

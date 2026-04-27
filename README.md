@@ -73,9 +73,9 @@ docker compose --env-file .env.docker.local --profile app up -d --build
 
 Esto levanta:
 
-- MongoDB en `127.0.0.1:27017`
-- backend en `http://localhost:3000/api`
-- frontend en `http://localhost:4200`
+- MongoDB en `127.0.0.1:37917`
+- backend en `http://localhost:39173/api`
+- frontend en `http://localhost:48673`
 - volumen persistente nombrado
 - `healthcheck`
 - usuario root separado del usuario de aplicacion
@@ -83,9 +83,14 @@ Esto levanta:
 - `restart: unless-stopped` para los tres servicios
 
 En desarrollo, el navegador debe seguir viendo las llamadas API sobre
-`http://localhost:4200/api/...`. Eso es intencional: el frontend Angular usa
+`http://localhost:48673/api/...`. Eso es intencional: el frontend Angular usa
 `/api` como base relativa y el dev server reenvia esas solicitudes al backend
-real en `http://localhost:3000`.
+real dentro de Docker en `http://backend:3000`.
+
+Los puertos publicados del host son intencionalmente altos y poco comunes para
+que este stack pueda quedarse arriba sin chocar con otros proyectos. Puedes
+cambiarlos en `.env.docker.local` con `PANTRYLIST_MONGO_HOST_PORT`,
+`PANTRYLIST_BACKEND_HOST_PORT` y `PANTRYLIST_FRONTEND_HOST_PORT`.
 
 El `backend` ya no depende de un `DATABASE_URL` duplicado en el archivo Docker.
 Ahora construye su conexion desde `MONGO_HOST`, `MONGO_PORT`,
@@ -101,9 +106,9 @@ docker compose --env-file .env.docker.local up -d mongodb
 
 ### Solucion de problemas del stack Docker local
 
-- Si el navegador muestra errores contra `http://localhost:4200/api/...`, no
-  cambies el frontend a `http://localhost:3000`. Primero valida el backend, ya
-  que `localhost:4200/api` es el contrato correcto en desarrollo.
+- Si el navegador muestra errores contra `http://localhost:48673/api/...`, no
+  cambies el frontend a `http://localhost:39173`. Primero valida el backend, ya
+  que `localhost:48673/api` es el contrato correcto en desarrollo.
 - Si `pantrylist-backend` queda en bucle con errores de TypeScript por modulos
   faltantes (`@nestjs/jwt`, `@fastify/cookie`, `argon2`), el contenedor tenia
   un `node_modules` de Docker desincronizado. El `docker-compose.yml` de
@@ -142,10 +147,10 @@ Ejemplo de `backend/.env`:
 ```env
 NODE_ENV=development
 PORT=3000
-DATABASE_URL=mongodb://pantrylist_app:change-this-app-password@127.0.0.1:27017/pantrylist?authSource=pantrylist
+DATABASE_URL=mongodb://pantrylist_app:change-this-app-password@127.0.0.1:37917/pantrylist?authSource=pantrylist
 DATABASE_NAME=pantrylist
 API_PREFIX=api
-CORS_ORIGIN=http://localhost:4200
+CORS_ORIGIN=http://localhost:48673
 HELMET_ENABLED=true
 SWAGGER_ENABLED=true
 SWAGGER_TITLE=PantryList API
@@ -276,7 +281,7 @@ Verificacion de runtime:
   `frontend`
 - `npm audit --omit=dev --json` devolvio `0` vulnerabilidades de runtime en
   `backend`
-- `Invoke-WebRequest http://localhost:4200/login` devolvio `StatusCode = 200`
+- `Invoke-WebRequest http://localhost:48673/login` devolvio `StatusCode = 200`
 - `docker compose --env-file .env.docker.local --profile app ps` mostro
   `pantrylist-backend`, `pantrylist-frontend` y `pantrylist-mongodb` en estado
   `Up`, con MongoDB marcado como `healthy`
@@ -310,7 +315,7 @@ Evidencia visual existente:
 
 - El backend usa Fastify y fuerza `fastify@5.8.5` con `overrides` para evitar
   el advisory que afectaba a `5.8.4`.
-- MongoDB en Docker queda expuesto solo en `127.0.0.1:27017`.
+- MongoDB en Docker queda expuesto solo en `127.0.0.1:37917`.
 - Las rutas principales de pantry, lotes, tipos base y productos legacy usan
   `AccessTokenGuard` y derivan el usuario desde `@CurrentUser()`, no desde
   `userId` enviado por el cliente.

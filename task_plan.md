@@ -4,7 +4,7 @@
 Review PantryList end to end, define an AWS-aligned target architecture that fits the current Angular + NestJS + MongoDB codebase, and then implement the approved path to move the project toward a production-ready state while exercising the newly installed skills.
 
 ## Current Phase
-Phase 7
+Phase 8
 
 ## Phases
 
@@ -52,6 +52,13 @@ Phase 7
 - [x] Verify backend/frontend/Mongo runtime over Docker Compose
 - **Status:** completed
 
+### Phase 8: Docker Port Isolation & Browser Smoke
+- [x] Move published Docker host ports away from common `3000`, `4200`, and `27017`
+- [x] Keep internal container ports unchanged for service-to-service networking
+- [x] Verify old host ports are free and new host ports respond
+- [x] Run browser smoke with register, durable lot creation, manual consumption, logout, and login persistence
+- **Status:** completed
+
 ## Key Questions
 1. Which AWS integration path best fits PantryList's current maturity: container-first, serverless-first, or hybrid?
 2. What parts of the existing implementation are solid enough to preserve, and what parts are still mostly scaffold or incomplete?
@@ -79,6 +86,8 @@ Phase 7
   volume credentials drift from the active `.env.docker.local`, prefer a
   non-destructive credential repair against the stopped local volume before
   considering a local volume reset.
+- Docker development host ports are intentionally high and configurable:
+  MongoDB `37917`, backend `39173`, and frontend `48673` by default.
 - The latest validated product loop includes auth-backed pantry access,
   expiration lots, durability/depletion forecasts, and a deterministic
   shopping plan.
