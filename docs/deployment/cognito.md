@@ -74,6 +74,70 @@ from CDK. Example names:
 Never commit provider client secrets, Cognito client secrets, or local
 environment files.
 
+## Getting Google Credentials
+
+Use Google Cloud Console. Create or select a project, configure the OAuth
+consent screen, then create an OAuth client with application type
+`Web application`.
+
+Configure:
+
+- Authorized JavaScript origin:
+  `https://<your-cognito-domain>`
+- Authorized redirect URI:
+  `https://<your-cognito-domain>/oauth2/idpresponse`
+- Minimum scopes for PantryList:
+  `openid`, `email`, and `profile`
+
+Google shows the client ID and client secret after the client is created. Store
+the secret in AWS Secrets Manager; do not paste it into source files.
+
+## Getting Facebook Credentials
+
+Use Meta for Developers. Create an app, add the Website platform, add Facebook
+Login, and use the app settings to find the App ID and App Secret.
+
+Configure:
+
+- App domain: `<your-cognito-domain>` without the `https://` prefix if the
+  Meta UI expects a host name.
+- Website URL: your Cognito login URL or app URL for the environment.
+- Valid OAuth Redirect URI:
+  `https://<your-cognito-domain>/oauth2/idpresponse`
+
+Store the App Secret in AWS Secrets Manager; do not commit it.
+
+## Secret Helper
+
+After you have the provider credentials, use the local helper so real secrets do
+not enter shell history or tracked files:
+
+```powershell
+cd infra/cognito
+.\scripts\Set-SocialProviderSecrets.ps1 `
+  -Google `
+  -Facebook `
+  -Region us-east-1 `
+  -Stage dev `
+  -WriteLocalContext
+```
+
+The script prompts for Google/Facebook IDs and secrets, writes only the secrets
+to AWS Secrets Manager, and writes local non-secret CDK context to
+`infra/cognito/cdk.context.json`, which is ignored by git.
+
+Then redeploy:
+
+```powershell
+npx cdk deploy --require-approval never
+```
+
+Finally set runtime providers:
+
+```env
+COGNITO_ALLOWED_PROVIDERS=COGNITO,Google,Facebook
+```
+
 ## Verification Checklist
 
 - `infra/cognito`: `npm run build`
@@ -97,3 +161,9 @@ environment files.
   <https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-assign-domain-prefix.html>
 - AWS Cognito social IdP setup:
   <https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-social-idp.html>
+- Google OAuth 2.0 for web server applications:
+  <https://developers.google.com/identity/protocols/oauth2/web-server>
+- Meta app development:
+  <https://developers.facebook.com/docs/development/create-an-app/>
+- Meta Facebook Login for web:
+  <https://developers.facebook.com/docs/facebook-login/web/>

@@ -1,7 +1,16 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
+import { Observable, of } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
+import { AuthApiService } from '../../core/services/auth-api.service';
 import { AuthFacade } from '../../core/services/auth.facade';
+
+interface LoginProviderOption {
+  provider: string;
+  label: string;
+  primary: boolean;
+}
 
 @Component({
   selector: 'app-login-page',
@@ -12,11 +21,17 @@ import { AuthFacade } from '../../core/services/auth.facade';
 })
 export class LoginPageComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly authApiService = inject(AuthApiService);
   private readonly authFacade = inject(AuthFacade);
 
   readonly appName = environment.appName;
   readonly loginPending$ = this.authFacade.loginPending$;
   readonly authError$ = this.authFacade.authError$;
+  readonly providerOptions$: Observable<LoginProviderOption[]> =
+    this.authApiService.getCognitoProviders().pipe(
+      map((providers) => this.toProviderOptions(providers)),
+      catchError(() => of(this.toProviderOptions(['COGNITO']))),
+    );
 
   ngOnInit(): void {
     this.authFacade.clearFeedback();
@@ -27,5 +42,34 @@ export class LoginPageComponent implements OnInit {
       provider,
       this.route.snapshot.queryParamMap.get('redirectTo'),
     );
+  }
+
+  hasSocialProviders(options: LoginProviderOption[]): boolean {
+    return options.some((option) => option.provider !== 'COGNITO');
+  }
+
+  private toProviderOptions(providers: string[]): LoginProviderOption[] {
+    const normalizedProviders = providers.length ? providers : ['COGNITO'];
+    const hasSocialProviders = normalizedProviders.some(
+      (provider) => provider !== 'COGNITO',
+    );
+
+    return normalizedProviders.map((provider) => ({
+      provider,
+      label: this.getProviderLabel(provider),
+      primary: hasSocialProviders
+        ? provider === 'Google'
+        : provider === 'COGNITO',
+    }));
+  }
+
+  private getProviderLabel(provider: string): string {
+    const labels: Record<string, string> = {
+      Google: 'Entrar con Google',
+      Facebook: 'Entrar con Facebook',
+      COGNITO: 'Entrar con correo en Cognito',
+    };
+
+    return labels[provider] ?? `Entrar con ${provider}`;
   }
 }

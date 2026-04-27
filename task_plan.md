@@ -4,7 +4,7 @@
 Review PantryList end to end, define an AWS-aligned target architecture that fits the current Angular + NestJS + MongoDB codebase, and then implement the approved path to move the project toward a production-ready state while exercising the newly installed skills.
 
 ## Current Phase
-Phase 14
+Phase 15
 
 ## Phases
 
@@ -108,6 +108,16 @@ Phase 14
 - [x] Verify CDK build, synth, social-provider synth, dependency audit, backend build, and frontend build
 - **Status:** completed
 
+### Phase 15: Cognito AWS Deployment & Social Secret Prep
+- [x] Confirm AWS CLI account and default `us-east-1` region
+- [x] Bootstrap CDK in the target account/region
+- [x] Deploy the Cognito-only stack before social provider secrets exist
+- [x] Configure local ignored Docker env to use the deployed Cognito stack
+- [x] Add a safe helper for writing Google/Facebook secrets to AWS Secrets Manager
+- [x] Fix and verify Hosted UI redirects return HTTP `302`
+- [x] Expose enabled providers from the backend so the login UI hides unavailable social providers
+- **Status:** completed
+
 ## Key Questions
 1. Which AWS integration path best fits PantryList's current maturity: container-first, serverless-first, or hybrid?
 2. What parts of the existing implementation are solid enough to preserve, and what parts are still mostly scaffold or incomplete?
@@ -129,12 +139,16 @@ Phase 14
 | Delete inactive local auth source after Cognito implementation | Keeping dormant password/JWT code increases future confusion and the risk of accidentally restoring a second auth authority |
 | Use CDK for Cognito instead of hand-only console configuration | The auth infrastructure needs repeatable User Pool, app client, domain, callback URLs, and IdP setup across local/Dokploy environments |
 | Store Google/Facebook provider secrets in AWS Secrets Manager and reference them by name from CDK | Provider client secrets must not be committed to git or copied into CDK context files |
+| Do not attempt to obtain Google/Facebook secrets without the user's authenticated provider consoles | Provider app secrets are sensitive and require access to the user's Google Cloud and Meta Developer accounts |
+| Keep local dev limited to `COGNITO` until social IdPs are deployed | The deployed User Pool client currently supports Cognito-hosted email only, so Google/Facebook launchers must remain disabled by backend allowlisting |
+| Render login provider buttons from backend configuration | Runtime infrastructure can enable or disable providers independently from the Angular build, so the UI should reflect `/api/auth/cognito/providers` |
 
 ## Errors Encountered
 | Error | Attempt | Resolution |
 |-------|---------|------------|
 | `rg.exe` failed with access denied in this environment | 1 | Switched to `git ls-files` and native PowerShell file inspection |
 | Stale local JWT cookies produced a backend `500` during Cognito-disabled smoke testing | 1 | Updated `AccessTokenGuard` to convert Cognito verifier failures into `401 Unauthorized`, then verified stale cookies return `401` |
+| Cognito login response returned a `Location` header with HTTP `200` | 1 | Passed explicit `302` to Fastify `reply.redirect(url, 302)` and verified the backend now returns `HTTP/1.1 302 Found` |
 
 ## Notes
 - Update phase status as progress changes.
@@ -168,6 +182,6 @@ Phase 14
   secrets configured outside git.
 - If legacy imported pantry ownership must be claimed later, design a
   Cognito-native claim flow instead of restoring local password claims.
-- Cognito infrastructure is now scaffolded under `infra/cognito`. No AWS deploy
-  has been run yet; deployment still needs explicit AWS account/region, a
-  globally unique domain prefix, and real provider credentials.
+- Cognito infrastructure is deployed in the configured default AWS account and
+  `us-east-1` as a Cognito-only stack. Google/Facebook still require provider
+  app credentials and a second CDK deploy with social IdPs enabled.

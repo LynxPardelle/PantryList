@@ -48,6 +48,22 @@ describe('AuthApiService', () => {
     );
   });
 
+  it('loads enabled Cognito providers from the backend', () => {
+    let providers: string[] | undefined;
+
+    service.getCognitoProviders().subscribe((response) => {
+      providers = response;
+    });
+
+    const request = httpMock.expectOne(
+      `${environment.apiUrl}/auth/cognito/providers`,
+    );
+    expect(request.request.method).toBe('GET');
+    request.flush({ providers: [' Google ', 'COGNITO', ''] });
+
+    expect(providers).toEqual(['Google', 'COGNITO']);
+  });
+
   it('logs out through the Cognito-backed backend endpoint', () => {
     let logoutUrl: string | undefined;
 

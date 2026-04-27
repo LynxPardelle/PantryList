@@ -8,6 +8,10 @@ import {
   AuthUser,
 } from '../../shared/models/auth.model';
 
+interface ApiCognitoProviders {
+  providers: string[];
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -63,6 +67,18 @@ export class AuthApiService {
     const queryString = params.toString();
 
     return `${this.authUrl}/cognito/login${queryString ? `?${queryString}` : ''}`;
+  }
+
+  getCognitoProviders(): Observable<string[]> {
+    return this.http
+      .get<ApiCognitoProviders>(`${this.authUrl}/cognito/providers`)
+      .pipe(
+        map((response) =>
+          response.providers
+            .map((provider) => provider.trim())
+            .filter(Boolean),
+        ),
+      );
   }
 
   refreshSession(): Observable<AuthUser> {

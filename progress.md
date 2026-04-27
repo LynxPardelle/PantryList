@@ -372,6 +372,26 @@
     region, globally unique Cognito domain prefix, and real provider
     credentials.
 
+### Phase 19: Cognito AWS Deployment & Social Secret Prep
+- **Status:** completed
+- **Started:** 2026-04-27 Central Time
+- Actions taken:
+  - Confirmed AWS CLI identity and default region `us-east-1`.
+  - Ran CDK bootstrap for the target account and region.
+  - Deployed the Cognito-only `pantrylist-dev-cognito` stack.
+  - Updated ignored local Docker env values to use the deployed Cognito issuer,
+    domain, app client, callback, logout URL, and `COGNITO`-only provider
+    allowlist.
+  - Recreated the local Docker backend/frontend and verified backend health,
+    frontend login, Cognito login redirect, and Google fail-closed behavior.
+  - Found that Fastify redirects were returning `Location` with HTTP `200`;
+    fixed login and callback redirects to explicitly return `302`.
+  - Added `/api/auth/cognito/providers` and made the Angular login screen show
+    only providers enabled by backend runtime configuration.
+  - Added `infra/cognito/scripts/Set-SocialProviderSecrets.ps1` for secure
+    Google/Facebook secret entry into AWS Secrets Manager.
+  - Updated Cognito docs with Google and Facebook credential setup guidance.
+
 ## Test Results
 | Test | Input | Expected | Actual | Status |
 |------|-------|----------|--------|--------|
@@ -471,6 +491,17 @@
 | Backend build after Cognito infra docs | `npm run build` in `backend/` | Backend still compiles | Passed | ✓ |
 | Frontend build after Cognito infra docs | `npm run build` in `frontend/` | Frontend still compiles | Passed | ✓ |
 | Secret scan after Cognito infra | `python C:\Users\lince\.codex\skills\security-compliance\scripts\secret_scan.py . --json --output ...` | No likely secrets in tracked workspace | JSON output had `count = 0` and `findings = []` | ✓ |
+| CDK bootstrap | `npx cdk bootstrap aws://<account>/us-east-1` | Target account/region has CDK bootstrap resources | `CDKToolkit` update completed successfully | ✓ |
+| Cognito base deploy | `npx cdk deploy --require-approval never` in `infra/cognito/` | Create Cognito-only stack in `us-east-1` | `pantrylist-dev-cognito` created with User Pool, domain, app client, and outputs | ✓ |
+| Cognito outputs verification | `aws cloudformation describe-stacks --stack-name pantrylist-dev-cognito --region us-east-1 --query "Stacks[0].Outputs" --output table` | Stack outputs are readable from AWS CLI | Outputs included `UserPoolClientId`, `AllowedProviders=COGNITO`, `UserPoolId`, `CognitoIssuer`, `LocalCallbackUrl`, `SocialProviderRedirectUri`, and `CognitoDomain` | ✓ |
+| Docker restart after Cognito env | `docker compose --env-file .env.docker.local --profile app up -d --force-recreate backend frontend` | Local services apply deployed Cognito env | Backend, frontend, and MongoDB running; backend/frontend health returned `200` | ✓ |
+| Cognito login redirect status | `curl.exe -v http://localhost:39173/api/auth/cognito/login?provider=COGNITO` | Backend returns redirect to Cognito Hosted UI | `HTTP/1.1 302 Found` with Cognito authorize `location` | ✓ |
+| Disabled social provider fail-closed | `curl.exe http://localhost:39173/api/auth/cognito/login?provider=Google` | Google remains blocked until IdP is deployed | `HTTP/1.1 401 Unauthorized` | ✓ |
+| Backend redirect fix unit test | `npm test -- --runInBand auth.controller.spec.ts` in `backend/` | Auth controller specs pass with explicit `302` redirects | 1 suite passed, 4 tests passed | ✓ |
+| Backend redirect fix build | `npm run build` in `backend/` | Backend compiles after redirect fix | Passed | ✓ |
+| Login provider config endpoint | `curl.exe http://localhost:39173/api/auth/cognito/providers` | Local runtime exposes only deployed providers | `{"providers":["COGNITO"]}` | ✓ |
+| Frontend provider-aware tests | `npm run test:ci -- --include src/app/core/services/auth-api.service.spec.ts` in `frontend/` | Auth API provider normalization remains covered | `TOTAL: 18 SUCCESS`; npm warned that `include` is not a valid npm config and the full suite ran | ✓ |
+| Frontend provider-aware build | `npm run build` in `frontend/` | Angular compiles with provider-aware login UI | Passed | ✓ |
 
 ## Error Log
 | Timestamp | Error | Attempt | Resolution |
@@ -502,3 +533,4 @@
 | 2026-04-27 Central Time | Stale local JWT cookies produced a backend `500` after replacing local JWT verification with Cognito verification while Cognito was disabled | 1 | Updated `AccessTokenGuard` to convert verifier failures into `UnauthorizedException`; verified stale local JWT cookie now returns `401` |
 | 2026-04-27 Central Time | The old full pantry E2E was no longer valid after replacing local register/login with Cognito redirects | 1 | Replaced it with `frontend/e2e/auth-cognito-smoke.spec.ts`, which stubs the Hosted UI redirect and verifies the Cognito provider launcher |
 | 2026-04-27 Central Time | PowerShell rejected the Bash-style command `E2E_BASE_URL=http://localhost:48673 npm run test:e2e` | 1 | Re-ran as `$env:E2E_BASE_URL='http://localhost:48673'; npm run test:e2e`; Playwright passed |
+| 2026-04-27 Central Time | Cognito login returned a `Location` header with `HTTP/1.1 200 OK` | 1 | Root cause was relying on implicit Fastify redirect status from a Nest controller; changed both login and callback redirects to `reply.redirect(url, 302)` and verified `HTTP/1.1 302 Found` |

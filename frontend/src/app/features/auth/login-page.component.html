@@ -15,32 +15,26 @@
         <p class="status-copy status-copy--error" role="alert">{{ authError }}</p>
       }
 
-      <button
-        class="primary-button"
-        type="button"
-        [disabled]="loginPending$ | async"
-        (click)="startCognitoLogin('Google')"
-      >
-        Entrar con Google
-      </button>
+      @if (providerOptions$ | async; as providerOptions) {
+        @for (option of providerOptions; track option.provider) {
+          <button
+            [class.primary-button]="option.primary"
+            [class.secondary-button]="!option.primary"
+            type="button"
+            [disabled]="loginPending$ | async"
+            (click)="startCognitoLogin(option.provider)"
+          >
+            {{ option.label }}
+          </button>
+        }
 
-      <button
-        class="secondary-button"
-        type="button"
-        [disabled]="loginPending$ | async"
-        (click)="startCognitoLogin('Facebook')"
-      >
-        Entrar con Facebook
-      </button>
-
-      <button
-        class="secondary-button"
-        type="button"
-        [disabled]="loginPending$ | async"
-        (click)="startCognitoLogin('COGNITO')"
-      >
-        Entrar con correo en Cognito
-      </button>
+        @if (!hasSocialProviders(providerOptions)) {
+          <p class="status-copy">
+            Google y Facebook aparecer&aacute;n aqu&iacute; cuando sus proveedores
+            est&eacute;n conectados en Cognito.
+          </p>
+        }
+      }
     </div>
 
     <p class="helper-copy">

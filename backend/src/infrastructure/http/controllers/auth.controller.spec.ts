@@ -158,7 +158,16 @@ describe('AuthController Cognito flow', () => {
     );
     expect(reply.redirect.mock.calls[0]).toEqual([
       'https://cognito.example/oauth2/authorize',
+      302,
     ]);
+  });
+
+  it('lists the configured Cognito providers for the login screen', () => {
+    const { controller } = makeController();
+
+    expect(controller.getCognitoProviders()).toEqual({
+      providers: ['Google', 'Facebook', 'COGNITO'],
+    });
   });
 
   it('completes callback by validating state and nonce, syncing profile, setting cookies, and redirecting', async () => {
@@ -200,7 +209,7 @@ describe('AuthController Cognito flow', () => {
         xsrfToken: 'xsrf-token',
       },
     ]);
-    expect(reply.redirect.mock.calls[0]).toEqual(['/pantry']);
+    expect(reply.redirect.mock.calls[0]).toEqual(['/pantry', 302]);
   });
 
   it('refreshes Cognito tokens and returns the current user', async () => {

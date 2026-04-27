@@ -84,7 +84,17 @@ export class AuthController {
       provider: normalizedProvider,
     });
 
-    reply.redirect(url);
+    reply.redirect(url, 302);
+  }
+
+  @Get('cognito/providers')
+  @ApiOperation({ summary: 'List enabled Cognito login providers' })
+  getCognitoProviders(): { providers: string[] } {
+    if (this.configService.get<string>('COGNITO_ENABLED') !== 'true') {
+      return { providers: [] };
+    }
+
+    return { providers: this.getAllowedProviders() };
   }
 
   @Get('cognito/callback')
@@ -122,7 +132,7 @@ export class AuthController {
       xsrfToken: this.authCookieService.createXsrfToken(),
     });
     this.authCookieService.clearCognitoAuthTransactionCookies(reply);
-    reply.redirect(transaction.redirectTo);
+    reply.redirect(transaction.redirectTo, 302);
   }
 
   @Get('me')
