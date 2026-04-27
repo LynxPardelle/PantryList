@@ -31,6 +31,8 @@
 | Seed legacy account claims with insertion-only semantics | The current migration spec requires one claim per distinct legacy owner string without resetting records already in `claiming` or `claimed` |
 | Model durability/depletion rules on `ProductType`, not `InventoryLot` | Durability applies to the base product type. Lots participate only when their product type has an active rule, while manual removals remain lot-specific quantity adjustments |
 | Derive the first shopping plan from depletion forecasts | A deterministic replenishment schedule is the smallest useful next step after durability and avoids adding AI or cloud infrastructure before the local product loop is stronger |
+| Replace PantryList local authentication with Cognito before production | The user approved using Cognito as the authentication authority now, so Google/Facebook and account recovery can be handled by a managed identity provider instead of local password flows |
+| Keep `users` as a local app profile/ownership record after Cognito | Pantry ownership, app-level disabled status, and profile display still need a local boundary; the verified Cognito `sub` should become `User.id` |
 
 ## Visual/Browser Findings
 - Playwright-based browser smoke testing validated the grouped pantry flow and
@@ -123,6 +125,17 @@
   headers, which is required for PantryList auth cookies.
 - Docker runtime images now use `node:22-alpine`, matching the newer Node line
   used on this machine more closely than the prior Node 20 image.
+- Cognito auth replacement is specified in
+  `docs/superpowers/specs/2026-04-27-cognito-auth-replacement-design.md`.
+  The design removes local password registration, local password reset, local
+  JWT issuance, and local refresh sessions from the active auth path, while
+  keeping local `users` for app profile and pantry ownership.
+- Official AWS Cognito docs verified during the design step:
+  - Hosted UI/social IdP support for providers like Facebook and Google.
+  - Authorization endpoint support for `state`, provider routing, `nonce`, and
+    PKCE parameters.
+  - Token endpoint support for authorization-code and refresh-token grants.
+  - PKCE support for authorization-code grants.
 
 ## Skill Evaluation Findings
 - `create-implementation-plan` was useful and produced a concrete execution
@@ -172,11 +185,18 @@
   trees.
 - For local HTTP-only production smoke tests, `AUTH_COOKIE_SECURE=false` is
   required. Dokploy/HTTPS deployments should keep `AUTH_COOKIE_SECURE=true`.
+- Cognito replacement introduces external identity/provider configuration risk.
+  Provider secrets, Cognito client secrets, and callback/logout URLs must stay
+  out of git and be validated through deployment environment settings.
+- Do not keep a local-password fallback once Cognito is enabled; two
+  authentication authorities would make account recovery, session revocation,
+  and social-provider linking harder to reason about.
 
 ## Resources
 - `C:\Users\lince\Documents\GitHub\PantryList\README.md`
 - `C:\Users\lince\Documents\GitHub\PantryList\docs\superpowers\specs\2026-04-21-expiration-lot-model-design.md`
 - `C:\Users\lince\Documents\GitHub\PantryList\docs\superpowers\specs\2026-04-24-durability-depletion-design.md`
+- `C:\Users\lince\Documents\GitHub\PantryList\docs\superpowers\specs\2026-04-27-cognito-auth-replacement-design.md`
 - `C:\Users\lince\Documents\GitHub\PantryList\plan\feature-expiration-lots-1.md`
 - `C:\Users\lince\Documents\GitHub\PantryList\plan\feature-durability-depletion-1.md`
 - `C:\Users\lince\Documents\GitHub\PantryList\plan\feature-shopping-plan-1.md`

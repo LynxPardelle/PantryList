@@ -4,7 +4,7 @@
 Review PantryList end to end, define an AWS-aligned target architecture that fits the current Angular + NestJS + MongoDB codebase, and then implement the approved path to move the project toward a production-ready state while exercising the newly installed skills.
 
 ## Current Phase
-Phase 10
+Phase 11
 
 ## Phases
 
@@ -76,6 +76,15 @@ Phase 10
 - [x] Verify production-like stack with health checks and Playwright E2E
 - **Status:** completed
 
+### Phase 11: Cognito Auth Replacement Design
+- [x] Confirm the approved direction: replace local auth with Cognito before production
+- [x] Inspect current local auth boundaries in backend and frontend
+- [x] Verify Cognito Hosted UI, social IdP, token endpoint, and PKCE constraints from official AWS docs
+- [x] Write the architecture/security spec
+- [x] Self-review the spec for placeholders, contradictions, ambiguity, and scope
+- [ ] Wait for user review before runtime implementation
+- **Status:** awaiting user review
+
 ## Key Questions
 1. Which AWS integration path best fits PantryList's current maturity: container-first, serverless-first, or hybrid?
 2. What parts of the existing implementation are solid enough to preserve, and what parts are still mostly scaffold or incomplete?
@@ -92,6 +101,7 @@ Phase 10
 | Disable hydration only for the development `ng serve` runtime | The Docker frontend runs as a client dev server, while production builds still need hydration for SSR/prerendered output |
 | Use component Mongo env vars in production Compose instead of interpolating `DATABASE_URL` | Generated passwords can contain URL-reserved characters; the backend already URL-encodes component credentials |
 | Keep local production-like smoke isolated under a separate Compose project and high host port | This lets the dev stack remain available at `48673` while validating a production topology at `48675` |
+| Replace local PantryList authentication with Cognito before production | The user wants Google/Facebook and future account recovery through a managed identity authority rather than keeping local passwords |
 
 ## Errors Encountered
 | Error | Attempt | Resolution |
@@ -119,3 +129,6 @@ Phase 10
   disabled to avoid Angular `NG0506` noise under `ng serve`.
 - The production-like Compose topology exposes only the frontend SSR server;
   backend and MongoDB remain internal to the Compose network.
+- Cognito is the approved next authentication authority. PantryList should keep
+  local `users` only as app profile and ownership records, with `User.id`
+  equal to the verified Cognito `sub`.

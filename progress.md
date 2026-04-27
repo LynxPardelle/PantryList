@@ -270,6 +270,22 @@
   - Built and smoke-tested an isolated production-like stack on
     `http://localhost:48675` while keeping the development stack on `48673`.
 
+### Phase 15: Cognito Auth Replacement Design
+- **Status:** awaiting user review
+- **Started:** 2026-04-27 Central Time
+- Actions taken:
+  - Confirmed the user-approved direction: replace local PantryList
+    authentication with Cognito before any production deployment.
+  - Re-read the current local auth implementation in backend and frontend,
+    including `AuthController`, `AuthSessionService`, `AccessTokenGuard`,
+    `AuthCookieService`, `AuthApiService`, NgRx auth effects, and auth routes.
+  - Verified Cognito Hosted UI/social IdP, authorization endpoint, token
+    endpoint, and PKCE behavior against official AWS documentation.
+  - Wrote
+    `docs/superpowers/specs/2026-04-27-cognito-auth-replacement-design.md`.
+  - Runtime backend/frontend code was intentionally not changed during this
+    design-gated step.
+
 ## Test Results
 | Test | Input | Expected | Actual | Status |
 |------|-------|----------|--------|--------|
@@ -331,6 +347,7 @@
 | Frontend tests after prod config | `npm run test:ci` in `frontend/` | Angular tests stay green | 15 tests passed | ✓ |
 | Backend tests after prod config | `npm run lint`, `npx jest --runInBand`, `npm run build`, `npm run test:e2e` in `backend/` | Backend checks stay green | Lint passed; 10 suites/25 tests passed; build passed; e2e 1 suite/2 tests passed | ✓ |
 | Production dependency audits after prod config | `npm audit --omit=dev --json` in `frontend/` and `backend/` | No production dependency vulnerabilities | Both returned `total = 0` | ✓ |
+| Cognito design placeholder scan | `Select-String -Path docs\superpowers\specs\2026-04-27-cognito-auth-replacement-design.md -Pattern 'TBD','TODO','???','placeholder' -SimpleMatch` | No incomplete placeholders | No matches returned | ✓ |
 
 ## Error Log
 | Timestamp | Error | Attempt | Resolution |
