@@ -1,32 +1,36 @@
 import {
-  Body,
   Controller,
   Get,
   HttpCode,
+  Inject,
   Post,
+  Query,
   Req,
   Res,
+  ServiceUnavailableException,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { FastifyReply, FastifyRequest } from 'fastify';
+import {
+  COGNITO_AUTH_URL_BUILDER,
+  COGNITO_TOKEN_CLIENT,
+  COGNITO_TOKEN_VERIFIER,
+} from '../../../application/tokens';
+import {
+  CognitoAuthUrlBuilder,
+  CognitoTokenClient,
+  CognitoTokenVerifier,
+} from '../../../application/ports/cognito-auth.port';
+import { CognitoAuthTransactionService } from '../../../application/services/cognito-auth-transaction.service';
+import { CognitoProfileSyncService } from '../../../application/services/cognito-profile-sync.service';
+import { GetCurrentUserUseCase } from '../../../application/use-cases/get-current-user.use-case';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { AccessTokenGuard } from '../auth/access-token.guard';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
 import { AuthCookieService } from '../auth/auth-cookie.service';
-import { ClaimImportedAccountUseCase } from '../../../application/use-cases/claim-imported-account.use-case';
-import { GetCurrentUserUseCase } from '../../../application/use-cases/get-current-user.use-case';
-import { LoginUserUseCase } from '../../../application/use-cases/login-user.use-case';
-import { LogoutUserUseCase } from '../../../application/use-cases/logout-user.use-case';
-import { RefreshAuthSessionUseCase } from '../../../application/use-cases/refresh-auth-session.use-case';
-import { RegisterUserUseCase } from '../../../application/use-cases/register-user.use-case';
-import { RequestPasswordResetUseCase } from '../../../application/use-cases/request-password-reset.use-case';
-import { ResetPasswordUseCase } from '../../../application/use-cases/reset-password.use-case';
-import { ClaimImportedAccountDto } from '../dtos/claim-imported-account.dto';
-import { ForgotPasswordDto } from '../dtos/forgot-password.dto';
-import { LoginUserDto } from '../dtos/login-user.dto';
-import { RegisterUserDto } from '../dtos/register-user.dto';
-import { ResetPasswordDto } from '../dtos/reset-password.dto';
 import { AuthUserResponseDto } from '../dtos/auth-user-response.dto';
 import { AuthUserMapper } from '../mappers/auth-user.mapper';
 
@@ -34,53 +38,91 @@ import { AuthUserMapper } from '../mappers/auth-user.mapper';
 @ApiTags('auth')
 export class AuthController {
   constructor(
-    private readonly registerUserUseCase: RegisterUserUseCase,
-    private readonly loginUserUseCase: LoginUserUseCase,
     private readonly getCurrentUserUseCase: GetCurrentUserUseCase,
-    private readonly refreshAuthSessionUseCase: RefreshAuthSessionUseCase,
-    private readonly logoutUserUseCase: LogoutUserUseCase,
-    private readonly requestPasswordResetUseCase: RequestPasswordResetUseCase,
-    private readonly resetPasswordUseCase: ResetPasswordUseCase,
-    private readonly claimImportedAccountUseCase: ClaimImportedAccountUseCase,
+    private readonly transactionService: CognitoAuthTransactionService,
+    private readonly profileSyncService: CognitoProfileSyncService,
+    @Inject(COGNITO_AUTH_URL_BUILDER)
+    private readonly authUrlBuilder: CognitoAuthUrlBuilder,
+    @Inject(COGNITO_TOKEN_CLIENT)
+    private readonly tokenClient: CognitoTokenClient,
+    @Inject(COGNITO_TOKEN_VERIFIER)
+    private readonly tokenVerifier: CognitoTokenVerifier,
     private readonly authCookieService: AuthCookieService,
+    private readonly configService: ConfigService,
   ) {}
 
-  @Post('register')
-  @ApiOperation({ summary: 'Register a PantryList account' })
-  async register(
-    @Body() registerUserDto: RegisterUserDto,
-    @Req() request: FastifyRequest,
-    @Res({ passthrough: true }) reply: FastifyReply,
-  ): Promise<AuthUserResponseDto> {
-    const result = await this.registerUserUseCase.execute({
-      email: registerUserDto.email,
-      username: registerUserDto.username,
-      password: registerUserDto.password,
-      userAgent: request.headers['user-agent'] ?? null,
-      ipAddress: request.ip,
-    });
-    this.authCookieService.setSessionCookies(reply, result.session);
+  @Get('cognito/login')
+  @ApiOperation({ summary: 'Start Cognito Hosted UI login' })
+  startCognitoLogin(
+    @Query('provider') provider: string | undefined,
+    @Query('redirectTo') redirectTo: string | undefined,
+    @Res() reply: FastifyReply,
+  ): void {
+    this.ensureCognitoEnabled();
+    const transaction = this.transactionService.createTransaction();
+    const normalizedRedirectTo =
+      this.transactionService.normalizeRedirectTo(redirectTo);
+    const normalizedProvider = this.transactionService.normalizeProvider(
+      provider,
+      this.getAllowedProviders(),
+    );
 
-    return AuthUserMapper.toResponse(result.user);
+    this.authCookieService.setCognitoAuthTransactionCookies(reply, {
+      state: transaction.state,
+      nonce: transaction.nonce,
+      codeVerifier: transaction.codeVerifier,
+      redirectTo: normalizedRedirectTo,
+    });
+
+    const { url } = this.authUrlBuilder.buildAuthorizeUrl({
+      state: transaction.state,
+      nonce: transaction.nonce,
+      codeChallenge: transaction.codeChallenge,
+      codeChallengeMethod: transaction.codeChallengeMethod,
+      redirectUri: this.getRedirectUri(),
+      scopes: this.getScopes(),
+      provider: normalizedProvider,
+    });
+
+    reply.redirect(url);
   }
 
-  @Post('login')
-  @HttpCode(200)
-  @ApiOperation({ summary: 'Login with PantryList credentials' })
-  async login(
-    @Body() loginUserDto: LoginUserDto,
+  @Get('cognito/callback')
+  @ApiOperation({ summary: 'Complete Cognito Hosted UI login callback' })
+  async completeCognitoLogin(
+    @Query('code') code: string | undefined,
+    @Query('state') state: string | undefined,
     @Req() request: FastifyRequest,
-    @Res({ passthrough: true }) reply: FastifyReply,
-  ): Promise<AuthUserResponseDto> {
-    const result = await this.loginUserUseCase.execute({
-      email: loginUserDto.email,
-      password: loginUserDto.password,
-      userAgent: request.headers['user-agent'] ?? null,
-      ipAddress: request.ip,
-    });
-    this.authCookieService.setSessionCookies(reply, result.session);
+    @Res() reply: FastifyReply,
+  ): Promise<void> {
+    this.ensureCognitoEnabled();
 
-    return AuthUserMapper.toResponse(result.user);
+    if (!code || !state) {
+      throw new UnauthorizedException('Cognito callback is incomplete');
+    }
+
+    const transaction =
+      this.authCookieService.getCognitoAuthTransactionFromRequest(request);
+    this.transactionService.assertStateMatches(state, transaction.state);
+    const tokenSet = await this.tokenClient.exchangeCode({
+      code,
+      codeVerifier: transaction.codeVerifier,
+      redirectUri: this.getRedirectUri(),
+    });
+    const idClaims = await this.tokenVerifier.verifyIdToken(tokenSet.idToken);
+
+    if (idClaims.nonce !== transaction.nonce) {
+      throw new UnauthorizedException('Invalid Cognito auth nonce');
+    }
+
+    await this.profileSyncService.syncFromClaims(idClaims);
+    this.authCookieService.setSessionCookies(reply, {
+      accessToken: tokenSet.accessToken,
+      refreshToken: tokenSet.refreshToken,
+      xsrfToken: this.authCookieService.createXsrfToken(),
+    });
+    this.authCookieService.clearCognitoAuthTransactionCookies(reply);
+    reply.redirect(transaction.redirectTo);
   }
 
   @Get('me')
@@ -96,83 +138,80 @@ export class AuthController {
 
   @Post('refresh')
   @HttpCode(200)
-  @ApiOperation({ summary: 'Refresh the current authenticated session' })
+  @ApiOperation({ summary: 'Refresh the current Cognito-backed session' })
   async refresh(
     @Req() request: FastifyRequest,
     @Res({ passthrough: true }) reply: FastifyReply,
   ): Promise<AuthUserResponseDto> {
+    this.ensureCognitoEnabled();
     this.authCookieService.ensureXsrfForRequest(request);
     const refreshToken =
       this.authCookieService.getRefreshTokenFromRequest(request);
-    const result = await this.refreshAuthSessionUseCase.execute(
-      refreshToken ?? '',
-    );
-    this.authCookieService.setSessionCookies(reply, result.session);
 
-    return AuthUserMapper.toResponse(result.user);
+    if (!refreshToken) {
+      throw new UnauthorizedException('Refresh token is required');
+    }
+
+    const tokenSet = await this.tokenClient.refresh({ refreshToken });
+    const claims = await this.tokenVerifier.verifyAccessToken(
+      tokenSet.accessToken,
+    );
+    this.authCookieService.setSessionCookies(reply, {
+      accessToken: tokenSet.accessToken,
+      refreshToken: tokenSet.refreshToken ?? refreshToken,
+      xsrfToken: this.authCookieService.createXsrfToken(),
+    });
+
+    return AuthUserMapper.toResponse(
+      await this.getCurrentUserUseCase.execute(claims.sub),
+    );
   }
 
   @Post('logout')
   @HttpCode(200)
-  @ApiOperation({ summary: 'Logout the current authenticated session' })
-  async logout(
+  @ApiOperation({ summary: 'Logout the current Cognito-backed session' })
+  logout(
     @Req() request: FastifyRequest,
     @Res({ passthrough: true }) reply: FastifyReply,
-  ): Promise<{ message: string }> {
+  ): { logoutUrl: string } {
+    this.ensureCognitoEnabled();
     this.authCookieService.ensureXsrfForRequest(request);
-    await this.logoutUserUseCase.execute(
-      this.authCookieService.getRefreshTokenFromRequest(request),
-    );
     this.authCookieService.clearSessionCookies(reply);
 
-    return { message: 'Logged out successfully' };
+    return { logoutUrl: this.authUrlBuilder.buildLogoutUrl() };
   }
 
-  @Post('password/forgot')
-  @HttpCode(200)
-  @ApiOperation({ summary: 'Request a password reset email' })
-  async forgotPassword(
-    @Body() forgotPasswordDto: ForgotPasswordDto,
-  ): Promise<{ message: string }> {
-    await this.requestPasswordResetUseCase.execute(forgotPasswordDto.email);
-
-    return {
-      message: 'If the email exists, a password reset link has been sent.',
-    };
+  private ensureCognitoEnabled(): void {
+    if (this.configService.get<string>('COGNITO_ENABLED') !== 'true') {
+      throw new ServiceUnavailableException(
+        'Cognito authentication is not configured',
+      );
+    }
   }
 
-  @Post('password/reset')
-  @HttpCode(200)
-  @ApiOperation({ summary: 'Reset a PantryList password with a valid token' })
-  async resetPassword(
-    @Body() resetPasswordDto: ResetPasswordDto,
-  ): Promise<{ message: string }> {
-    await this.resetPasswordUseCase.execute(
-      resetPasswordDto.token,
-      resetPasswordDto.password,
+  private getRedirectUri(): string {
+    return (
+      this.configService.get<string>('COGNITO_REDIRECT_URI') ??
+      'http://localhost:48673/api/auth/cognito/callback'
     );
-
-    return { message: 'Password reset successfully' };
   }
 
-  @Post('claim-imported-account')
-  @HttpCode(200)
-  @ApiOperation({ summary: 'Claim a legacy imported PantryList account' })
-  async claimImportedAccount(
-    @Body() claimImportedAccountDto: ClaimImportedAccountDto,
-    @Req() request: FastifyRequest,
-    @Res({ passthrough: true }) reply: FastifyReply,
-  ): Promise<AuthUserResponseDto> {
-    const result = await this.claimImportedAccountUseCase.execute({
-      legacyUsername: claimImportedAccountDto.legacyUsername,
-      email: claimImportedAccountDto.email,
-      password: claimImportedAccountDto.password,
-      finalUsername: claimImportedAccountDto.finalUsername,
-      userAgent: request.headers['user-agent'] ?? null,
-      ipAddress: request.ip,
-    });
-    this.authCookieService.setSessionCookies(reply, result.session);
+  private getScopes(): string[] {
+    return (
+      this.configService.get<string>('COGNITO_SCOPES') ?? 'openid email profile'
+    )
+      .split(/[,\s]+/)
+      .map((scope) => scope.trim())
+      .filter(Boolean);
+  }
 
-    return AuthUserMapper.toResponse(result.user);
+  private getAllowedProviders(): string[] {
+    return (
+      this.configService.get<string>('COGNITO_ALLOWED_PROVIDERS') ??
+      'Google,Facebook,COGNITO'
+    )
+      .split(',')
+      .map((provider) => provider.trim())
+      .filter(Boolean);
   }
 }

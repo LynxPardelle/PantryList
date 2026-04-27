@@ -1,30 +1,24 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { JwtModule } from '@nestjs/jwt';
 import { MongooseModule } from '@nestjs/mongoose';
 import * as Joi from 'joi';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import {
+  COGNITO_AUTH_URL_BUILDER,
+  COGNITO_TOKEN_CLIENT,
+  COGNITO_TOKEN_VERIFIER,
   INVENTORY_LOT_DAO,
   INVENTORY_LOT_REPOSITORY,
-  JWT_SESSION_SERVICE,
-  LEGACY_ACCOUNT_CLAIM_DAO,
-  MAIL_SENDER,
-  PASSWORD_CREDENTIAL_DAO,
-  PASSWORD_HASHER,
-  PASSWORD_RESET_TOKEN_DAO,
   PRODUCT_DAO,
   PRODUCT_REPOSITORY,
   PRODUCT_TYPE_DAO,
   PRODUCT_TYPE_REPOSITORY,
-  REFRESH_SESSION_DAO,
   SCHEDULING_SERVICE,
-  TOKEN_HASHER,
   USER_DAO,
 } from './application/tokens';
-import { AuthSessionService } from './application/services/auth-session.service';
-import { ClaimImportedAccountUseCase } from './application/use-cases/claim-imported-account.use-case';
+import { CognitoAuthTransactionService } from './application/services/cognito-auth-transaction.service';
+import { CognitoProfileSyncService } from './application/services/cognito-profile-sync.service';
 import { ConsumeInventoryLotUseCase } from './application/use-cases/consume-inventory-lot.use-case';
 import { CreateInventoryLotUseCase } from './application/use-cases/create-inventory-lot.use-case';
 import { CreateProductUseCase } from './application/use-cases/create-product.use-case';
@@ -36,23 +30,16 @@ import { GetProductTypeByIdUseCase } from './application/use-cases/get-product-t
 import { GetProductsByUserUseCase } from './application/use-cases/get-products-by-user.use-case';
 import { GetPantryOverviewUseCase } from './application/use-cases/get-pantry-overview.use-case';
 import { ListInventoryLotsUseCase } from './application/use-cases/list-inventory-lots.use-case';
-import { LoginUserUseCase } from './application/use-cases/login-user.use-case';
-import { LogoutUserUseCase } from './application/use-cases/logout-user.use-case';
-import { RefreshAuthSessionUseCase } from './application/use-cases/refresh-auth-session.use-case';
-import { RegisterUserUseCase } from './application/use-cases/register-user.use-case';
-import { RequestPasswordResetUseCase } from './application/use-cases/request-password-reset.use-case';
-import { ResetPasswordUseCase } from './application/use-cases/reset-password.use-case';
 import { SearchProductTypesUseCase } from './application/use-cases/search-product-types.use-case';
 import { UpdateProductTypeDepletionRuleUseCase } from './application/use-cases/update-product-type-depletion-rule.use-case';
 import { UpdateProductQuantityUseCase } from './application/use-cases/update-product-quantity.use-case';
 import { SchedulingDomainService } from './domain/services/scheduling.service';
-import { MongoLegacyAccountClaimDao } from './infrastructure/database/mongodb/mongodb-legacy-account-claim.dao';
+import { CognitoAuthUrlBuilderService } from './infrastructure/auth/cognito/cognito-auth-url-builder.service';
+import { CognitoTokenClientService } from './infrastructure/auth/cognito/cognito-token-client.service';
+import { CognitoTokenVerifierService } from './infrastructure/auth/cognito/cognito-token-verifier.service';
 import { MongoInventoryLotRepository } from './infrastructure/database/mongodb/mongodb-inventory-lot.repository';
-import { MongoPasswordCredentialDao } from './infrastructure/database/mongodb/mongodb-password-credential.dao';
-import { MongoPasswordResetTokenDao } from './infrastructure/database/mongodb/mongodb-password-reset-token.dao';
 import { MongoProductRepository } from './infrastructure/database/mongodb/mongodb-product.repository';
 import { MongoProductTypeRepository } from './infrastructure/database/mongodb/mongodb-product-type.repository';
-import { MongoRefreshSessionDao } from './infrastructure/database/mongodb/mongodb-refresh-session.dao';
 import { MongoUserDao } from './infrastructure/database/mongodb/mongodb-user.dao';
 import {
   InventoryLotDocument,
@@ -86,10 +73,6 @@ import {
   UserDocument,
   UserSchema,
 } from './infrastructure/database/mongodb/schemas/user.schema';
-import { LogMailSenderService } from './infrastructure/mail/log-mail-sender.service';
-import { NestJwtSessionService } from './infrastructure/security/jwt-session.service';
-import { Argon2PasswordHasherService } from './infrastructure/security/argon2-password-hasher.service';
-import { Sha256TokenHasherService } from './infrastructure/security/sha256-token-hasher.service';
 import { AuthCookieService } from './infrastructure/http/auth/auth-cookie.service';
 import { AccessTokenGuard } from './infrastructure/http/auth/access-token.guard';
 import { AuthController } from './infrastructure/http/controllers/auth.controller';
@@ -156,6 +139,61 @@ const buildMongoUri = (configService: ConfigService): string => {
           .integer()
           .positive()
           .default(2592000),
+        COGNITO_ENABLED: Joi.string().valid('true', 'false').default('false'),
+        COGNITO_ISSUER: Joi.when('COGNITO_ENABLED', {
+          is: 'true',
+          then: Joi.string()
+            .uri({ scheme: ['https'] })
+            .required(),
+          otherwise: Joi.string()
+            .uri({ scheme: ['https'] })
+            .allow('')
+            .optional(),
+        }),
+        COGNITO_DOMAIN: Joi.when('COGNITO_ENABLED', {
+          is: 'true',
+          then: Joi.string()
+            .uri({ scheme: ['https'] })
+            .required(),
+          otherwise: Joi.string()
+            .uri({ scheme: ['https'] })
+            .allow('')
+            .optional(),
+        }),
+        COGNITO_CLIENT_ID: Joi.when('COGNITO_ENABLED', {
+          is: 'true',
+          then: Joi.string().required(),
+          otherwise: Joi.string().allow('').optional(),
+        }),
+        COGNITO_CLIENT_SECRET: Joi.string().allow('').optional(),
+        COGNITO_REDIRECT_URI: Joi.when('COGNITO_ENABLED', {
+          is: 'true',
+          then: Joi.string()
+            .uri({ scheme: ['http', 'https'] })
+            .required(),
+          otherwise: Joi.string()
+            .uri({ scheme: ['http', 'https'] })
+            .allow('')
+            .optional(),
+        }),
+        COGNITO_LOGOUT_REDIRECT_URI: Joi.when('COGNITO_ENABLED', {
+          is: 'true',
+          then: Joi.string()
+            .uri({ scheme: ['http', 'https'] })
+            .required(),
+          otherwise: Joi.string()
+            .uri({ scheme: ['http', 'https'] })
+            .allow('')
+            .optional(),
+        }),
+        COGNITO_SCOPES: Joi.string().default('openid email profile'),
+        COGNITO_ALLOWED_PROVIDERS: Joi.string().default(
+          'Google,Facebook,COGNITO',
+        ),
+        COGNITO_AUTH_TRANSACTION_TTL_SECONDS: Joi.number()
+          .integer()
+          .positive()
+          .default(300),
         AUTH_COOKIE_SECURE: Joi.string().valid('true', 'false').optional(),
         AUTH_COOKIE_SAME_SITE: Joi.string()
           .valid('lax', 'strict', 'none')
@@ -179,7 +217,6 @@ const buildMongoUri = (configService: ConfigService): string => {
           'pantrylist',
       }),
     }),
-    JwtModule.register({}),
     MongooseModule.forFeature([
       { name: ProductDocument.name, schema: ProductSchema },
       { name: ProductTypeDocument.name, schema: ProductTypeSchema },
@@ -212,15 +249,12 @@ const buildMongoUri = (configService: ConfigService): string => {
     AppService,
     AuthCookieService,
     AccessTokenGuard,
-    AuthSessionService,
-    RegisterUserUseCase,
-    LoginUserUseCase,
+    CognitoAuthTransactionService,
+    CognitoProfileSyncService,
+    CognitoAuthUrlBuilderService,
+    CognitoTokenClientService,
+    CognitoTokenVerifierService,
     GetCurrentUserUseCase,
-    RefreshAuthSessionUseCase,
-    LogoutUserUseCase,
-    RequestPasswordResetUseCase,
-    ResetPasswordUseCase,
-    ClaimImportedAccountUseCase,
     CreateProductUseCase,
     CreateProductTypeUseCase,
     CreateInventoryLotUseCase,
@@ -235,32 +269,12 @@ const buildMongoUri = (configService: ConfigService): string => {
     UpdateProductTypeDepletionRuleUseCase,
     UpdateProductQuantityUseCase,
     MongoUserDao,
-    MongoPasswordCredentialDao,
-    MongoRefreshSessionDao,
-    MongoPasswordResetTokenDao,
-    MongoLegacyAccountClaimDao,
     MongoProductRepository,
     MongoProductTypeRepository,
     MongoInventoryLotRepository,
     {
       provide: USER_DAO,
       useExisting: MongoUserDao,
-    },
-    {
-      provide: PASSWORD_CREDENTIAL_DAO,
-      useExisting: MongoPasswordCredentialDao,
-    },
-    {
-      provide: REFRESH_SESSION_DAO,
-      useExisting: MongoRefreshSessionDao,
-    },
-    {
-      provide: PASSWORD_RESET_TOKEN_DAO,
-      useExisting: MongoPasswordResetTokenDao,
-    },
-    {
-      provide: LEGACY_ACCOUNT_CLAIM_DAO,
-      useExisting: MongoLegacyAccountClaimDao,
     },
     {
       provide: PRODUCT_REPOSITORY,
@@ -291,20 +305,16 @@ const buildMongoUri = (configService: ConfigService): string => {
       useClass: SchedulingDomainService,
     },
     {
-      provide: PASSWORD_HASHER,
-      useClass: Argon2PasswordHasherService,
+      provide: COGNITO_AUTH_URL_BUILDER,
+      useExisting: CognitoAuthUrlBuilderService,
     },
     {
-      provide: TOKEN_HASHER,
-      useClass: Sha256TokenHasherService,
+      provide: COGNITO_TOKEN_CLIENT,
+      useExisting: CognitoTokenClientService,
     },
     {
-      provide: JWT_SESSION_SERVICE,
-      useClass: NestJwtSessionService,
-    },
-    {
-      provide: MAIL_SENDER,
-      useClass: LogMailSenderService,
+      provide: COGNITO_TOKEN_VERIFIER,
+      useExisting: CognitoTokenVerifierService,
     },
   ],
 })

@@ -9,7 +9,7 @@ import * as AuthActions from './auth.actions';
 import { AuthEffects } from './auth.effects';
 
 describe('AuthEffects', () => {
-  let actions$: ReplaySubject<ReturnType<typeof AuthActions.loginSuccess>>;
+  let actions$: ReplaySubject<ReturnType<typeof AuthActions.bootstrapSessionSuccess>>;
   let effects: AuthEffects;
   let runOutsideAngularSpy: jasmine.Spy;
 
@@ -45,7 +45,7 @@ describe('AuthEffects', () => {
   it('schedules session refresh timers outside Angular so hydration can stabilize', () => {
     const subscription = effects.scheduleRefresh$.subscribe();
 
-    actions$.next(AuthActions.loginSuccess({ user: makeUser() }));
+    actions$.next(AuthActions.bootstrapSessionSuccess({ user: makeUser() }));
 
     expect(runOutsideAngularSpy).toHaveBeenCalled();
     subscription.unsubscribe();

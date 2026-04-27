@@ -44,100 +44,17 @@ export class AuthEffects {
     ),
   );
 
-  readonly login$ = createEffect(() =>
-    this.actions$.pipe(
-      ofType(AuthActions.login),
-      exhaustMap(({ credentials, redirectTo }) =>
-        this.authApiService.login(credentials).pipe(
-          map((user) => AuthActions.loginSuccess({ user, redirectTo })),
-          catchError((error) =>
-            of(
-              AuthActions.loginFailure({
-                error: this.authApiService.getErrorMessage(error),
-              }),
-            ),
-          ),
-        ),
+  readonly login$ = createEffect(
+    () =>
+      this.actions$.pipe(
+        ofType(AuthActions.login),
+        tap(({ provider, redirectTo }) => {
+          globalThis.location.assign(
+            this.authApiService.buildCognitoLoginUrl(provider, redirectTo),
+          );
+        }),
       ),
-    ),
-  );
-
-  readonly register$ = createEffect(() =>
-    this.actions$.pipe(
-      ofType(AuthActions.register),
-      exhaustMap(({ payload, redirectTo }) =>
-        this.authApiService.register(payload).pipe(
-          map((user) => AuthActions.registerSuccess({ user, redirectTo })),
-          catchError((error) =>
-            of(
-              AuthActions.registerFailure({
-                error: this.authApiService.getErrorMessage(error),
-              }),
-            ),
-          ),
-        ),
-      ),
-    ),
-  );
-
-  readonly forgotPassword$ = createEffect(() =>
-    this.actions$.pipe(
-      ofType(AuthActions.forgotPassword),
-      exhaustMap(({ payload }) =>
-        this.authApiService.forgotPassword(payload).pipe(
-          map((response) =>
-            AuthActions.forgotPasswordSuccess({ message: response.message }),
-          ),
-          catchError((error) =>
-            of(
-              AuthActions.forgotPasswordFailure({
-                error: this.authApiService.getErrorMessage(error),
-              }),
-            ),
-          ),
-        ),
-      ),
-    ),
-  );
-
-  readonly resetPassword$ = createEffect(() =>
-    this.actions$.pipe(
-      ofType(AuthActions.resetPassword),
-      exhaustMap(({ payload }) =>
-        this.authApiService.resetPassword(payload).pipe(
-          map((response) =>
-            AuthActions.resetPasswordSuccess({ message: response.message }),
-          ),
-          catchError((error) =>
-            of(
-              AuthActions.resetPasswordFailure({
-                error: this.authApiService.getErrorMessage(error),
-              }),
-            ),
-          ),
-        ),
-      ),
-    ),
-  );
-
-  readonly claimImportedAccount$ = createEffect(() =>
-    this.actions$.pipe(
-      ofType(AuthActions.claimImportedAccount),
-      exhaustMap(({ payload, redirectTo }) =>
-        this.authApiService.claimImportedAccount(payload).pipe(
-          map((user) =>
-            AuthActions.claimImportedAccountSuccess({ user, redirectTo }),
-          ),
-          catchError((error) =>
-            of(
-              AuthActions.claimImportedAccountFailure({
-                error: this.authApiService.getErrorMessage(error),
-              }),
-            ),
-          ),
-        ),
-      ),
-    ),
+    { dispatch: false },
   );
 
   readonly refreshSession$ = createEffect(() =>
@@ -171,10 +88,12 @@ export class AuthEffects {
       ofType(AuthActions.logout),
       exhaustMap(() =>
         this.authApiService.logout().pipe(
-          map(() => AuthActions.logoutSuccess()),
+          map((response) =>
+            AuthActions.logoutSuccess({ logoutUrl: response.logoutUrl }),
+          ),
           catchError((error) =>
             this.authApiService.isUnauthorized(error)
-              ? of(AuthActions.logoutSuccess())
+              ? of(AuthActions.logoutSuccess({ logoutUrl: null }))
               : of(
                   AuthActions.logoutFailure({
                     error: this.authApiService.getErrorMessage(error),
@@ -188,13 +107,7 @@ export class AuthEffects {
 
   readonly scheduleRefresh$ = createEffect(() =>
     this.actions$.pipe(
-      ofType(
-        AuthActions.bootstrapSessionSuccess,
-        AuthActions.loginSuccess,
-        AuthActions.registerSuccess,
-        AuthActions.claimImportedAccountSuccess,
-        AuthActions.refreshSessionSuccess,
-      ),
+      ofType(AuthActions.bootstrapSessionSuccess, AuthActions.refreshSessionSuccess),
       switchMap(() =>
         this.sessionRefreshTicker().pipe(
           map(() => AuthActions.refreshSession()),
@@ -237,25 +150,10 @@ export class AuthEffects {
     ),
   );
 
-  readonly navigateAfterAuthSuccess$ = createEffect(
+  readonly navigateAfterSessionExpired$ = createEffect(
     () =>
       this.actions$.pipe(
-        ofType(
-          AuthActions.loginSuccess,
-          AuthActions.registerSuccess,
-          AuthActions.claimImportedAccountSuccess,
-        ),
-        tap(({ redirectTo }) => {
-          void this.router.navigateByUrl(this.normalizeRedirectTo(redirectTo));
-        }),
-      ),
-    { dispatch: false },
-  );
-
-  readonly navigateAfterSessionEnd$ = createEffect(
-    () =>
-      this.actions$.pipe(
-        ofType(AuthActions.logout, AuthActions.sessionExpired),
+        ofType(AuthActions.sessionExpired),
         tap(() => {
           void this.router.navigateByUrl('/login');
         }),
@@ -263,17 +161,21 @@ export class AuthEffects {
     { dispatch: false },
   );
 
-  private normalizeRedirectTo(redirectTo?: string | null): string {
-    if (!redirectTo || !redirectTo.startsWith('/') || redirectTo.startsWith('//')) {
-      return '/pantry';
-    }
+  readonly navigateAfterLogoutSuccess$ = createEffect(
+    () =>
+      this.actions$.pipe(
+        ofType(AuthActions.logoutSuccess),
+        tap(({ logoutUrl }) => {
+          if (logoutUrl) {
+            globalThis.location.assign(logoutUrl);
+            return;
+          }
 
-    if (redirectTo === '/login' || redirectTo.startsWith('/login?')) {
-      return '/pantry';
-    }
-
-    return redirectTo;
-  }
+          void this.router.navigateByUrl('/login');
+        }),
+      ),
+    { dispatch: false },
+  );
 
   private sessionRefreshTicker(): Observable<number> {
     return new Observable<number>((subscriber) => {

@@ -6,8 +6,8 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { FastifyRequest } from 'fastify';
-import { JWT_SESSION_SERVICE, USER_DAO } from '../../../application/tokens';
-import { JwtSessionService } from '../../../application/ports/jwt-session.port';
+import { COGNITO_TOKEN_VERIFIER, USER_DAO } from '../../../application/tokens';
+import { CognitoTokenVerifier } from '../../../application/ports/cognito-auth.port';
 import { UserDao } from '../../../application/ports/daos';
 import { AuthenticatedUser } from './authenticated-user.interface';
 import { AuthCookieService } from './auth-cookie.service';
@@ -17,8 +17,8 @@ import { UserAccountStatus } from '../../../domain/enums';
 @Injectable()
 export class AccessTokenGuard implements CanActivate {
   constructor(
-    @Inject(JWT_SESSION_SERVICE)
-    private readonly jwtSessionService: JwtSessionService,
+    @Inject(COGNITO_TOKEN_VERIFIER)
+    private readonly cognitoTokenVerifier: CognitoTokenVerifier,
     @Inject(USER_DAO)
     private readonly userDao: UserDao,
     private readonly authCookieService: AuthCookieService,
@@ -37,7 +37,7 @@ export class AccessTokenGuard implements CanActivate {
       throw new UnauthorizedException('Access token is required');
     }
 
-    const claims = await this.jwtSessionService.verifyAccessToken(accessToken);
+    const claims = await this.verifyAccessToken(accessToken);
     const user = await this.userDao.findById(UserId.fromString(claims.sub));
 
     if (!user || user.status !== UserAccountStatus.ACTIVE) {
@@ -47,9 +47,16 @@ export class AccessTokenGuard implements CanActivate {
     this.authCookieService.ensureXsrfForRequest(request);
     request.authUser = {
       userId: claims.sub,
-      sessionId: claims.sid,
     };
 
     return true;
+  }
+
+  private async verifyAccessToken(accessToken: string) {
+    try {
+      return await this.cognitoTokenVerifier.verifyAccessToken(accessToken);
+    } catch {
+      throw new UnauthorizedException('Invalid access token');
+    }
   }
 }

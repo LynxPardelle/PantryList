@@ -22,8 +22,28 @@ Set these in Dokploy or in a local untracked env file:
 - `MONGO_INITDB_ROOT_PASSWORD`
 - `MONGO_APP_USERNAME`
 - `MONGO_APP_PASSWORD`
-- `JWT_ACCESS_SECRET`
-- `JWT_REFRESH_SECRET`
+- `COGNITO_ENABLED=true`
+- `COGNITO_ISSUER`
+- `COGNITO_DOMAIN`
+- `COGNITO_CLIENT_ID`
+- `COGNITO_REDIRECT_URI`
+- `COGNITO_LOGOUT_REDIRECT_URI`
+
+`COGNITO_CLIENT_SECRET` is optional. Set it only when the Cognito app client is
+configured as confidential.
+
+## Cognito URLs
+
+Register these URLs in the Cognito app client for the deployment domain:
+
+- Callback URL: `https://<your-dokploy-domain>/api/auth/cognito/callback`
+- Sign-out URL: `https://<your-dokploy-domain>/login`
+
+For local production-like smoke testing on `FRONTEND_PORT=48674`, the example
+callbacks are:
+
+- `http://localhost:48674/api/auth/cognito/callback`
+- `http://localhost:48674/login`
 
 ## Cookie Settings
 
@@ -46,3 +66,7 @@ Then validate:
 curl http://localhost:48674/healthz
 curl http://localhost:48674/api/healthz
 ```
+
+Full social-login smoke testing requires a real Cognito User Pool and provider
+configuration. Without those env vars, auth endpoints fail closed instead of
+falling back to local passwords.

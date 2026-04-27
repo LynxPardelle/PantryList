@@ -41,6 +41,27 @@ describe('AuthApiService', () => {
     httpMock.expectNone(`${environment.apiUrl}/auth/refresh`);
     expect(bootstrapResult).toBeNull();
   });
+
+  it('builds Cognito login URLs with provider and redirect path', () => {
+    expect(service.buildCognitoLoginUrl('Google', '/pantry')).toBe(
+      `${environment.apiUrl}/auth/cognito/login?provider=Google&redirectTo=%2Fpantry`,
+    );
+  });
+
+  it('logs out through the Cognito-backed backend endpoint', () => {
+    let logoutUrl: string | undefined;
+
+    service.logout().subscribe((response) => {
+      logoutUrl = response.logoutUrl;
+    });
+
+    const request = httpMock.expectOne(`${environment.apiUrl}/auth/logout`);
+    expect(request.request.method).toBe('POST');
+    expect(request.request.withCredentials).toBeTrue();
+    request.flush({ logoutUrl: 'https://cognito.example/logout' });
+
+    expect(logoutUrl).toBe('https://cognito.example/logout');
+  });
 });
 
 function clearXsrfCookie(): void {

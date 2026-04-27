@@ -271,7 +271,7 @@
     `http://localhost:48675` while keeping the development stack on `48673`.
 
 ### Phase 15: Cognito Auth Replacement Design
-- **Status:** awaiting user review
+- **Status:** completed
 - **Started:** 2026-04-27 Central Time
 - Actions taken:
   - Confirmed the user-approved direction: replace local PantryList
@@ -285,6 +285,40 @@
     `docs/superpowers/specs/2026-04-27-cognito-auth-replacement-design.md`.
   - Runtime backend/frontend code was intentionally not changed during this
     design-gated step.
+
+### Phase 16: Cognito Auth Replacement Implementation
+- **Status:** completed
+- **Started:** 2026-04-27 Central Time
+- Actions taken:
+  - Created `plan/feature-cognito-auth-replacement-1.md` for the approved
+    implementation slice.
+  - Installed `aws-jwt-verify` in the backend.
+  - Added Cognito application ports for Hosted UI URL creation, token exchange,
+    refresh, and token verification.
+  - Added backend Cognito transaction handling for state, nonce, PKCE `S256`,
+    safe relative redirects, and provider allowlisting.
+  - Added Cognito profile sync that requires email, uses Cognito `sub` as
+    local `User.id`, preserves disabled app users, and handles username
+    collisions with a stable suffix.
+  - Added Cognito infrastructure services for Hosted UI URLs, token endpoint
+    calls, and `aws-jwt-verify` token verification.
+  - Replaced active backend auth endpoints with Cognito login, callback, me,
+    refresh, and logout endpoints.
+  - Removed local password auth, local JWT session issuance, local reset email,
+    and refresh-session providers from the active backend `AppModule` graph.
+  - Replaced the Angular login page with Cognito provider buttons for Google,
+    Facebook, and Cognito-hosted email.
+  - Redirected active local register, forgot password, reset password, and
+    claim-imported-account routes to `/login`.
+  - Replaced the old full pantry Playwright smoke with a Cognito login launcher
+    smoke because real social login now requires external AWS Cognito config.
+  - Updated Docker, production env examples, README, and Dokploy docs with
+    Cognito environment variables and callback/logout guidance.
+  - Ran a lightweight secret scan; the generated report returned `count: 0`
+    and `findings: []`. The JSON artifact was not kept because it contained an
+    absolute local path.
+  - Wrote the local review artifact
+    `docs/reviews/2026-04-27-cognito-auth-comprehensive-review.md`.
 
 ## Test Results
 | Test | Input | Expected | Actual | Status |
@@ -348,6 +382,22 @@
 | Backend tests after prod config | `npm run lint`, `npx jest --runInBand`, `npm run build`, `npm run test:e2e` in `backend/` | Backend checks stay green | Lint passed; 10 suites/25 tests passed; build passed; e2e 1 suite/2 tests passed | ✓ |
 | Production dependency audits after prod config | `npm audit --omit=dev --json` in `frontend/` and `backend/` | No production dependency vulnerabilities | Both returned `total = 0` | ✓ |
 | Cognito design placeholder scan | `Select-String -Path docs\superpowers\specs\2026-04-27-cognito-auth-replacement-design.md -Pattern 'TBD','TODO','???','placeholder' -SimpleMatch` | No incomplete placeholders | No matches returned | ✓ |
+| Backend Cognito lint | `npm run lint` in `backend/` | No lint errors | Passed | ✓ |
+| Backend Cognito unit tests | `npx jest --runInBand` in `backend/` | All backend tests pass with Cognito coverage | 18 suites passed, 50 tests passed | ✓ |
+| Backend Cognito build | `npm run build` in `backend/` | NestJS build compiles | Passed | ✓ |
+| Backend Cognito e2e | `npm run test:e2e` in `backend/` | Health e2e tests pass after guard changes | 1 suite passed, 2 tests passed | ✓ |
+| Frontend Cognito tests | `npm run test:ci` in `frontend/` | Angular specs pass with Cognito auth effects | `TOTAL: 17 SUCCESS` | ✓ |
+| Frontend Cognito build | `npm run build` in `frontend/` | Angular SSR build compiles | Passed | ✓ |
+| Frontend Cognito E2E | `$env:E2E_BASE_URL='http://localhost:48673'; npm run test:e2e` in `frontend/` | Cognito login launcher smoke passes | 1 Playwright test passed | ✓ |
+| Backend production dependency audit after Cognito | `npm audit --omit=dev --json` in `backend/` | No production dependency vulnerabilities | `total = 0`; `prod = 205`; `total dependencies = 879` | ✓ |
+| Frontend production dependency audit after Cognito | `npm audit --omit=dev --json` in `frontend/` | No production dependency vulnerabilities | `total = 0`; `prod = 100`; `total dependencies = 1046` | ✓ |
+| Development Compose config after Cognito | `docker compose --env-file .env.docker.example --profile app config --quiet` | Compose dev config resolves | Passed | ✓ |
+| Production Compose config after Cognito | `docker compose -f docker-compose.prod.yml --env-file .env.production.example config --quiet` | Compose prod config resolves | Passed | ✓ |
+| Docker backend health after Cognito | `Invoke-WebRequest http://localhost:39173/api/healthz` | Backend health returns 200 | `200` | ✓ |
+| Docker frontend login after Cognito | `Invoke-WebRequest http://localhost:48673/login` | Frontend login page returns 200 | `200` | ✓ |
+| Cognito disabled fail-closed smoke | `Invoke-WebRequest http://localhost:48673/api/auth/cognito/login?provider=Google` | Local dev without Cognito config should not fall back to local passwords | `503` | ✓ |
+| Stale local JWT cookie smoke | `Invoke-WebRequest http://localhost:48673/api/auth/me` with `Cookie=pantrylist_access_token=stale-local-jwt` | Stale local JWT should return unauthorized, not server error | `401` | ✓ |
+| Secret scan after Cognito | `python C:\Users\lince\.codex\skills\security-compliance\scripts\secret_scan.py . --json --output ...` | No likely secrets in tracked workspace | JSON output had `count = 0` and `findings = []` | ✓ |
 
 ## Error Log
 | Timestamp | Error | Attempt | Resolution |
@@ -375,3 +425,7 @@
 | 2026-04-27 Central Time | `npm audit` reported 11 frontend dev-tooling vulnerabilities after adding Playwright | 1 | `npm audit --omit=dev` returned 0 production vulnerabilities; `npm audit fix` had no non-breaking fix, and `--force` would require a breaking Angular CLI 21 migration |
 | 2026-04-27 Central Time | First production-like Docker attempt left backend unhealthy with `"DATABASE_URL" must be a valid uri` | 1 | Root cause: Compose interpolated an unencoded random Mongo password into `DATABASE_URL`; changed prod Compose to pass Mongo components and let backend URL-encode credentials |
 | 2026-04-27 Central Time | `docker compose -p pantrylist-prod-smoke -f docker-compose.prod.yml ps` failed without required env vars | 1 | Used `docker ps --filter name=pantrylist-prod-smoke2` for status checks, which does not require Compose interpolation |
+| 2026-04-27 Central Time | `npm install aws-jwt-verify` and Docker dev dependency installation reported moderate dev dependency audit findings | 1 | Verified runtime risk separately with `npm audit --omit=dev --json` in backend and frontend; both production dependency audits returned `total = 0` |
+| 2026-04-27 Central Time | Stale local JWT cookies produced a backend `500` after replacing local JWT verification with Cognito verification while Cognito was disabled | 1 | Updated `AccessTokenGuard` to convert verifier failures into `UnauthorizedException`; verified stale local JWT cookie now returns `401` |
+| 2026-04-27 Central Time | The old full pantry E2E was no longer valid after replacing local register/login with Cognito redirects | 1 | Replaced it with `frontend/e2e/auth-cognito-smoke.spec.ts`, which stubs the Hosted UI redirect and verifies the Cognito provider launcher |
+| 2026-04-27 Central Time | PowerShell rejected the Bash-style command `E2E_BASE_URL=http://localhost:48673 npm run test:e2e` | 1 | Re-ran as `$env:E2E_BASE_URL='http://localhost:48673'; npm run test:e2e`; Playwright passed |

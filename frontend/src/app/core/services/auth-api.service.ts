@@ -6,11 +6,6 @@ import { environment } from '../../../environments/environment';
 import {
   ApiAuthUser,
   AuthUser,
-  ClaimImportedAccountRequest,
-  ForgotPasswordRequest,
-  LoginRequest,
-  RegisterRequest,
-  ResetPasswordRequest,
 } from '../../shared/models/auth.model';
 
 @Injectable({
@@ -51,48 +46,23 @@ export class AuthApiService {
       .pipe(map((user) => this.normalizeUser(user)));
   }
 
-  login(credentials: LoginRequest): Observable<AuthUser> {
-    return this.http
-      .post<ApiAuthUser>(`${this.authUrl}/login`, credentials, {
-        withCredentials: true,
-      })
-      .pipe(map((user) => this.normalizeUser(user)));
-  }
+  buildCognitoLoginUrl(
+    provider?: string | null,
+    redirectTo?: string | null,
+  ): string {
+    const params = new URLSearchParams();
 
-  register(payload: RegisterRequest): Observable<AuthUser> {
-    return this.http
-      .post<ApiAuthUser>(`${this.authUrl}/register`, payload, {
-        withCredentials: true,
-      })
-      .pipe(map((user) => this.normalizeUser(user)));
-  }
+    if (provider) {
+      params.set('provider', provider);
+    }
 
-  forgotPassword(payload: ForgotPasswordRequest): Observable<{ message: string }> {
-    return this.http.post<{ message: string }>(
-      `${this.authUrl}/password/forgot`,
-      payload,
-      {
-        withCredentials: true,
-      },
-    );
-  }
+    if (redirectTo) {
+      params.set('redirectTo', redirectTo);
+    }
 
-  resetPassword(payload: ResetPasswordRequest): Observable<{ message: string }> {
-    return this.http.post<{ message: string }>(
-      `${this.authUrl}/password/reset`,
-      payload,
-      {
-        withCredentials: true,
-      },
-    );
-  }
+    const queryString = params.toString();
 
-  claimImportedAccount(payload: ClaimImportedAccountRequest): Observable<AuthUser> {
-    return this.http
-      .post<ApiAuthUser>(`${this.authUrl}/claim-imported-account`, payload, {
-        withCredentials: true,
-      })
-      .pipe(map((user) => this.normalizeUser(user)));
+    return `${this.authUrl}/cognito/login${queryString ? `?${queryString}` : ''}`;
   }
 
   refreshSession(): Observable<AuthUser> {
@@ -101,8 +71,12 @@ export class AuthApiService {
       .pipe(map((user) => this.normalizeUser(user)));
   }
 
-  logout(): Observable<void> {
-    return this.http.post<void>(`${this.authUrl}/logout`, {}, { withCredentials: true });
+  logout(): Observable<{ logoutUrl: string }> {
+    return this.http.post<{ logoutUrl: string }>(
+      `${this.authUrl}/logout`,
+      {},
+      { withCredentials: true },
+    );
   }
 
   getErrorMessage(error: unknown): string {

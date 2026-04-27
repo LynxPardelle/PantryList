@@ -1,0 +1,116 @@
+import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import { FastifyRequest } from 'fastify';
+import { CognitoTokenVerifier } from '../../../application/ports/cognito-auth.port';
+import { UserDao } from '../../../application/ports/daos';
+import { User } from '../../../domain/entities/user.entity';
+import { UserAccountStatus } from '../../../domain/enums';
+import { AccessTokenGuard } from './access-token.guard';
+import { AuthCookieService } from './auth-cookie.service';
+
+describe('AccessTokenGuard', () => {
+  const makeUserDao = (): jest.Mocked<UserDao> => ({
+    save: jest.fn(),
+    findById: jest.fn(),
+    findByEmail: jest.fn(),
+    findByUsername: jest.fn(),
+    delete: jest.fn(),
+  });
+
+  const makeTokenVerifier = (): jest.Mocked<CognitoTokenVerifier> => ({
+    verifyAccessToken: jest.fn(),
+    verifyIdToken: jest.fn(),
+  });
+
+  const makeAuthCookieService = (): jest.Mocked<AuthCookieService> =>
+    ({
+      getAccessTokenFromRequest: jest.fn(),
+      ensureXsrfForRequest: jest.fn(),
+    }) as unknown as jest.Mocked<AuthCookieService>;
+
+  const makeExecutionContext = (
+    request: FastifyRequest & { authUser?: { userId: string } },
+  ): ExecutionContext =>
+    ({
+      switchToHttp: () => ({
+        getRequest: () => request,
+      }),
+    }) as unknown as ExecutionContext;
+
+  const makeActiveUser = (id = 'cognito-sub-123') =>
+    User.fromPrimitives({
+      id,
+      email: 'chef@example.com',
+      username: 'chef',
+      status: UserAccountStatus.ACTIVE,
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+    });
+
+  it('rejects requests without a Cognito access token cookie', async () => {
+    const tokenVerifier = makeTokenVerifier();
+    const userDao = makeUserDao();
+    const authCookieService = makeAuthCookieService();
+    authCookieService.getAccessTokenFromRequest.mockReturnValue(undefined);
+    const guard = new AccessTokenGuard(
+      tokenVerifier,
+      userDao,
+      authCookieService,
+    );
+
+    await expect(
+      guard.canActivate(makeExecutionContext({} as FastifyRequest)),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(tokenVerifier.verifyAccessToken.mock.calls).toHaveLength(0);
+  });
+
+  it('accepts a verified Cognito access token and sets request auth user', async () => {
+    const tokenVerifier = makeTokenVerifier();
+    const userDao = makeUserDao();
+    const authCookieService = makeAuthCookieService();
+    const request = { method: 'POST' } as FastifyRequest & {
+      authUser?: { userId: string };
+    };
+    authCookieService.getAccessTokenFromRequest.mockReturnValue('access-token');
+    tokenVerifier.verifyAccessToken.mockResolvedValue({
+      sub: 'cognito-sub-123',
+    });
+    userDao.findById.mockResolvedValue(makeActiveUser('cognito-sub-123'));
+    const guard = new AccessTokenGuard(
+      tokenVerifier,
+      userDao,
+      authCookieService,
+    );
+
+    await expect(
+      guard.canActivate(makeExecutionContext(request)),
+    ).resolves.toBe(true);
+
+    expect(tokenVerifier.verifyAccessToken.mock.calls).toEqual([
+      ['access-token'],
+    ]);
+    expect(authCookieService.ensureXsrfForRequest.mock.calls).toEqual([
+      [request],
+    ]);
+    expect(request.authUser).toEqual({ userId: 'cognito-sub-123' });
+  });
+
+  it('converts Cognito verification failures into unauthorized responses', async () => {
+    const tokenVerifier = makeTokenVerifier();
+    const userDao = makeUserDao();
+    const authCookieService = makeAuthCookieService();
+    authCookieService.getAccessTokenFromRequest.mockReturnValue('stale-token');
+    tokenVerifier.verifyAccessToken.mockRejectedValue(
+      new Error('COGNITO_ISSUER is required'),
+    );
+    const guard = new AccessTokenGuard(
+      tokenVerifier,
+      userDao,
+      authCookieService,
+    );
+
+    await expect(
+      guard.canActivate(makeExecutionContext({} as FastifyRequest)),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(userDao.findById.mock.calls).toHaveLength(0);
+  });
+});

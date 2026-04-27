@@ -4,7 +4,7 @@
 Review PantryList end to end, define an AWS-aligned target architecture that fits the current Angular + NestJS + MongoDB codebase, and then implement the approved path to move the project toward a production-ready state while exercising the newly installed skills.
 
 ## Current Phase
-Phase 11
+Phase 12
 
 ## Phases
 
@@ -82,8 +82,16 @@ Phase 11
 - [x] Verify Cognito Hosted UI, social IdP, token endpoint, and PKCE constraints from official AWS docs
 - [x] Write the architecture/security spec
 - [x] Self-review the spec for placeholders, contradictions, ambiguity, and scope
-- [ ] Wait for user review before runtime implementation
-- **Status:** awaiting user review
+- [x] Wait for user review before runtime implementation
+- **Status:** completed
+
+### Phase 12: Cognito Auth Replacement Implementation
+- [x] Add Cognito backend ports, Hosted UI URL builder, token client, token verifier, transaction cookies, and profile sync
+- [x] Replace active backend auth endpoints with Cognito login, callback, me, refresh, and logout
+- [x] Replace Angular local login UI with Cognito provider launchers and redirect inactive local auth routes
+- [x] Update Docker, production env examples, README, and Dokploy docs for Cognito
+- [x] Verify backend, frontend, Docker, E2E, and production dependency audits
+- **Status:** completed
 
 ## Key Questions
 1. Which AWS integration path best fits PantryList's current maturity: container-first, serverless-first, or hybrid?
@@ -102,11 +110,13 @@ Phase 11
 | Use component Mongo env vars in production Compose instead of interpolating `DATABASE_URL` | Generated passwords can contain URL-reserved characters; the backend already URL-encodes component credentials |
 | Keep local production-like smoke isolated under a separate Compose project and high host port | This lets the dev stack remain available at `48673` while validating a production topology at `48675` |
 | Replace local PantryList authentication with Cognito before production | The user wants Google/Facebook and future account recovery through a managed identity authority rather than keeping local passwords |
+| Remove local password auth from the active route/provider graph now instead of keeping fallback behavior | The project is not deployed to production yet, and a single auth authority avoids split recovery, revocation, and account-linking behavior |
 
 ## Errors Encountered
 | Error | Attempt | Resolution |
 |-------|---------|------------|
 | `rg.exe` failed with access denied in this environment | 1 | Switched to `git ls-files` and native PowerShell file inspection |
+| Stale local JWT cookies produced a backend `500` during Cognito-disabled smoke testing | 1 | Updated `AccessTokenGuard` to convert Cognito verifier failures into `401 Unauthorized`, then verified stale cookies return `401` |
 
 ## Notes
 - Update phase status as progress changes.
@@ -132,3 +142,10 @@ Phase 11
 - Cognito is the approved next authentication authority. PantryList should keep
   local `users` only as app profile and ownership records, with `User.id`
   equal to the verified Cognito `sub`.
+- Cognito is now the active authentication design in code. Local password
+  registration, login, password reset, local JWT issuance, and local refresh
+  sessions remain in obsolete source files only for future cleanup; they are not
+  wired into active backend providers or active frontend routes.
+- A real Google/Facebook sign-in smoke test still requires AWS Cognito User
+  Pool, app client, Hosted UI domain, callback/logout URLs, and social provider
+  secrets configured outside git.

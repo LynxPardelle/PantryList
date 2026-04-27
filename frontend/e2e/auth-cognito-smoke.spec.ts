@@ -1,0 +1,28 @@
+import { expect, test } from '@playwright/test';
+
+test('renders Cognito login options and starts provider redirect', async ({
+  page,
+}) => {
+  await page.route('**/api/auth/cognito/login?**', async (route) => {
+    await route.fulfill({
+      status: 302,
+      headers: {
+        location: '/login?cognitoRedirect=stubbed',
+      },
+    });
+  });
+
+  await page.goto('/login');
+
+  await expect(page.getByRole('button', { name: 'Entrar con Google' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Entrar con Facebook' })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Entrar con correo en Cognito' }),
+  ).toBeVisible();
+  await expect(page.getByLabel('Correo')).toHaveCount(0);
+  await expect(page.getByLabel('Password')).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Entrar con Google' }).click();
+
+  await expect(page).toHaveURL(/cognitoRedirect=stubbed/);
+});

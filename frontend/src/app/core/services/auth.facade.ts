@@ -103,12 +103,16 @@ export class AuthFacade {
     this.bootstrapSession();
   }
 
-  login(credentials: LoginRequest, redirectTo?: string | null): void {
-    this.store.dispatch(AuthActions.login({ credentials, redirectTo }));
+  login(provider?: string | null, redirectTo?: string | null): void {
+    this.store.dispatch(AuthActions.login({ provider, redirectTo }));
   }
 
-  signIn(credentials: LoginRequest, redirectTo?: string | null): void {
-    this.login(credentials, redirectTo);
+  startCognitoLogin(provider?: string | null, redirectTo?: string | null): void {
+    this.login(provider, redirectTo);
+  }
+
+  signIn(_credentials: LoginRequest, redirectTo?: string | null): void {
+    this.login(null, redirectTo);
   }
 
   register(payload: RegisterRequest, redirectTo?: string | null): void {

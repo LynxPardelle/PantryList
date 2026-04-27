@@ -1,7 +1,20 @@
+import { randomBytes } from 'crypto';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { FastifyReply, FastifyRequest } from 'fastify';
-import { AuthSessionTokens } from '../../../application/services/auth-session.service';
+
+export interface AuthSessionCookieTokens {
+  accessToken: string;
+  refreshToken?: string;
+  xsrfToken: string;
+}
+
+export interface CognitoAuthTransactionCookies {
+  state: string;
+  nonce: string;
+  codeVerifier: string;
+  redirectTo: string;
+}
 
 @Injectable()
 export class AuthCookieService {
@@ -9,22 +22,33 @@ export class AuthCookieService {
   readonly refreshCookieName = 'pantrylist_refresh_token';
   readonly xsrfCookieName = 'XSRF-TOKEN';
   readonly xsrfHeaderName = 'x-xsrf-token';
+  readonly cognitoStateCookieName = 'pantrylist_cognito_state';
+  readonly cognitoNonceCookieName = 'pantrylist_cognito_nonce';
+  readonly cognitoCodeVerifierCookieName = 'pantrylist_cognito_code_verifier';
+  readonly cognitoRedirectToCookieName = 'pantrylist_cognito_redirect_to';
 
   constructor(private readonly configService: ConfigService) {}
 
-  setSessionCookies(reply: FastifyReply, session: AuthSessionTokens): void {
+  setSessionCookies(
+    reply: FastifyReply,
+    session: AuthSessionCookieTokens,
+  ): void {
     reply.setCookie(this.accessCookieName, session.accessToken, {
       ...this.getBaseCookieOptions(),
       httpOnly: true,
       maxAge: this.getAccessCookieMaxAgeSeconds(),
       path: '/',
     });
-    reply.setCookie(this.refreshCookieName, session.refreshToken, {
-      ...this.getBaseCookieOptions(),
-      httpOnly: true,
-      maxAge: this.getRefreshCookieMaxAgeSeconds(),
-      path: '/api/auth',
-    });
+
+    if (session.refreshToken) {
+      reply.setCookie(this.refreshCookieName, session.refreshToken, {
+        ...this.getBaseCookieOptions(),
+        httpOnly: true,
+        maxAge: this.getRefreshCookieMaxAgeSeconds(),
+        path: '/api/auth',
+      });
+    }
+
     reply.setCookie(this.xsrfCookieName, session.xsrfToken, {
       ...this.getBaseCookieOptions(),
       httpOnly: false,
@@ -46,6 +70,59 @@ export class AuthCookieService {
       path: '/',
       domain: this.getCookieDomain(),
     });
+  }
+
+  setCognitoAuthTransactionCookies(
+    reply: FastifyReply,
+    transaction: CognitoAuthTransactionCookies,
+  ): void {
+    const options = {
+      ...this.getBaseCookieOptions(),
+      httpOnly: true,
+      maxAge: this.getCognitoTransactionTtlSeconds(),
+      path: '/api/auth/cognito',
+    };
+
+    reply.setCookie(this.cognitoStateCookieName, transaction.state, options);
+    reply.setCookie(this.cognitoNonceCookieName, transaction.nonce, options);
+    reply.setCookie(
+      this.cognitoCodeVerifierCookieName,
+      transaction.codeVerifier,
+      options,
+    );
+    reply.setCookie(
+      this.cognitoRedirectToCookieName,
+      transaction.redirectTo,
+      options,
+    );
+  }
+
+  getCognitoAuthTransactionFromRequest(
+    request: FastifyRequest,
+  ): CognitoAuthTransactionCookies {
+    return {
+      state: request.cookies?.[this.cognitoStateCookieName] ?? '',
+      nonce: request.cookies?.[this.cognitoNonceCookieName] ?? '',
+      codeVerifier: request.cookies?.[this.cognitoCodeVerifierCookieName] ?? '',
+      redirectTo:
+        request.cookies?.[this.cognitoRedirectToCookieName] ?? '/pantry',
+    };
+  }
+
+  clearCognitoAuthTransactionCookies(reply: FastifyReply): void {
+    const options = {
+      path: '/api/auth/cognito',
+      domain: this.getCookieDomain(),
+    };
+
+    reply.clearCookie(this.cognitoStateCookieName, options);
+    reply.clearCookie(this.cognitoNonceCookieName, options);
+    reply.clearCookie(this.cognitoCodeVerifierCookieName, options);
+    reply.clearCookie(this.cognitoRedirectToCookieName, options);
+  }
+
+  createXsrfToken(): string {
+    return randomBytes(24).toString('base64url');
   }
 
   getRefreshTokenFromRequest(request: FastifyRequest): string | undefined {
@@ -126,6 +203,13 @@ export class AuthCookieService {
   private getRefreshCookieMaxAgeSeconds(): number {
     return Number(
       this.configService.get<string>('JWT_REFRESH_TTL_SECONDS') ?? '2592000',
+    );
+  }
+
+  private getCognitoTransactionTtlSeconds(): number {
+    return Number(
+      this.configService.get<string>('COGNITO_AUTH_TRANSACTION_TTL_SECONDS') ??
+        '300',
     );
   }
 }

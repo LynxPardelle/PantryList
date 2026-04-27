@@ -136,6 +136,35 @@
     PKCE parameters.
   - Token endpoint support for authorization-code and refresh-token grants.
   - PKCE support for authorization-code grants.
+- Cognito auth replacement is now implemented in the active application path.
+  Backend active auth routes are `GET /api/auth/cognito/login`,
+  `GET /api/auth/cognito/callback`, `GET /api/auth/me`,
+  `POST /api/auth/refresh`, and `POST /api/auth/logout`.
+- The backend active dependency graph no longer wires local password
+  registration, local login, local password reset, local JWT session issuance,
+  refresh-session persistence, password hashing, or logger-based reset email
+  delivery.
+- `aws-jwt-verify` is now the backend token verification dependency. The
+  verifier parses the Cognito User Pool id from `COGNITO_ISSUER` and verifies
+  access and ID tokens separately.
+- Cognito callback handling stores short-lived HttpOnly transaction cookies for
+  state, nonce, PKCE verifier, and safe relative redirect target; callback
+  handling validates `state` before exchange and `nonce` after ID-token
+  verification.
+- Cognito profile sync requires a verified email claim, uses Cognito `sub` as
+  local `User.id`, preserves disabled local app users, and suffixes usernames
+  with a stable `sub` prefix when a preferred username collides.
+- The Angular login page now launches Cognito Hosted UI provider redirects for
+  Google, Facebook, or Cognito-hosted email. Active `register`,
+  `forgot-password`, `reset-password`, and `claim-imported-account` routes
+  redirect to `/login`.
+- Local Docker keeps `COGNITO_ENABLED=false` by default. In that mode,
+  `GET /api/auth/cognito/login?provider=Google` returns `503` by design, and a
+  stale local JWT access cookie on `/api/auth/me` now returns `401` instead of
+  surfacing a server error.
+- The current Playwright E2E smoke verifies the Cognito login launcher with a
+  stubbed Hosted UI redirect. Full Google/Facebook sign-in cannot be verified
+  until real AWS Cognito environment values and provider secrets exist.
 
 ## Skill Evaluation Findings
 - `create-implementation-plan` was useful and produced a concrete execution
@@ -158,6 +187,14 @@
 - `senior-devops` was useful for clarifying the production-like shape:
   build/test/package/deploy/verify, internal services, healthchecks, required
   secrets, and rollback-friendly separation from the development stack.
+- `security-compliance` was useful for keeping the Cognito implementation
+  centered on trust boundaries: browser to API, API to Cognito, Cognito token
+  verification, HttpOnly token cookies, XSRF for mutating requests, and
+  external provider secret handling.
+- `comprehensive-review` was applied as a local artifact only. No GitHub issue
+  comment was posted because this task is not currently attached to a GitHub
+  issue and the skill requires a dry run plus explicit confirmation before
+  writing comments.
 
 ## Security Concerns To Keep Visible
 - The main pantry, lot, product-type, and legacy product HTTP controllers now
@@ -191,6 +228,16 @@
 - Do not keep a local-password fallback once Cognito is enabled; two
   authentication authorities would make account recovery, session revocation,
   and social-provider linking harder to reason about.
+- Real Cognito deployment must use least-privilege environment handling:
+  provider secrets and optional Cognito client secret should be set only in the
+  deployment environment, never in tracked `.env` examples or docs.
+- Cognito Hosted UI callback/logout URLs must exactly match the deployed
+  domain. Mismatched local, Dokploy, and Cognito console settings will fail
+  login even if the PantryList code is correct.
+- Production dependency audits for backend and frontend pass with
+  `npm audit --omit=dev`. Development watcher containers still install dev
+  dependencies and can report dev-tooling audit findings that are not present
+  in runtime dependency trees.
 
 ## Resources
 - `C:\Users\lince\Documents\GitHub\PantryList\README.md`
@@ -200,6 +247,8 @@
 - `C:\Users\lince\Documents\GitHub\PantryList\plan\feature-expiration-lots-1.md`
 - `C:\Users\lince\Documents\GitHub\PantryList\plan\feature-durability-depletion-1.md`
 - `C:\Users\lince\Documents\GitHub\PantryList\plan\feature-shopping-plan-1.md`
+- `C:\Users\lince\Documents\GitHub\PantryList\plan\feature-cognito-auth-replacement-1.md`
+- `C:\Users\lince\Documents\GitHub\PantryList\docs\reviews\2026-04-27-cognito-auth-comprehensive-review.md`
 - `C:\Users\lince\Documents\GitHub\Codex\Output\pantrylist-expiration-smoke.png`
 - `C:\Users\lince\Documents\GitHub\Codex\Output\pantrylist-durability-smoke.png`
 - `C:\Users\lince\Documents\GitHub\Codex\Output\pantrylist-smoke.png`

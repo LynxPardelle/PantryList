@@ -3,7 +3,6 @@ import {
   AuthUser,
   ClaimImportedAccountRequest,
   ForgotPasswordRequest,
-  LoginRequest,
   RegisterRequest,
   ResetPasswordRequest,
 } from '../../shared/models/auth.model';
@@ -26,7 +25,7 @@ export const bootstrapSessionFailure = createAction(
 
 export const login = createAction(
   '[Auth] Login',
-  props<{ credentials: LoginRequest; redirectTo?: string | null }>(),
+  props<{ provider?: string | null; redirectTo?: string | null }>(),
 );
 
 export const loginSuccess = createAction(
@@ -113,7 +112,10 @@ export const refreshSessionFailure = createAction(
 
 export const logout = createAction('[Auth] Logout');
 
-export const logoutSuccess = createAction('[Auth] Logout Success');
+export const logoutSuccess = createAction(
+  '[Auth] Logout Success',
+  props<{ logoutUrl?: string | null }>(),
+);
 
 export const logoutFailure = createAction(
   '[Auth] Logout Failure',

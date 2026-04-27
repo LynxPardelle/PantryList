@@ -7,8 +7,10 @@ posterior en Dokploy o AWS.
 
 ## Estado actual
 
-- Cuentas propias de PantryList con email obligatorio, password hasheado,
-  JWT y cookies `HttpOnly`
+- Autenticacion reemplazada por Amazon Cognito Hosted UI: PantryList ya no
+  registra ni valida passwords locales en el flujo activo
+- Perfil local `users` conservado para propiedad de despensa, con
+  `User.id = Cognito sub`
 - Modelo nuevo `ProductType` + `InventoryLot`
 - Registro de compras como lotes con `expiresAt` y `purchaseDate`
 - Vista agrupada por tipo base
@@ -97,6 +99,19 @@ Ahora construye su conexion desde `MONGO_HOST`, `MONGO_PORT`,
 `MONGO_APP_DATABASE`, `MONGO_APP_USERNAME` y `MONGO_APP_PASSWORD`, lo que evita
 que se quede usando el password por defecto cuando ya existe un `.env.docker.local`.
 
+La autenticacion Cognito queda desactivada por defecto en
+`.env.docker.example` para que el stack local pueda arrancar sin un User Pool
+real. Al habilitarla, registra en Cognito el callback local:
+
+```text
+http://localhost:48673/api/auth/cognito/callback
+```
+
+Con `COGNITO_ENABLED=true`, configura tambien `COGNITO_ISSUER`,
+`COGNITO_DOMAIN`, `COGNITO_CLIENT_ID`, `COGNITO_REDIRECT_URI` y
+`COGNITO_LOGOUT_REDIRECT_URI`. Si esas variables no existen, los endpoints de
+auth fallan cerrados en vez de volver al login local con password.
+
 Si prefieres seguir con `mongodb` en Docker y `frontend` / `backend` fuera de
 contenedor, tambien sigue siendo valido:
 
@@ -156,6 +171,7 @@ SWAGGER_ENABLED=true
 SWAGGER_TITLE=PantryList API
 SWAGGER_DESCRIPTION=PantryList API
 SWAGGER_VERSION=1.0.0
+COGNITO_ENABLED=false
 ```
 
 ### 2. Arranca el backend fuera de Docker
@@ -207,6 +223,11 @@ npm run migrate:product-types
 
 ## API nueva
 
+- `GET /api/auth/cognito/login`
+- `GET /api/auth/cognito/callback`
+- `GET /api/auth/me`
+- `POST /api/auth/refresh`
+- `POST /api/auth/logout`
 - `POST /api/product-types`
 - `GET /api/product-types?search=...`
 - `GET /api/product-types/:id`
@@ -365,7 +386,9 @@ solo en la red interna.
   MongoDB sin bind mounts de codigo.
 - Variables obligatorias para ese flujo: `MONGO_INITDB_ROOT_USERNAME`,
   `MONGO_INITDB_ROOT_PASSWORD`, `MONGO_APP_USERNAME`, `MONGO_APP_PASSWORD`,
-  `JWT_ACCESS_SECRET` y `JWT_REFRESH_SECRET`.
+  `COGNITO_ENABLED=true`, `COGNITO_ISSUER`, `COGNITO_DOMAIN`,
+  `COGNITO_CLIENT_ID`, `COGNITO_REDIRECT_URI` y
+  `COGNITO_LOGOUT_REDIRECT_URI`.
 - Variables utiles para override: `DATABASE_NAME`, `FRONTEND_PORT`,
   `CORS_ORIGIN`, `API_PREFIX`, `BACKEND_URL`, `AUTH_COOKIE_SECURE`,
   `AUTH_COOKIE_SAME_SITE` y `AUTH_COOKIE_DOMAIN`.
