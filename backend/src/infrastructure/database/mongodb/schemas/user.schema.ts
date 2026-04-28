@@ -25,6 +25,9 @@ export class UserDocument {
   @Prop({ required: true })
   normalizedUsername: string;
 
+  @Prop({ required: true, default: [] })
+  authSubjectIds: string[];
+
   @Prop({ required: true, enum: Object.values(UserAccountStatus), index: true })
   status: UserAccountStatus;
 
@@ -39,3 +42,4 @@ export const UserSchema = SchemaFactory.createForClass(UserDocument);
 
 UserSchema.index({ normalizedEmail: 1 }, { unique: true });
 UserSchema.index({ normalizedUsername: 1 }, { unique: true });
+UserSchema.index({ authSubjectIds: 1 }, { unique: true, sparse: true });

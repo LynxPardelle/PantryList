@@ -173,7 +173,7 @@ export class AuthController {
     });
 
     return AuthUserMapper.toResponse(
-      await this.getCurrentUserUseCase.execute(claims.sub),
+      await this.getCurrentUserUseCase.executeByAuthSubject(claims.sub),
     );
   }
 

@@ -11,6 +11,7 @@ describe('AccessTokenGuard', () => {
   const makeUserDao = (): jest.Mocked<UserDao> => ({
     save: jest.fn(),
     findById: jest.fn(),
+    findByAuthSubject: jest.fn(),
     findByEmail: jest.fn(),
     findByUsername: jest.fn(),
     delete: jest.fn(),
@@ -74,7 +75,7 @@ describe('AccessTokenGuard', () => {
     tokenVerifier.verifyAccessToken.mockResolvedValue({
       sub: 'cognito-sub-123',
     });
-    userDao.findById.mockResolvedValue(makeActiveUser('cognito-sub-123'));
+    userDao.findByAuthSubject.mockResolvedValue(makeActiveUser('app-user-123'));
     const guard = new AccessTokenGuard(
       tokenVerifier,
       userDao,
@@ -91,7 +92,7 @@ describe('AccessTokenGuard', () => {
     expect(authCookieService.ensureXsrfForRequest.mock.calls).toEqual([
       [request],
     ]);
-    expect(request.authUser).toEqual({ userId: 'cognito-sub-123' });
+    expect(request.authUser).toEqual({ userId: 'app-user-123' });
   });
 
   it('converts Cognito verification failures into unauthorized responses', async () => {
@@ -111,6 +112,7 @@ describe('AccessTokenGuard', () => {
     await expect(
       guard.canActivate(makeExecutionContext({} as FastifyRequest)),
     ).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(userDao.findByAuthSubject.mock.calls).toHaveLength(0);
     expect(userDao.findById.mock.calls).toHaveLength(0);
   });
 });

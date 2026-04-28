@@ -50,6 +50,15 @@ export class MongoUserDao implements UserDao {
     return user ? this.toDomain(user) : null;
   }
 
+  async findByAuthSubject(authSubjectId: string): Promise<User | null> {
+    const user = await this.userModel
+      .findOne({ authSubjectIds: normalizeAuthSubjectId(authSubjectId) })
+      .lean()
+      .exec();
+
+    return user ? this.toDomain(user) : null;
+  }
+
   async findByEmail(email: string): Promise<User | null> {
     const user = await this.userModel
       .findOne({ normalizedEmail: normalizeEmail(email) })
@@ -77,6 +86,7 @@ export class MongoUserDao implements UserDao {
       id: user.id,
       email: user.email,
       username: user.username,
+      authSubjectIds: user.authSubjectIds ?? [],
       status: user.status,
       createdAt: new Date(user.createdAt),
       updatedAt: new Date(user.updatedAt),
@@ -90,4 +100,8 @@ function normalizeEmail(email: string): string {
 
 function normalizeUsername(username: string): string {
   return username.trim().toLocaleLowerCase('es');
+}
+
+function normalizeAuthSubjectId(authSubjectId: string): string {
+  return authSubjectId.trim();
 }

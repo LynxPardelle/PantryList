@@ -21,4 +21,16 @@ export class GetCurrentUserUseCase {
 
     return user;
   }
+
+  async executeByAuthSubject(authSubjectId: string): Promise<User> {
+    const user =
+      (await this.userDao.findByAuthSubject(authSubjectId)) ??
+      (await this.userDao.findById(UserId.fromString(authSubjectId)));
+
+    if (!user || user.status !== UserAccountStatus.ACTIVE) {
+      throw new UnauthorizedException('Invalid authenticated user');
+    }
+
+    return user;
+  }
 }

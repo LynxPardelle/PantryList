@@ -58,6 +58,7 @@ export class CognitoTokenVerifierService implements CognitoTokenVerifier {
     return {
       sub: this.requiredString(payload.sub),
       email: this.optionalString(payload.email),
+      emailVerified: this.optionalBoolean(payload.email_verified),
       preferredUsername: this.optionalString(payload.preferred_username),
       name: this.optionalString(payload.name),
       nonce: this.optionalString(payload.nonce),
@@ -70,5 +71,9 @@ export class CognitoTokenVerifierService implements CognitoTokenVerifier {
 
   private optionalString(value: unknown): string | undefined {
     return typeof value === 'string' ? value : undefined;
+  }
+
+  private optionalBoolean(value: unknown): boolean | undefined {
+    return typeof value === 'boolean' ? value : undefined;
   }
 }

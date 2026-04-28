@@ -38,7 +38,9 @@ export class AccessTokenGuard implements CanActivate {
     }
 
     const claims = await this.verifyAccessToken(accessToken);
-    const user = await this.userDao.findById(UserId.fromString(claims.sub));
+    const user =
+      (await this.userDao.findByAuthSubject(claims.sub)) ??
+      (await this.userDao.findById(UserId.fromString(claims.sub)));
 
     if (!user || user.status !== UserAccountStatus.ACTIVE) {
       throw new UnauthorizedException('Invalid authenticated user');
@@ -46,7 +48,7 @@ export class AccessTokenGuard implements CanActivate {
 
     this.authCookieService.ensureXsrfForRequest(request);
     request.authUser = {
-      userId: claims.sub,
+      userId: user.id.toString(),
     };
 
     return true;

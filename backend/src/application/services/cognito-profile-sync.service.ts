@@ -15,20 +15,33 @@ export class CognitoProfileSyncService {
 
   async syncFromClaims(claims: CognitoVerifiedClaims): Promise<User> {
     const email = claims.email?.trim().toLocaleLowerCase('en-US');
+    const authSubjectId = claims.sub.trim();
 
     if (!email) {
       throw new UnauthorizedException('Cognito email claim is required');
     }
 
-    const userId = UserId.fromString(claims.sub);
-    const existingUser = await this.userDao.findById(userId);
-    const username = await this.resolveUsername(claims);
+    if (!authSubjectId) {
+      throw new UnauthorizedException('Cognito subject claim is required');
+    }
+
+    const existingUserBySubject =
+      (await this.userDao.findByAuthSubject(authSubjectId)) ??
+      (await this.userDao.findById(UserId.fromString(authSubjectId)));
+    const existingUserByEmail = await this.userDao.findByEmail(email);
+    const existingUser = this.resolveExistingUser(
+      existingUserBySubject,
+      existingUserByEmail,
+      claims,
+    );
+    const username = await this.resolveUsername(claims, existingUser);
     const user =
       existingUser ??
       User.fromPrimitives({
-        id: claims.sub,
+        id: authSubjectId,
         email,
         username,
+        authSubjectIds: [],
         status: UserAccountStatus.ACTIVE,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -44,18 +57,51 @@ export class CognitoProfileSyncService {
       }
     }
 
+    user.linkAuthSubject(authSubjectId);
+
     return this.userDao.save(user);
+  }
+
+  private resolveExistingUser(
+    existingUserBySubject: User | null,
+    existingUserByEmail: User | null,
+    claims: CognitoVerifiedClaims,
+  ): User | null {
+    if (
+      existingUserBySubject &&
+      existingUserByEmail &&
+      !existingUserBySubject.id.equals(existingUserByEmail.id)
+    ) {
+      throw new UnauthorizedException(
+        'Cognito email belongs to a different PantryList account',
+      );
+    }
+
+    if (existingUserByEmail && !existingUserBySubject) {
+      this.ensureVerifiedEmailForLinking(claims);
+    }
+
+    return existingUserBySubject ?? existingUserByEmail;
+  }
+
+  private ensureVerifiedEmailForLinking(claims: CognitoVerifiedClaims): void {
+    if (claims.emailVerified !== true) {
+      throw new UnauthorizedException(
+        'Verified Cognito email is required to link PantryList account',
+      );
+    }
   }
 
   private async resolveUsername(
     claims: CognitoVerifiedClaims,
+    existingUser: User | null,
   ): Promise<string> {
     const baseUsername = this.deriveUsername(claims);
     const usernameOwner = await this.userDao.findByUsername(baseUsername);
 
     if (
       !usernameOwner ||
-      usernameOwner.id.equals(UserId.fromString(claims.sub))
+      (existingUser && usernameOwner.id.equals(existingUser.id))
     ) {
       return baseUsername;
     }

@@ -33,6 +33,7 @@ export interface CognitoTokenSet {
 export interface CognitoVerifiedClaims {
   sub: string;
   email?: string;
+  emailVerified?: boolean;
   preferredUsername?: string;
   name?: string;
   nonce?: string;

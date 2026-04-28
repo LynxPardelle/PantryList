@@ -179,9 +179,10 @@ Phase 16
   disabled to avoid Angular `NG0506` noise under `ng serve`.
 - The production-like Compose topology exposes only the frontend SSR server;
   backend and MongoDB remain internal to the Compose network.
-- Cognito is the approved next authentication authority. PantryList should keep
-  local `users` only as app profile and ownership records, with `User.id`
-  equal to the verified Cognito `sub`.
+- Cognito is the approved authentication authority. PantryList keeps local
+  `users` as app profile and ownership records. `User.id` is a stable local
+  profile id, while verified Cognito/social `sub` values are linked through
+  `authSubjectIds`.
 - Cognito is now the active authentication design in code. Local password
   registration, login, password reset, local JWT issuance, and local refresh
   sessions were removed from active source after the cleanup phase.

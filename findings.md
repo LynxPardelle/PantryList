@@ -313,6 +313,13 @@
   dependency audit remains clean, but full dev audit still reports moderate
   dev-tooling findings in Angular build/dev-server paths without a complete
   non-breaking `npm audit fix` path.
+- PantryList users now maintain `authSubjectIds` so one app profile can be
+  linked to multiple verified Cognito identities. This avoids duplicate-email
+  callback crashes and is a better base for Google/Facebook/Cognito account
+  linking than using the Cognito `sub` as the only user lookup key.
+- Account linking by email should remain restricted to verified Cognito email
+  claims. If a provider does not send `email_verified=true`, the app should not
+  silently attach that login to an existing PantryList account.
 
 ## Resources
 - `C:\Users\lince\Documents\GitHub\PantryList\README.md`

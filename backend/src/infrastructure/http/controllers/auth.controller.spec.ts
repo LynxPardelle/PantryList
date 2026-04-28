@@ -27,6 +27,7 @@ describe('AuthController Cognito flow', () => {
   const makeController = () => {
     const getCurrentUserUseCase = {
       execute: jest.fn().mockResolvedValue(makeUser()),
+      executeByAuthSubject: jest.fn().mockResolvedValue(makeUser()),
     } as unknown as jest.Mocked<GetCurrentUserUseCase>;
     const transactionService = {
       createTransaction: jest.fn().mockReturnValue({
@@ -227,7 +228,8 @@ describe('AuthController Cognito flow', () => {
         xsrfToken: 'xsrf-token',
       },
     ]);
-    expect(getCurrentUserUseCase.execute.mock.calls[0]).toEqual([
+    expect(getCurrentUserUseCase.execute.mock.calls).toHaveLength(0);
+    expect(getCurrentUserUseCase.executeByAuthSubject.mock.calls[0]).toEqual([
       'cognito-sub-123',
     ]);
     expect(response.id).toBe('cognito-sub-123');
