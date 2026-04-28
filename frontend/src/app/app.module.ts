@@ -1,6 +1,6 @@
 import { NgModule } from '@angular/core';
 import { BrowserModule, provideClientHydration, withEventReplay } from '@angular/platform-browser';
-import { HttpClientModule, HttpClientXsrfModule } from '@angular/common/http';
+import { provideHttpClient, withFetch, withXsrfConfiguration } from '@angular/common/http';
 import { ReactiveFormsModule } from '@angular/forms';
 import { StoreModule } from '@ngrx/store';
 import { EffectsModule } from '@ngrx/effects';
@@ -26,11 +26,6 @@ import { environment } from '../environments/environment';
   ],
   imports: [
     BrowserModule,
-    HttpClientModule,
-    HttpClientXsrfModule.withOptions({
-      cookieName: 'XSRF-TOKEN',
-      headerName: 'x-xsrf-token',
-    }),
     ReactiveFormsModule,
     AppRoutingModule,
     StoreModule.forRoot({
@@ -47,6 +42,13 @@ import { environment } from '../environments/environment';
       : [])
   ],
   providers: [
+    provideHttpClient(
+      withFetch(),
+      withXsrfConfiguration({
+        cookieName: 'XSRF-TOKEN',
+        headerName: 'x-xsrf-token',
+      }),
+    ),
     ...(environment.enableHydration
       ? [provideClientHydration(withEventReplay())]
       : []),

@@ -29,9 +29,15 @@ providers in the `pantrylist-dev-cognito` stack in `us-east-1`.
 ## Pending Actions
 
 1. Rotate the Google and Facebook secrets that were pasted into chat, update AWS Secrets Manager, and redeploy the Cognito stack.
-2. In Google Cloud Console, edit the OAuth web client and add the authorized redirect URI: `https://pantrylist-dev-765932874577.auth.us-east-1.amazoncognito.com/oauth2/idpresponse`.
-3. Re-run browser smoke for Google and complete one real login callback with a test user.
-4. Decide later whether to migrate Angular CLI/build tooling to a newer major version; do not force this now just to satisfy dev-only audit findings.
+2. Complete one real login callback with a test user after secrets are rotated.
+3. Decide later whether to migrate Angular CLI/build tooling to a newer major version; do not force this now just to satisfy dev-only audit findings.
+
+## Follow-Up
+
+- Google OAuth redirect was re-smoked after the Google Console change and now
+  reaches the Google sign-in page without `redirect_uri_mismatch`.
+- Frontend was upgraded to Angular 21 in
+  `docs/reviews/2026-04-27-angular-21-migration-review.md`.
 
 ## Evidence
 

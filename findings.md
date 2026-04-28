@@ -306,11 +306,13 @@
   client. The CDK stack now creates `AWS::Cognito::ManagedLoginBranding` with
   Cognito-provided defaults so hosted login pages render instead of returning
   `Login pages unavailable`.
-- Google social login is not fully usable until the Google OAuth web client
-  authorizes Cognito's social provider redirect URI:
-  `https://pantrylist-dev-765932874577.auth.us-east-1.amazoncognito.com/oauth2/idpresponse`.
-  The PantryList code and Cognito handoff are reaching Google; Google is
-  rejecting the external OAuth client configuration.
+- Google social login now reaches the Google sign-in page after authorizing
+  Cognito's social provider redirect URI in Google OAuth. Full account callback
+  still needs one credential-backed smoke test after secrets are rotated.
+- The frontend is now on Angular `21.2.10` and CLI `21.2.8`. Production
+  dependency audit remains clean, but full dev audit still reports moderate
+  dev-tooling findings in Angular build/dev-server paths without a complete
+  non-breaking `npm audit fix` path.
 
 ## Resources
 - `C:\Users\lince\Documents\GitHub\PantryList\README.md`
@@ -328,6 +330,7 @@
 - `C:\Users\lince\Documents\GitHub\PantryList\infra\cognito\scripts\Set-SocialProviderSecrets.ps1`
 - `C:\Users\lince\Documents\GitHub\PantryList\docs\reviews\2026-04-27-cognito-aws-infra-review.md`
 - `C:\Users\lince\Documents\GitHub\PantryList\docs\reviews\2026-04-27-cognito-social-smoke-audit.md`
+- `C:\Users\lince\Documents\GitHub\PantryList\docs\reviews\2026-04-27-angular-21-migration-review.md`
 - `C:\Users\lince\Documents\GitHub\Codex\Output\pantrylist-expiration-smoke.png`
 - `C:\Users\lince\Documents\GitHub\Codex\Output\pantrylist-durability-smoke.png`
 - `C:\Users\lince\Documents\GitHub\Codex\Output\pantrylist-smoke.png`
