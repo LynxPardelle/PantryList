@@ -129,7 +129,10 @@ export class InventoryLot {
     return this._quantity <= 0;
   }
 
-  getExpirationStatus(referenceDate: Date = new Date()): ExpirationStatus {
+  getExpirationStatus(
+    referenceDate: Date = new Date(),
+    warningDays = 7,
+  ): ExpirationStatus {
     if (!this._expiresAt) {
       return ExpirationStatus.NONE;
     }
@@ -139,11 +142,15 @@ export class InventoryLot {
       this._expiresAt,
     );
 
-    if (daysUntilExpiration <= 3) {
+    if (daysUntilExpiration < 0) {
+      return ExpirationStatus.EXPIRED;
+    }
+
+    if (daysUntilExpiration === 0) {
       return ExpirationStatus.CRITICAL;
     }
 
-    if (daysUntilExpiration <= 7) {
+    if (daysUntilExpiration <= warningDays) {
       return ExpirationStatus.SOON;
     }
 
@@ -183,13 +190,12 @@ function normalizeOptionalText(value?: string): string | undefined {
 }
 
 function getDayDifference(referenceDate: Date, targetDate: Date): number {
-  const startReference = new Date(referenceDate);
-  const startTarget = new Date(targetDate);
-
-  startReference.setHours(0, 0, 0, 0);
-  startTarget.setHours(0, 0, 0, 0);
-
   return Math.floor(
-    (startTarget.getTime() - startReference.getTime()) / DAY_IN_MS,
+    (toUtcDateOnlyTime(targetDate) - toUtcDateOnlyTime(referenceDate)) /
+      DAY_IN_MS,
   );
+}
+
+function toUtcDateOnlyTime(date: Date): number {
+  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
 }

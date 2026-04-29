@@ -1,6 +1,10 @@
 import { InventoryLot } from '../../domain/entities/inventory-lot.entity';
 import { ProductType } from '../../domain/entities/product-type.entity';
 import { ExpirationStatus } from '../../domain/enums';
+import {
+  UserPreferences,
+  UserPreferencesPatch,
+} from '../../domain/value-objects/user-preferences.vo';
 import { calculateDepletionForecast } from '../services/depletion-forecast.service';
 import {
   DepletingProductGroup,
@@ -12,14 +16,14 @@ import {
   ShoppingPlanUrgency,
 } from '../read-models/pantry-overview.read-model';
 
-const SHOPPING_PLAN_LEAD_DAYS = 3;
-
 export function buildPantryOverview(
   userId: string,
   productTypes: ProductType[],
   inventoryLots: InventoryLot[],
   referenceDate: Date = new Date(),
+  preferencesInput?: UserPreferencesPatch,
 ): PantryOverview {
+  const preferences = UserPreferences.resolve(preferencesInput).toPrimitives();
   const productTypeMap = new Map(
     productTypes.map((productType) => [productType.id.toString(), productType]),
   );
@@ -54,7 +58,11 @@ export function buildPantryOverview(
       variantSet: new Set<string>(),
     };
 
-    const lotSummary = toLotSummary(inventoryLot, referenceDate);
+    const lotSummary = toLotSummary(
+      inventoryLot,
+      referenceDate,
+      preferences.expirationWarningDays,
+    );
 
     existingGroup.totalQuantity = Number(
       (existingGroup.totalQuantity + inventoryLot.quantity).toFixed(2),
@@ -74,7 +82,12 @@ export function buildPantryOverview(
       existingGroup.nextExpirationAt = inventoryLot.expiresAt;
     }
 
-    if (inventoryLot.isExpiringWithinDays(7, referenceDate)) {
+    if (
+      inventoryLot.isExpiringWithinDays(
+        preferences.expirationWarningDays,
+        referenceDate,
+      )
+    ) {
       existingGroup.expiringSoonQuantity = Number(
         (existingGroup.expiringSoonQuantity + inventoryLot.quantity).toFixed(2),
       );
@@ -116,11 +129,13 @@ export function buildPantryOverview(
       lotCount: item.lots.filter(
         (lot) =>
           lot.expirationStatus === ExpirationStatus.CRITICAL ||
+          lot.expirationStatus === ExpirationStatus.EXPIRED ||
           lot.expirationStatus === ExpirationStatus.SOON,
       ).length,
       lots: item.lots.filter(
         (lot) =>
           lot.expirationStatus === ExpirationStatus.CRITICAL ||
+          lot.expirationStatus === ExpirationStatus.EXPIRED ||
           lot.expirationStatus === ExpirationStatus.SOON,
       ),
     }))
@@ -132,7 +147,9 @@ export function buildPantryOverview(
         item.hasDepletionRule &&
         item.depletionRule &&
         item.estimatedCurrentQuantity !== undefined &&
-        item.estimatedCurrentQuantity <= item.depletionRule.consumeAmount,
+        item.estimatedCurrentQuantity <=
+          item.depletionRule.consumeAmount *
+            preferences.depletionWarningThresholdRatio,
     )
     .map<DepletingProductGroup>((item) => ({
       productTypeId: item.productTypeId,
@@ -159,7 +176,7 @@ export function buildPantryOverview(
     .map<ShoppingPlanItem>((item) => {
       const estimatedDepletionAt = item.estimatedDepletionAt ?? referenceDate;
       const recommendedPurchaseAt = clampToReferenceDate(
-        subtractDays(estimatedDepletionAt, SHOPPING_PLAN_LEAD_DAYS),
+        subtractDays(estimatedDepletionAt, preferences.shoppingPlanLeadDays),
         referenceDate,
       );
 
@@ -187,6 +204,7 @@ export function buildPantryOverview(
   return {
     userId,
     generatedAt: referenceDate,
+    preferences,
     items,
     expiringItems,
     depletingItems,
@@ -197,6 +215,7 @@ export function buildPantryOverview(
 function toLotSummary(
   inventoryLot: InventoryLot,
   referenceDate: Date,
+  expirationWarningDays: number,
 ): PantryLotSummary {
   return {
     lotId: inventoryLot.id.toString(),
@@ -204,7 +223,10 @@ function toLotSummary(
     quantity: inventoryLot.quantity,
     unit: inventoryLot.unit,
     expiresAt: inventoryLot.expiresAt,
-    expirationStatus: inventoryLot.getExpirationStatus(referenceDate),
+    expirationStatus: inventoryLot.getExpirationStatus(
+      referenceDate,
+      expirationWarningDays,
+    ),
     updatedAt: inventoryLot.updatedAt,
   };
 }

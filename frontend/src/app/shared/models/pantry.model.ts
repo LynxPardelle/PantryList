@@ -1,6 +1,8 @@
+import { UserPreferences } from './profile.model';
+
 export type ProductUnit = 'lt' | 'kg' | 'g' | 'piezas' | 'ml';
 export type ProductCategory = 'food' | 'cleaning' | 'hygiene' | 'other';
-export type ExpirationStatus = 'critical' | 'soon' | 'stable' | 'none';
+export type ExpirationStatus = 'expired' | 'critical' | 'soon' | 'stable' | 'none';
 export type ProductTypeSelectionMode = 'existing' | 'new';
 export type DepletionPeriod = 'day' | 'week' | 'month';
 export type ShoppingPlanUrgency = 'depleted' | 'critical' | 'upcoming';
@@ -125,6 +127,7 @@ export interface ShoppingPlanItem {
 export interface PantryOverview {
   userId: string;
   generatedAt: Date;
+  preferences: UserPreferences;
   items: PantryOverviewItem[];
   expiringItems: ExpiringProductGroup[];
   depletingItems: DepletingProductGroup[];
@@ -256,6 +259,7 @@ export interface ApiShoppingPlanItem {
 export interface ApiPantryOverview {
   userId: string;
   generatedAt: string;
+  preferences: UserPreferences;
   items: ApiPantryOverviewItem[];
   expiringItems: ApiExpiringProductGroup[];
   depletingItems: ApiDepletingProductGroup[];

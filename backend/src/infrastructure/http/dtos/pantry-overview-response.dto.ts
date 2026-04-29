@@ -187,6 +187,14 @@ export class PantryOverviewResponseDto {
   @ApiProperty()
   generatedAt: Date;
 
+  @ApiProperty()
+  preferences: {
+    expirationWarningDays: number;
+    showExpiredEntryAlert: boolean;
+    depletionWarningThresholdRatio: number;
+    shoppingPlanLeadDays: number;
+  };
+
   @ApiProperty({ type: [PantryOverviewItemResponseDto] })
   items: PantryOverviewItemResponseDto[];
 

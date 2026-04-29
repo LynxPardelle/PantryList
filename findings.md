@@ -326,6 +326,25 @@
 - The profile/preferences feature should add real behavior-backed settings only:
   expiration warning days, expired entry alert toggle, depletion warning ratio,
   and shopping-plan lead days.
+- Browser date inputs serialize expiration dates as date-only UTC-midnight
+  values, so expiration comparison must also use date-only UTC boundaries. A
+  local Central Time comparison can mark today's date as already expired.
+- Profile preferences are stored on the user document through
+  `UserPreferencesDao`, keeping the app ready for a future MongoDB-to-other-DB
+  persistence swap without changing controllers or Angular screens.
+- The `/profile` Angular route should stay lazy-loaded. Keeping profile
+  settings out of the initial pantry bundle brought the initial production build
+  back under budget.
+- Expired lots should be included in the priority groups, but the entry alert
+  should remain non-modal and dismissible for the current visit. Blocking the
+  pantry on every login would make the warning punitive instead of useful.
+- `.env.docker.local` remains ignored and must stay uncommitted. It can contain
+  local MongoDB and Cognito runtime values.
+- The `security-compliance` secret scanner returned `count = 0` and
+  `findings = []` for the PantryList workspace after this feature pass.
+- Frontend and backend production dependency audits returned zero production
+  vulnerabilities. Docker development containers can still report dev-tooling
+  audit noise because they install watcher/test dependencies.
 
 ## Resources
 - `C:\Users\lince\Documents\GitHub\PantryList\.impeccable.md`

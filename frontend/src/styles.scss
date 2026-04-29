@@ -247,9 +247,51 @@ button:focus-visible {
   color: var(--color-danger-text);
 }
 
+.status-pill[data-status='expired'] {
+  background: rgba(143, 45, 32, 0.18);
+  color: var(--color-danger-text);
+}
+
 .status-pill[data-status='soon'] {
   background: rgba(205, 127, 50, 0.16);
   color: var(--color-warning-text);
+}
+
+.expired-entry-alert {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: center;
+  margin-top: 1.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: 26px;
+  padding: 1.25rem;
+  background:
+    radial-gradient(circle at top right, rgba(169, 57, 39, 0.14), transparent 34%),
+    var(--color-surface-critical);
+  box-shadow: var(--shadow-soft);
+}
+
+.expired-entry-alert h2,
+.expired-entry-alert p {
+  margin: 0;
+}
+
+.expired-alert-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  justify-content: flex-end;
+}
+
+@media (max-width: 760px) {
+  .expired-entry-alert {
+    grid-template-columns: 1fr;
+  }
+
+  .expired-alert-actions {
+    justify-content: flex-start;
+  }
 }
 
 .depletion-pill {

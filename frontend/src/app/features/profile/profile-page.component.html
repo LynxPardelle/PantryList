@@ -1,0 +1,150 @@
+<main class="profile-page" aria-labelledby="profile-title">
+  <nav class="profile-nav" aria-label="Navegacion de perfil">
+    <a class="ghost-button" routerLink="/pantry">Volver a despensa</a>
+    <button class="secondary-button" type="button" (click)="logout()">Cerrar sesi&oacute;n</button>
+  </nav>
+
+  <section class="profile-hero">
+    <div>
+      <p class="eyebrow">Centro de control</p>
+      <h1 id="profile-title">Preferencias para operar la casa sin ruido.</h1>
+      <p class="lead">
+        Ajusta cu&aacute;ndo PantryList debe llamar tu atenci&oacute;n y c&oacute;mo calcula
+        caducidad, durabilidad y reposici&oacute;n.
+      </p>
+    </div>
+
+    <aside class="profile-summary" aria-label="Resumen de cuenta">
+      @if (profile; as currentProfile) {
+        <p class="session-label">Cuenta activa</p>
+        <h2>{{ currentProfile.username }}</h2>
+        <p>{{ currentProfile.email }}</p>
+        <dl>
+          <div>
+            <dt>Estado</dt>
+            <dd>{{ currentProfile.status === 'active' ? 'Activa' : 'Deshabilitada' }}</dd>
+          </div>
+          <div>
+            <dt>Identidades conectadas</dt>
+            <dd>{{ currentProfile.connectedIdentityCount }}</dd>
+          </div>
+        </dl>
+      } @else if (loading) {
+        <p class="loading-copy" aria-live="polite">Cargando perfil...</p>
+      }
+    </aside>
+  </section>
+
+  @if (loadError) {
+    <section class="error-banner" role="alert" aria-live="assertive">
+      <strong>No se pudo cargar el perfil.</strong>
+      <span>{{ loadError }}</span>
+      <button class="secondary-button" type="button" (click)="loadProfile()">Reintentar</button>
+    </section>
+  }
+
+  <section class="profile-grid">
+    <article class="panel preferences-panel">
+      <div class="panel-header">
+        <div>
+          <p class="panel-kicker">Configuraci&oacute;n</p>
+          <h2>Reglas de PantryList</h2>
+        </div>
+      </div>
+
+      <form class="preferences-form" [formGroup]="preferencesForm" (ngSubmit)="savePreferences()">
+        <fieldset class="settings-group">
+          <legend>Caducidad</legend>
+
+          <label class="field">
+            <span>D&iacute;as para marcar "pr&oacute;ximo"</span>
+            <input
+              type="number"
+              formControlName="expirationWarningDays"
+              min="1"
+              max="60"
+              step="1"
+            />
+          </label>
+          <p class="helper-copy">
+            Los lotes vencidos se muestran como "Ya caduc&oacute;"; esta regla solo afecta los d&iacute;as futuros.
+          </p>
+
+          <label class="check-field">
+            <input type="checkbox" formControlName="showExpiredEntryAlert" />
+            <span>Mostrar alerta de caducados al entrar</span>
+          </label>
+        </fieldset>
+
+        <fieldset class="settings-group">
+          <legend>Durabilidad</legend>
+
+          <label class="field">
+            <span>Sensibilidad de agotamiento</span>
+            <input
+              type="number"
+              formControlName="depletionWarningThresholdRatio"
+              min="0.25"
+              max="4"
+              step="0.25"
+            />
+          </label>
+          <p class="helper-copy">
+            1 mantiene el comportamiento actual: avisar cuando queda un intervalo de consumo o menos.
+          </p>
+        </fieldset>
+
+        <fieldset class="settings-group">
+          <legend>Compras</legend>
+
+          <label class="field">
+            <span>D&iacute;as de anticipaci&oacute;n para comprar</span>
+            <input
+              type="number"
+              formControlName="shoppingPlanLeadDays"
+              min="0"
+              max="30"
+              step="1"
+            />
+          </label>
+          <p class="helper-copy">
+            Define cu&aacute;ntos d&iacute;as antes del agotamiento se recomienda reponer.
+          </p>
+        </fieldset>
+
+        @if (preferencesForm.invalid && preferencesForm.touched) {
+          <p class="field-error" role="alert">
+            Los rangos permitidos son: caducidad 1-60, sensibilidad 0.25-4,
+            compras 0-30.
+          </p>
+        }
+
+        @if (saveError) {
+          <p class="field-error" role="alert">{{ saveError }}</p>
+        }
+
+        @if (saveMessage) {
+          <p class="success-copy" role="status">{{ saveMessage }}</p>
+        }
+
+        <button class="primary-button" type="submit" [disabled]="saving || loading">
+          {{ saving ? 'Guardando...' : 'Guardar preferencias' }}
+        </button>
+      </form>
+    </article>
+
+    <aside class="panel guidance-panel">
+      <p class="panel-kicker">C&oacute;mo se usa</p>
+      <h2>Controles con efecto real</h2>
+      <p>
+        Estas preferencias cambian los c&aacute;lculos de la despensa. No gestionan
+        email, contrase&ntilde;a ni proveedores sociales; eso seguir&aacute; viviendo en Cognito.
+      </p>
+      <ul>
+        <li>Caducidad decide qu&eacute; lotes suben a prioridad.</li>
+        <li>Durabilidad ajusta cu&aacute;ndo aparece "Se agotan pronto".</li>
+        <li>Compras mueve la fecha sugerida de reposici&oacute;n.</li>
+      </ul>
+    </aside>
+  </section>
+</main>

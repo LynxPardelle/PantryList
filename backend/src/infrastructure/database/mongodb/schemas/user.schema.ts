@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 import { UserAccountStatus } from '../../../../domain/enums';
+import { UserPreferencesPrimitives } from '../../../../domain/value-objects/user-preferences.vo';
 
 export type UserDocumentModel = HydratedDocument<UserDocument>;
 
@@ -30,6 +31,9 @@ export class UserDocument {
 
   @Prop({ required: true, enum: Object.values(UserAccountStatus), index: true })
   status: UserAccountStatus;
+
+  @Prop({ required: false, type: Object })
+  preferences?: Partial<UserPreferencesPrimitives>;
 
   @Prop({ required: true })
   createdAt: Date;

@@ -6,6 +6,7 @@ export const PRODUCT_DAO = Symbol('PRODUCT_DAO');
 export const PRODUCT_TYPE_DAO = Symbol('PRODUCT_TYPE_DAO');
 export const INVENTORY_LOT_DAO = Symbol('INVENTORY_LOT_DAO');
 export const USER_DAO = Symbol('USER_DAO');
+export const USER_PREFERENCES_DAO = Symbol('USER_PREFERENCES_DAO');
 export const COGNITO_AUTH_URL_BUILDER = Symbol('COGNITO_AUTH_URL_BUILDER');
 export const COGNITO_TOKEN_CLIENT = Symbol('COGNITO_TOKEN_CLIENT');
 export const COGNITO_TOKEN_VERIFIER = Symbol('COGNITO_TOKEN_VERIFIER');

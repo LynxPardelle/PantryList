@@ -53,7 +53,7 @@
 
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 1rem;
   margin-top: 1.25rem;
 }
@@ -75,6 +75,8 @@
 }
 
 .summary-card-alert,
+.expiring-lot-row[data-status='expired'],
+.lot-row[data-status='expired'],
 .expiring-lot-row[data-status='soon'],
 .lot-row[data-status='soon'] {
   background: var(--color-surface-warning);
@@ -262,10 +264,6 @@
 }
 
 @media (max-width: 1100px) {
-  .summary-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .content-grid,
   .hero-card {
     grid-template-columns: 1fr;
@@ -284,7 +282,6 @@
     border-radius: 24px;
   }
 
-  .summary-grid,
   .lot-form,
   .mode-switch,
   .lot-row {

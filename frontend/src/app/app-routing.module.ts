@@ -38,6 +38,17 @@ const routes: Routes = [
     },
   },
   {
+    path: 'profile',
+    loadComponent: () =>
+      import('./features/profile/profile-page.component').then(
+        (module) => module.ProfilePageComponent,
+      ),
+    canActivate: [AuthGuard],
+    data: {
+      authMode: 'authenticated',
+    },
+  },
+  {
     path: '',
     pathMatch: 'full',
     redirectTo: 'pantry',

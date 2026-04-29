@@ -130,13 +130,13 @@ Phase 16
 - [x] Capture design context for the `Hogar operativo` direction
 - [x] Approve feature design for `/profile`, user/app preferences, and expired-item entry alerts
 - [x] Write and self-review design spec
-- [ ] User review of written design spec
-- [ ] Create implementation plan
-- [ ] Implement backend preferences model/API
-- [ ] Implement frontend profile/settings surface and expired alerts
-- [ ] Apply focused design polish
-- [ ] Verify with unit, build, browser, and audit checks
-- **Status:** in progress
+- [x] User review of written design spec
+- [x] Create implementation plan
+- [x] Implement backend preferences model/API
+- [x] Implement frontend profile/settings surface and expired alerts
+- [x] Apply focused design polish
+- [x] Verify with unit, build, browser, and audit checks
+- **Status:** completed
 
 ## Key Questions
 1. Which AWS integration path best fits PantryList's current maturity: container-first, serverless-first, or hybrid?
@@ -170,6 +170,9 @@ Phase 16
 | `rg.exe` failed with access denied in this environment | 1 | Switched to `git ls-files` and native PowerShell file inspection |
 | Stale local JWT cookies produced a backend `500` during Cognito-disabled smoke testing | 1 | Updated `AccessTokenGuard` to convert Cognito verifier failures into `401 Unauthorized`, then verified stale cookies return `401` |
 | Cognito login response returned a `Location` header with HTTP `200` | 1 | Passed explicit `302` to Fastify `reply.redirect(url, 302)` and verified the backend now returns `HTTP/1.1 302 Found` |
+| Docker daemon was unavailable during the profile preferences validation pass | 1 | Started Docker Desktop, waited for `docker info`, rebuilt the app profile, and verified MongoDB, backend, and frontend were running |
+| A first changed-file secret scan used a nested PowerShell object array and produced path-binding errors | 1 | Re-ran the scan with a flattened string path array and then verified with the `security-compliance` secret scanner |
+| One frontend `npm run test:ci` run showed transient ChromeHeadless temp-directory/crashpad startup noise | 1 | Re-ran the frontend test workflow and confirmed the suite passed |
 
 ## Notes
 - Update phase status as progress changes.
@@ -206,3 +209,7 @@ Phase 16
   Cognito-native claim flow instead of restoring local password claims.
 - Cognito infrastructure is deployed in the configured default AWS account and
   `us-east-1` with Cognito-hosted email, Google, and Facebook enabled.
+- Profile preferences now persist through a user-scoped DAO boundary so future
+  persistence swaps do not require controller or UI rewrites.
+- Expiration status is date-only and UTC-normalized to avoid Central Time
+  false-expired results for values stored from browser date inputs.

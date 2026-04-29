@@ -1,0 +1,147 @@
+.profile-page {
+  width: min(1120px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 2rem 0 3rem;
+}
+
+.profile-nav,
+.profile-grid,
+.profile-hero,
+.profile-summary dl,
+.preferences-form,
+.settings-group,
+.guidance-panel {
+  display: grid;
+  gap: 1rem;
+}
+
+.profile-nav {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.profile-hero,
+.panel,
+.profile-summary,
+.error-banner {
+  background: var(--color-surface-elevated);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-soft);
+}
+
+.profile-hero {
+  grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.75fr);
+  gap: 1.25rem;
+  border-radius: 32px;
+  padding: 1.6rem;
+}
+
+.profile-hero h1,
+.profile-summary h2,
+.panel h2 {
+  margin: 0;
+}
+
+.profile-hero h1 {
+  max-width: 12ch;
+  font-size: clamp(2.35rem, 5vw, 4rem);
+}
+
+.profile-summary {
+  align-content: start;
+  border-radius: 24px;
+  padding: 1.25rem;
+  background: var(--color-surface-tint);
+}
+
+.profile-summary p {
+  margin: 0;
+}
+
+.profile-summary dl {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+}
+
+.profile-summary dt,
+.profile-summary dd {
+  margin: 0;
+}
+
+.profile-summary dt {
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+}
+
+.profile-summary dd {
+  font-weight: 800;
+}
+
+.profile-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.48fr);
+  align-items: start;
+  margin-top: 1.25rem;
+}
+
+.panel {
+  border-radius: 30px;
+  padding: 1.5rem;
+}
+
+.settings-group {
+  margin: 0;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 22px;
+  background: rgba(251, 243, 234, 0.72);
+}
+
+.settings-group legend {
+  padding: 0 0.35rem;
+  color: var(--color-accent-deep);
+  font-weight: 800;
+}
+
+.success-copy {
+  margin: 0;
+  color: #465238;
+  font-weight: 800;
+}
+
+.guidance-panel ul {
+  display: grid;
+  gap: 0.7rem;
+  margin: 0;
+  padding-left: 1.2rem;
+  color: var(--color-text-muted);
+}
+
+.error-banner {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 1.25rem;
+  border-radius: 22px;
+  padding: 1rem 1.2rem;
+  color: var(--color-danger-text);
+}
+
+@media (max-width: 860px) {
+  .profile-page {
+    width: min(100%, calc(100% - 1rem));
+    padding-top: 1rem;
+  }
+
+  .profile-nav,
+  .profile-grid,
+  .profile-hero,
+  .profile-summary dl {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-hero,
+  .panel {
+    padding: 1.1rem;
+    border-radius: 24px;
+  }
+}

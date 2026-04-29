@@ -174,6 +174,7 @@ export class PantryService {
     return {
       userId: overview.userId,
       generatedAt: new Date(overview.generatedAt),
+      preferences: overview.preferences,
       items: overview.items.map((item) => this.normalizePantryOverviewItem(item)),
       expiringItems: overview.expiringItems.map((item) => ({
         ...item,

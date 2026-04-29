@@ -8,12 +8,14 @@ import { AuthFacade } from '../../core/services/auth.facade';
 import { PantryPageComponent } from './pantry-page.component';
 import { PantryService } from '../../core/services/pantry.service';
 import { PantryOverviewItem, ProductType } from '../../shared/models/pantry.model';
+import { selectExpiredEntryAlert } from '../../store/pantry/pantry.selectors';
 
 describe('PantryPageComponent', () => {
   let fixture: ComponentFixture<PantryPageComponent>;
   let component: PantryPageComponent;
   let pantryService: jasmine.SpyObj<PantryService>;
   let authFacade: AuthFacadeStub;
+  let store: { select: jasmine.Spy; dispatch: jasmine.Spy };
 
   beforeEach(async () => {
     pantryService = jasmine.createSpyObj<PantryService>('PantryService', [
@@ -27,6 +29,10 @@ describe('PantryPageComponent', () => {
     pantryService.consumeInventoryLot.and.returnValue(of(null));
     pantryService.updateProductTypeDepletionRule.and.returnValue(of({} as any));
     authFacade = new AuthFacadeStub();
+    store = {
+      select: jasmine.createSpy('select').and.returnValue(of(null)),
+      dispatch: jasmine.createSpy('dispatch'),
+    };
 
     await TestBed.configureTestingModule({
       declarations: [PantryPageComponent],
@@ -46,10 +52,7 @@ describe('PantryPageComponent', () => {
         },
         {
           provide: Store,
-          useValue: {
-            select: () => of(null),
-            dispatch: jasmine.createSpy('dispatch'),
-          },
+          useValue: store,
         },
       ],
     }).compileComponents();
@@ -173,9 +176,6 @@ describe('PantryPageComponent', () => {
 
   it('saves edited product type depletion rules and reloads the pantry overview', () => {
     const group = makePantryGroup({ defaultUnit: 'lt' });
-    const store = TestBed.inject(Store) as unknown as {
-      dispatch: jasmine.Spy;
-    };
     component.startEditingDepletionRule(group);
     component.depletionRuleForm.patchValue({
       enabled: true,
@@ -200,6 +200,38 @@ describe('PantryPageComponent', () => {
     );
     expect(component.editingDepletionProductTypeId).toBeNull();
     expect(store.dispatch).toHaveBeenCalled();
+  });
+
+  it('shows and dismisses the expired entry alert for the current pantry visit', async () => {
+    store.select.and.callFake((selector) => {
+      if (selector === selectExpiredEntryAlert) {
+        return of({
+          expiredLotCount: 2,
+          expiredQuantity: 3,
+        });
+      }
+
+      return of(null);
+    });
+    fixture = TestBed.createComponent(PantryPageComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    let compiled = fixture.nativeElement as HTMLElement;
+    const alert = compiled.querySelector('[data-testid="expired-entry-alert"]');
+    expect(alert?.textContent).toContain('Hay productos que ya caducaron');
+    expect(alert?.textContent).toContain('2 lotes');
+
+    compiled
+      .querySelector<HTMLButtonElement>('[data-testid="dismiss-expired-alert"]')
+      ?.click();
+    fixture.detectChanges();
+    compiled = fixture.nativeElement as HTMLElement;
+
+    expect(
+      compiled.querySelector('[data-testid="expired-entry-alert"]'),
+    ).toBeNull();
   });
 });
 

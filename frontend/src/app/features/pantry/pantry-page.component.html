@@ -17,9 +17,41 @@
       <p class="session-caption">
         Registra cada compra por lote y decide de cu&aacute;l consumir cuando haga falta.
       </p>
+      <a class="ghost-button" routerLink="/profile">Perfil y preferencias</a>
       <button class="secondary-button" type="button" (click)="logout()">Cerrar sesi&oacute;n</button>
     </aside>
   </section>
+
+  @if (expiredAlert$ | async; as expiredAlert) {
+    @if (!expiredAlertDismissed) {
+      <section
+        class="expired-entry-alert"
+        data-testid="expired-entry-alert"
+        role="status"
+        aria-live="polite"
+      >
+        <div>
+          <p class="panel-kicker">Caducados detectados</p>
+          <h2>Hay productos que ya caducaron</h2>
+          <p>
+            Revisa {{ expiredAlert.expiredLotCount }}
+            {{ expiredAlert.expiredLotCount === 1 ? 'lote' : 'lotes' }} antes de planear compras o consumo.
+          </p>
+        </div>
+        <div class="expired-alert-actions">
+          <button class="primary-button" type="button" (click)="reviewExpiredLots()">Revisar caducados</button>
+          <button
+            class="secondary-button"
+            type="button"
+            data-testid="dismiss-expired-alert"
+            (click)="dismissExpiredAlert()"
+          >
+            Ocultar por ahora
+          </button>
+        </div>
+      </section>
+    }
+  }
 
   @if (error$ | async; as error) {
     <section class="error-banner" role="alert" aria-live="assertive">
@@ -46,6 +78,11 @@
         <span>Lotes</span>
         <strong>{{ summary.totalLots }}</strong>
         <small>controlados de forma individual</small>
+      </article>
+      <article class="summary-card summary-card-alert">
+        <span>Ya caducaron</span>
+        <strong>{{ summary.expiredLots }}</strong>
+        <small>lotes que requieren revisi&oacute;n</small>
       </article>
       <article class="summary-card summary-card-alert">
         <span>Pr&oacute;ximos a caducar</span>
@@ -252,11 +289,11 @@
     </article>
 
     <section class="workspace-column">
-      <article class="panel expiring-panel">
+      <article class="panel expiring-panel" id="expired-priority-panel">
         <div class="panel-header">
           <div>
             <p class="panel-kicker">Prioridad</p>
-            <h2>Pr&oacute;ximos a caducar</h2>
+            <h2>Caducados y pr&oacute;ximos</h2>
           </div>
         </div>
 
@@ -276,7 +313,7 @@
                     </div>
                     <div class="expiring-quantity">
                       <strong>{{ group.totalExpiringQuantity }}</strong>
-                      <span>por atender</span>
+                      <span>por revisar</span>
                     </div>
                   </div>
 
@@ -598,7 +635,11 @@
                             <p>{{ lot.quantity }} {{ lot.unit }}</p>
                             <small>
                               @if (lot.expiresAt) {
-                                Caduca el {{ lot.expiresAt | date:'dd MMM y' }}
+                                @if (lot.expirationStatus === 'expired') {
+                                  Ya caduc&oacute; el {{ lot.expiresAt | date:'dd MMM y' }}
+                                } @else {
+                                  Caduca el {{ lot.expiresAt | date:'dd MMM y' }}
+                                }
                               } @else {
                                 Sin fecha de caducidad
                               }

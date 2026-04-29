@@ -18,6 +18,7 @@ export class PantryOverviewMapper {
     return {
       userId: overview.userId,
       generatedAt: overview.generatedAt,
+      preferences: overview.preferences,
       items: overview.items.map((item) => ({
         productTypeId: item.productTypeId,
         baseName: item.baseName,

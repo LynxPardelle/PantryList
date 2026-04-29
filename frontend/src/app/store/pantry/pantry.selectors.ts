@@ -5,10 +5,16 @@ import { PantryState } from './pantry.state';
 export interface PantrySummary {
   totalTypes: number;
   totalLots: number;
+  expiredLots: number;
   expiringTypes: number;
   depletingTypes: number;
   shoppingPlanTypes: number;
   criticalLots: number;
+}
+
+export interface ExpiredEntryAlert {
+  expiredLotCount: number;
+  expiredQuantity: number;
 }
 
 export const selectPantryState =
@@ -57,6 +63,12 @@ export const selectPantrySummary = createSelector(
   (groups, expiringGroups, depletingGroups, shoppingPlanItems): PantrySummary => ({
     totalTypes: groups.length,
     totalLots: groups.reduce((sum, group) => sum + group.lotCount, 0),
+    expiredLots: groups.reduce(
+      (sum, group) =>
+        sum +
+        group.lots.filter((lot) => lot.expirationStatus === 'expired').length,
+      0,
+    ),
     expiringTypes: expiringGroups.length,
     depletingTypes: depletingGroups.length,
     shoppingPlanTypes: shoppingPlanItems.length,
@@ -67,6 +79,32 @@ export const selectPantrySummary = createSelector(
       0,
     ),
   }),
+);
+
+export const selectExpiredEntryAlert = createSelector(
+  selectPantryOverview,
+  (overview): ExpiredEntryAlert | null => {
+    if (!overview?.preferences.showExpiredEntryAlert) {
+      return null;
+    }
+
+    const expiredLots = overview.items.flatMap((group) =>
+      group.lots.filter((lot) => lot.expirationStatus === 'expired'),
+    );
+
+    if (expiredLots.length === 0) {
+      return null;
+    }
+
+    return {
+      expiredLotCount: expiredLots.length,
+      expiredQuantity: Number(
+        expiredLots
+          .reduce((sum, lot) => sum + lot.quantity, 0)
+          .toFixed(2),
+      ),
+    };
+  },
 );
 
 export const selectPantryGroupsSorted = createSelector(

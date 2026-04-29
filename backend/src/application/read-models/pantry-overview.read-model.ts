@@ -1,4 +1,5 @@
 import { DepletionRulePrimitives } from '../../domain/entities/product-type.entity';
+import { UserPreferencesPrimitives } from '../../domain/value-objects/user-preferences.vo';
 import {
   ExpirationStatus,
   ProductCategory,
@@ -75,6 +76,7 @@ export interface PantryOverviewItem {
 export interface PantryOverview {
   userId: string;
   generatedAt: Date;
+  preferences: UserPreferencesPrimitives;
   items: PantryOverviewItem[];
   expiringItems: ExpiringProductGroup[];
   depletingItems: DepletingProductGroup[];

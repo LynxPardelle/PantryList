@@ -20,6 +20,7 @@ export enum ProductCategory {
 }
 
 export enum ExpirationStatus {
+  EXPIRED = 'expired',
   CRITICAL = 'critical',
   SOON = 'soon',
   STABLE = 'stable',

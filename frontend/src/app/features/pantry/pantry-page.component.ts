@@ -40,6 +40,7 @@ import * as PantryActions from '../../store/pantry/pantry.actions';
 import {
   selectExpiringGroups,
   selectDepletingGroups,
+  selectExpiredEntryAlert,
   selectPantryError,
   selectPantryGroupsSorted,
   selectPantryLoading,
@@ -67,6 +68,7 @@ export class PantryPageComponent implements OnInit {
   readonly error$ = this.store.select(selectPantryError);
   readonly summary$ = this.store.select(selectPantrySummary);
   readonly expiringGroups$ = this.store.select(selectExpiringGroups);
+  readonly expiredAlert$ = this.store.select(selectExpiredEntryAlert);
   readonly depletingGroups$ = this.store.select(selectDepletingGroups);
   readonly shoppingPlanItems$ = this.store.select(selectShoppingPlanItems);
   readonly pantryGroups$ = this.store.select(selectPantryGroupsSorted);
@@ -85,6 +87,7 @@ export class PantryPageComponent implements OnInit {
   };
 
   readonly expirationLabels: Record<ExpirationStatus, string> = {
+    expired: 'Ya caduco',
     critical: 'Critico',
     soon: 'Proximo',
     stable: 'Estable',
@@ -164,6 +167,7 @@ export class PantryPageComponent implements OnInit {
   editingDepletionProductTypeId: string | null = null;
   depletionRuleSavingProductTypeId: string | null = null;
   depletionRuleError: string | null = null;
+  expiredAlertDismissed = false;
   readonly consumeErrors: Record<string, string> = {};
   private readonly expandedProductTypeIds = new Set<string>();
 
@@ -399,6 +403,20 @@ export class PantryPageComponent implements OnInit {
           this.consumeErrors[lotId] = this.getErrorMessage(error);
         },
       });
+  }
+
+  dismissExpiredAlert(): void {
+    this.expiredAlertDismissed = true;
+  }
+
+  reviewExpiredLots(): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    document
+      .getElementById('expired-priority-panel')
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   logout(): void {

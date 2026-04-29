@@ -156,6 +156,153 @@ describe('buildPantryOverview depletion forecasts', () => {
     ]);
   });
 
+  it('separates expired lots from today-critical lots and includes them in priority groups', () => {
+    const tuna = makeProductType({
+      id: 'type-tuna',
+      baseName: 'Atun',
+    });
+
+    const overview = buildPantryOverview(
+      userId,
+      [tuna],
+      [
+        makeInventoryLot({
+          id: 'lot-expired',
+          productTypeId: 'type-tuna',
+          quantity: 2,
+          unit: QuantityUnit.PIECE,
+          expiresAt: new Date('2026-04-23T00:00:00.000Z'),
+        }),
+        makeInventoryLot({
+          id: 'lot-critical',
+          productTypeId: 'type-tuna',
+          quantity: 1,
+          unit: QuantityUnit.PIECE,
+          expiresAt: new Date('2026-04-24T23:59:00.000Z'),
+        }),
+      ],
+      referenceDate,
+    );
+
+    expect(overview.items[0].lots.map((lot) => lot.expirationStatus)).toEqual([
+      'expired',
+      'critical',
+    ]);
+    expect(overview.expiringItems[0]).toMatchObject({
+      productTypeId: 'type-tuna',
+      totalExpiringQuantity: 3,
+      lotCount: 2,
+    });
+  });
+
+  it('uses configured expiration warning days instead of the hardcoded seven-day window', () => {
+    const apples = makeProductType({
+      id: 'type-apples',
+      baseName: 'Manzanas',
+    });
+    const applesLot = makeInventoryLot({
+      id: 'lot-apples',
+      productTypeId: 'type-apples',
+      quantity: 10,
+      unit: QuantityUnit.PIECE,
+      expiresAt: new Date('2026-04-29T00:00:00.000Z'),
+    });
+
+    const overview = buildPantryOverview(
+      userId,
+      [apples],
+      [applesLot],
+      referenceDate,
+      {
+        expirationWarningDays: 3,
+        showExpiredEntryAlert: true,
+        depletionWarningThresholdRatio: 1,
+        shoppingPlanLeadDays: 3,
+      },
+    );
+
+    expect(overview.items[0].lots[0].expirationStatus).toBe('stable');
+    expect(overview.expiringItems).toEqual([]);
+  });
+
+  it('uses configured depletion threshold ratio for low-durability alerts', () => {
+    const detergent = makeProductType({
+      id: 'type-detergent-threshold',
+      baseName: 'Detergente',
+      defaultDepletionRule: {
+        enabled: true,
+        consumeAmount: 1,
+        unit: QuantityUnit.LITER,
+        everyAmount: 1,
+        everyPeriod: 'month',
+        anchorDate,
+      },
+    });
+    const detergentLot = makeInventoryLot({
+      id: 'lot-detergent-threshold',
+      productTypeId: 'type-detergent-threshold',
+      quantity: 5,
+      unit: QuantityUnit.LITER,
+    });
+
+    const overview = buildPantryOverview(
+      userId,
+      [detergent],
+      [detergentLot],
+      referenceDate,
+      {
+        expirationWarningDays: 7,
+        showExpiredEntryAlert: true,
+        depletionWarningThresholdRatio: 2,
+        shoppingPlanLeadDays: 3,
+      },
+    );
+
+    expect(overview.items[0].estimatedCurrentQuantity).toBe(2);
+    expect(overview.depletingItems).toHaveLength(1);
+  });
+
+  it('uses configured shopping plan lead days for recommended purchase dates', () => {
+    const detergent = makeProductType({
+      id: 'type-detergent-lead',
+      baseName: 'Detergente',
+      defaultDepletionRule: {
+        enabled: true,
+        consumeAmount: 1,
+        unit: QuantityUnit.LITER,
+        everyAmount: 1,
+        everyPeriod: 'week',
+        anchorDate: new Date('2026-04-17T00:00:00.000Z'),
+      },
+    });
+
+    const overview = buildPantryOverview(
+      userId,
+      [detergent],
+      [
+        makeInventoryLot({
+          id: 'lot-detergent-lead',
+          productTypeId: 'type-detergent-lead',
+          quantity: 2,
+          unit: QuantityUnit.LITER,
+        }),
+      ],
+      referenceDate,
+      {
+        expirationWarningDays: 7,
+        showExpiredEntryAlert: true,
+        depletionWarningThresholdRatio: 1,
+        shoppingPlanLeadDays: 7,
+      },
+    );
+
+    expect(overview.shoppingPlanItems[0]).toMatchObject({
+      productTypeId: 'type-detergent-lead',
+      recommendedPurchaseAt: referenceDate,
+      estimatedDepletionAt: new Date('2026-05-01T00:00:00.000Z'),
+    });
+  });
+
   function makeProductType(input: {
     id: string;
     baseName: string;
@@ -185,6 +332,7 @@ describe('buildPantryOverview depletion forecasts', () => {
     productTypeId: string;
     quantity: number;
     unit: QuantityUnit;
+    expiresAt?: Date;
   }): InventoryLot {
     return InventoryLot.fromPrimitives({
       id: input.id,
@@ -192,6 +340,7 @@ describe('buildPantryOverview depletion forecasts', () => {
       productTypeId: input.productTypeId,
       quantity: input.quantity,
       unit: input.unit,
+      expiresAt: input.expiresAt,
       createdAt: new Date('2026-01-01T00:00:00.000Z'),
       updatedAt: new Date('2026-01-01T00:00:00.000Z'),
     });

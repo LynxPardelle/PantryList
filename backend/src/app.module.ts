@@ -16,6 +16,7 @@ import {
   PRODUCT_TYPE_REPOSITORY,
   SCHEDULING_SERVICE,
   USER_DAO,
+  USER_PREFERENCES_DAO,
 } from './application/tokens';
 import { CognitoAuthTransactionService } from './application/services/cognito-auth-transaction.service';
 import { CognitoProfileSyncService } from './application/services/cognito-profile-sync.service';
@@ -29,8 +30,10 @@ import { GetProductByIdUseCase } from './application/use-cases/get-product-by-id
 import { GetProductTypeByIdUseCase } from './application/use-cases/get-product-type-by-id.use-case';
 import { GetProductsByUserUseCase } from './application/use-cases/get-products-by-user.use-case';
 import { GetPantryOverviewUseCase } from './application/use-cases/get-pantry-overview.use-case';
+import { GetUserProfileUseCase } from './application/use-cases/get-user-profile.use-case';
 import { ListInventoryLotsUseCase } from './application/use-cases/list-inventory-lots.use-case';
 import { SearchProductTypesUseCase } from './application/use-cases/search-product-types.use-case';
+import { UpdateUserPreferencesUseCase } from './application/use-cases/update-user-preferences.use-case';
 import { UpdateProductTypeDepletionRuleUseCase } from './application/use-cases/update-product-type-depletion-rule.use-case';
 import { UpdateProductQuantityUseCase } from './application/use-cases/update-product-quantity.use-case';
 import { SchedulingDomainService } from './domain/services/scheduling.service';
@@ -41,6 +44,7 @@ import { MongoInventoryLotRepository } from './infrastructure/database/mongodb/m
 import { MongoProductRepository } from './infrastructure/database/mongodb/mongodb-product.repository';
 import { MongoProductTypeRepository } from './infrastructure/database/mongodb/mongodb-product-type.repository';
 import { MongoUserDao } from './infrastructure/database/mongodb/mongodb-user.dao';
+import { MongoUserPreferencesDao } from './infrastructure/database/mongodb/mongodb-user-preferences.dao';
 import {
   InventoryLotDocument,
   InventoryLotSchema,
@@ -62,6 +66,7 @@ import { AccessTokenGuard } from './infrastructure/http/auth/access-token.guard'
 import { AuthController } from './infrastructure/http/controllers/auth.controller';
 import { InventoryLotsController } from './infrastructure/http/controllers/inventory-lots.controller';
 import { PantryController } from './infrastructure/http/controllers/pantry.controller';
+import { ProfileController } from './infrastructure/http/controllers/profile.controller';
 import { ProductTypesController } from './infrastructure/http/controllers/product-types.controller';
 import { ProductsController } from './infrastructure/http/controllers/products.controller';
 
@@ -216,6 +221,7 @@ const buildMongoUri = (configService: ConfigService): string => {
     ProductTypesController,
     InventoryLotsController,
     PantryController,
+    ProfileController,
   ],
   providers: [
     AppService,
@@ -235,18 +241,25 @@ const buildMongoUri = (configService: ConfigService): string => {
     GetProductsByUserUseCase,
     GetProductTypeByIdUseCase,
     GetPantryOverviewUseCase,
+    GetUserProfileUseCase,
     GetExpiringLotsUseCase,
     ListInventoryLotsUseCase,
     SearchProductTypesUseCase,
     UpdateProductTypeDepletionRuleUseCase,
     UpdateProductQuantityUseCase,
+    UpdateUserPreferencesUseCase,
     MongoUserDao,
+    MongoUserPreferencesDao,
     MongoProductRepository,
     MongoProductTypeRepository,
     MongoInventoryLotRepository,
     {
       provide: USER_DAO,
       useExisting: MongoUserDao,
+    },
+    {
+      provide: USER_PREFERENCES_DAO,
+      useExisting: MongoUserPreferencesDao,
     },
     {
       provide: PRODUCT_REPOSITORY,
