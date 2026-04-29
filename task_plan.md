@@ -156,10 +156,10 @@ Phase 20
 ### Phase 20: Replenishment Intelligence, Per-Type Rules, and Guided UX
 - [x] Capture user-reported product gaps as feature requirements
 - [x] Inspect current durability, shopping-plan, criticity, purchase-date, and preferences boundaries
-- [ ] Present product/architecture approaches and choose one
+- [x] Present product/architecture approaches and choose one
 - [x] Write draft design spec under `docs/superpowers/specs/`
-- [ ] User review and approval of written design spec
-- [ ] Create detailed implementation plan under `plan/`
+- [x] User review and approval of written design spec
+- [x] Create detailed implementation plan under `plan/`
 - [ ] Implement after explicit approval
 - [ ] Verify with backend tests, frontend tests, build, Docker runtime, E2E, audits, and browser QA
 - **Status:** in_progress
@@ -193,6 +193,8 @@ Phase 20
 | Render pantry calendar dates with UTC date-only formatting | Expiration dates originate from browser date inputs and are stored as date-only UTC-midnight values; local timezone rendering can shift the visible day backward |
 | Treat the next feature as replenishment intelligence, not just UI copy polish | The reported issues span domain calculations, purchase planning, per-type configuration, onboarding guidance, and user-facing copy |
 | Keep global profile preferences as defaults and add product-type overrides before considering lot-level overrides | The profile should define household defaults, while product types such as detergent, shampoo, apples, or tuna need different thresholds without overloading every individual lot |
+| Use archive as the normal removal flow and guarded delete only after archive | Users need to stop tracking products, lots, or types without accidentally losing history or hiding why an item disappeared from planning |
+| Build future shopping plans from active product types, not only active lots | Planned products must remain visible for restock decisions after the final lot is consumed or reaches zero |
 
 ## Errors Encountered
 | Error | Attempt | Resolution |
