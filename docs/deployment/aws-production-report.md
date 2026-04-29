@@ -73,9 +73,14 @@ point-in-time recovery:
 - CloudFront hostname:
   `d1p3db27kbt6gj.cloudfront.net`
 - CloudFront origin:
-  `ec2-54-198-41-242.compute-1.amazonaws.com`
-- Created Route53 A and AAAA alias records for
-  `pantrylist.lynxpardelle.com`.
+  `origin.pantrylist.lynxpardelle.com`
+- CloudFront origin protocol policy:
+  `https-only`
+- Created Route53 A alias records for `pantrylist.lynxpardelle.com`.
+- Created Route53 A record for
+  `origin.pantrylist.lynxpardelle.com -> 54.198.41.242`.
+- Later disabled the `pantrylist.lynxpardelle.com` CloudFront IPv6/AAAA path
+  after local validation showed intermittent IPv6 connection resets.
 
 ### Dokploy EC2 Runtime
 
@@ -93,6 +98,17 @@ Runtime containers:
 
 - `pantrylist-prod-backend-1`: healthy
 - `pantrylist-prod-frontend-1`: healthy
+
+### Dokploy-Managed Production CI/CD
+
+- Created Dokploy project `PantryList`.
+- Created compose service `pantrylist-production`.
+- Compose id: `d1eFduaHWwr_-t-cqE_84`.
+- Connected service to GitHub `LynxPardelle/PantryList`, branch `main`.
+- Configured compose path `docker-compose.dokploy.prod.yml`.
+- Enabled Dokploy auto deploy.
+- Added Dokploy domain `origin.pantrylist.lynxpardelle.com` for service
+  `frontend` on port `4000` with HTTPS/Let's Encrypt.
 
 ## Verification
 
@@ -112,7 +128,11 @@ AWS/runtime verification after deploy:
 
 - CloudFormation stacks reached `CREATE_COMPLETE`.
 - CloudFront status: `Deployed`.
-- Route53 resolves `pantrylist.lynxpardelle.com` to CloudFront.
+- Route53 resolves `pantrylist.lynxpardelle.com` to CloudFront A records.
+- Route53 resolves `origin.pantrylist.lynxpardelle.com` to the Dokploy EC2
+  public IP.
+- CloudFront origin is `origin.pantrylist.lynxpardelle.com` with
+  `https-only`.
 - EC2 local Traefik health checks:
   - `Host: pantrylist.lynxpardelle.com /healthz` returned `200`.
   - `Host: pantrylist.lynxpardelle.com /api/healthz` returned `200`.
@@ -123,6 +143,8 @@ AWS/runtime verification after deploy:
   - `https://pantrylist.lynxpardelle.com/api/auth/cognito/providers`
     returned `{"providers":["COGNITO","Google","Facebook"]}`.
   - Cognito Hosted UI rendered through the production callback configuration.
+- Post-hardening repeated public checks returned `200` for `/api/healthz` and
+  `/api/auth/cognito/providers`.
 
 ## Cost Notes
 
@@ -163,11 +185,12 @@ cost depends on traffic, active users, stored data, and API calls.
 
 - Add this production Cognito redirect URI to Google OAuth and Facebook Login:
   `https://pantrylist-prod-765932874577.auth.us-east-1.amazoncognito.com/oauth2/idpresponse`
-- Decide whether the current manual SSM deployment should remain as the
-  production runtime or be recreated as a first-class Dokploy compose entry via
-  the Dokploy UI/API. Dokploy API requires an `x-api-key` generated from the
-  Dokploy dashboard.
+- Keep the manual SSM-created compose stack only as short-term rollback, then
+  remove it after the Dokploy-managed CI/CD path has been observed through a
+  normal production release.
 - Create separate CDK/deploy passes for `testing` and `development` after the
   production path is accepted.
 - Add CloudFront invalidation to the deploy process if aggressive browser/CDN
   caching becomes visible after frontend releases.
+- Restrict direct origin access so `origin.pantrylist.lynxpardelle.com` accepts
+  only CloudFront-originated traffic.

@@ -70,6 +70,86 @@ CloudFront connects to Traefik over HTTPS instead of HTTP.
 - CloudFront reports the distribution as `Deployed`.
 - CloudFront origin protocol is HTTPS-only.
 
+## Execution Results
+
+Completed on 2026-04-29 Central Time.
+
+### Dokploy
+
+- Created Dokploy project: `PantryList`.
+- Reused automatically created environment: `production`.
+- Created compose service: `pantrylist-production`.
+- Compose id: `d1eFduaHWwr_-t-cqE_84`.
+- GitHub source:
+  - provider id: `BTmVH3U1uN2pFLZL5Ygxu`
+  - owner/repository: `LynxPardelle/PantryList`
+  - branch: `main`
+  - compose path: `docker-compose.dokploy.prod.yml`
+  - auto deploy: `true`
+- Runtime environment was saved in Dokploy through compose configuration.
+- Dokploy detected compose services: `backend`, `frontend`.
+- Dokploy domain:
+  - host: `origin.pantrylist.lynxpardelle.com`
+  - service: `frontend`
+  - port: `4000`
+  - HTTPS: `true`
+  - certificate type: `letsencrypt`
+
+### AWS
+
+- Created Route53 A record:
+  `origin.pantrylist.lynxpardelle.com -> 54.198.41.242`.
+- Updated CloudFront distribution `E244X3QM2RVQYC`:
+  - origin domain: `origin.pantrylist.lynxpardelle.com`
+  - origin protocol policy: `https-only`
+  - origin HTTPS port: `443`
+  - origin request policy: `ALL_VIEWER_EXCEPT_HOST_HEADER`
+- Disabled CloudFront IPv6 for `pantrylist.lynxpardelle.com` after local
+  validation showed intermittent IPv6 connection resets. Route53 now returns A
+  records and no application AAAA alias for this hostname.
+
+### Verification Evidence
+
+- `https://origin.pantrylist.lynxpardelle.com/api/healthz` returned `200`.
+- CloudFront distribution status returned `Deployed`.
+- CloudFront origin inspection returned:
+  - domain: `origin.pantrylist.lynxpardelle.com`
+  - protocol policy: `https-only`
+  - IPv6 enabled: `false`
+- Ten repeated public checks returned `200` for:
+  - `https://pantrylist.lynxpardelle.com/api/healthz`
+  - `https://pantrylist.lynxpardelle.com/api/auth/cognito/providers`
+- `https://pantrylist.lynxpardelle.com/login/` returned `200`.
+- Cognito hosted login launch returned `200` with Cognito-managed cookies after
+  the backend/provider flow reached the Hosted UI.
+
+## Incident During Rollout
+
+The first HTTPS-origin CloudFront update returned `502` because the distribution
+still used `ALL_VIEWER`, which forwarded
+`Host: pantrylist.lynxpardelle.com` to the origin. The origin certificate was
+issued for `origin.pantrylist.lynxpardelle.com`, so the certificate name and
+forwarded host did not match.
+
+Resolution:
+
+- Rolled CloudFront back to the previous HTTP-only EC2 origin.
+- Verified production `/healthz` and `/api/healthz` returned `200`.
+- Updated CDK to use `ALL_VIEWER_EXCEPT_HOST_HEADER` whenever the origin
+  protocol policy is `https-only`.
+- Redeployed CloudFront to the HTTPS origin.
+
+## Current Residual Risk
+
+- Direct access to `origin.pantrylist.lynxpardelle.com` is possible. It is now
+  encrypted, but it is not yet restricted to CloudFront-only traffic.
+- The manual SSM-created compose stack remains available as rollback until the
+  Dokploy-managed deployment has been observed through at least one normal
+  production release.
+- CloudFront IPv6 is disabled for this distribution because local IPv6 checks
+  showed intermittent resets. Re-enable only after validating IPv6 from a known
+  stable network.
+
 ## Rollback
 
 - If the Dokploy-managed compose service fails, keep CloudFront pointed at the

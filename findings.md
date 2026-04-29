@@ -441,6 +441,26 @@
   before large household or multi-user data volumes.
 - The AWS deployment and cost report is tracked at
   `C:\Users\lince\Documents\GitHub\PantryList\docs\deployment\aws-production-report.md`.
+- Dokploy now has a visible `PantryList` project with compose service
+  `pantrylist-production`, GitHub source `LynxPardelle/PantryList`, branch
+  `main`, compose path `docker-compose.dokploy.prod.yml`, and auto deploy
+  enabled.
+- The public CloudFront distribution now uses
+  `origin.pantrylist.lynxpardelle.com` as a custom origin with
+  `https-only`, so the CloudFront-to-EC2 leg is encrypted.
+- CloudFront HTTPS-origin mode must not forward the viewer `Host` header to
+  this origin. The initial cutover returned `502` until CDK switched the origin
+  request policy to `ALL_VIEWER_EXCEPT_HOST_HEADER`.
+- CloudFront IPv6 is currently disabled because local forced-IPv6 validation
+  showed intermittent TLS resets while IPv4 and no-AAAA public checks were
+  stable.
+- Direct origin access is still possible at
+  `https://origin.pantrylist.lynxpardelle.com`. It is encrypted, but a future
+  hardening pass should restrict origin traffic to CloudFront.
+- The manual SSM-created compose stack should remain only as short-term
+  rollback until one normal Dokploy auto-deploy release has been observed.
+- The Dokploy CI/CD and CloudFront origin HTTPS runbook is tracked at
+  `C:\Users\lince\Documents\GitHub\PantryList\docs\deployment\dokploy-cicd-cloudfront-origin-hardening.md`.
 
 ## Resources
 - `C:\Users\lince\Documents\GitHub\PantryList\.impeccable.md`

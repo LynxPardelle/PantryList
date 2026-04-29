@@ -175,6 +175,18 @@ Phase 20
 - [x] Create deployment report with AWS resources and cost notes
 - **Status:** completed
 
+### Phase 22: Dokploy CI/CD and CloudFront Origin HTTPS
+- [x] Add a Dokploy-managed production compose file that does not publish host ports
+- [x] Document rollout, verification, security notes, and rollback procedure
+- [x] Create Dokploy `PantryList` project and `pantrylist-production` compose service
+- [x] Connect Dokploy compose to GitHub `LynxPardelle/PantryList` on `main` with auto deploy
+- [x] Configure Dokploy origin domain with HTTPS/Let's Encrypt
+- [x] Create Route53 origin record and update CloudFront to HTTPS-only origin
+- [x] Fix CloudFront origin TLS mismatch by excluding the viewer `Host` header in HTTPS-origin mode
+- [x] Disable CloudFront IPv6 after repeated local IPv6 reset failures
+- [x] Verify public health/API/login paths after hardening
+- **Status:** completed
+
 ## Key Questions
 1. Which AWS integration path best fits PantryList's current maturity: container-first, serverless-first, or hybrid?
 2. What parts of the existing implementation are solid enough to preserve, and what parts are still mostly scaffold or incomplete?
@@ -210,6 +222,10 @@ Phase 20
 | Lazy-load `/pantry` through `PantryModule` | The richer Pantry workspace pushed the initial Angular bundle above the `500kB` warning threshold; lazy-loading the route reduced the initial production bundle to `457.00 kB` while moving Pantry into a `56.93 kB` feature chunk |
 | Use DynamoDB only for production initially and keep MongoDB as the default local/development provider | This avoids blocking local Docker workflows while meeting the production requirement to stop using MongoDB |
 | Use CDK for PantryList production AWS resources | Cognito, DynamoDB, CloudFront, Route53, ACM, and IAM permissions need to be reproducible for main/testing/development environments instead of console-only state |
+| Use Dokploy-managed compose as the production CI/CD owner | Dokploy now displays the service, pulls from GitHub `main`, and has auto deploy enabled, while the manual SSM compose stack remains only as short-term rollback |
+| Use `origin.pantrylist.lynxpardelle.com` for CloudFront's custom origin | CloudFront can use HTTPS to EC2/Traefik with a certificate matching the origin hostname without changing the public application domain |
+| Exclude the viewer `Host` header for HTTPS origin requests | Forwarding `Host: pantrylist.lynxpardelle.com` to an origin certificate issued for `origin.pantrylist.lynxpardelle.com` caused CloudFront `502`; `ALL_VIEWER_EXCEPT_HOST_HEADER` preserves cookies/query strings while allowing TLS host validation to match |
+| Disable CloudFront IPv6 for now | Repeated local IPv6 checks showed intermittent connection resets while IPv4 checks were stable; IPv6 can be re-enabled after a clean network validation pass |
 
 ## Errors Encountered
 | Error | Attempt | Resolution |
@@ -230,6 +246,8 @@ Phase 20
 | The EC2 host had `docker-compose` but not `docker compose` | 1 | Retried the remote deployment command with `docker-compose -p pantrylist-prod ... up -d --build` |
 | CloudFront initially reached the EC2 origin but returned `404` | 1 | Added `/etc/dokploy/traefik/dynamic/pantrylist-prod.yml` so Traefik routes `Host(`pantrylist.lynxpardelle.com`)` to the PantryList frontend container |
 | AWS CLI SSM output hit a Windows character encoding issue while streaming Docker build output | 1 | Retrieved command status/output afterward with `PYTHONIOENCODING=utf-8` instead of relying on the failed console stream |
+| First CloudFront HTTPS-origin update returned `502 Bad Gateway` | 1 | Rolled back to HTTP-only, confirmed production health, then changed CDK to use `ALL_VIEWER_EXCEPT_HOST_HEADER` in HTTPS-origin mode and redeployed |
+| Repeated CloudFront IPv6 checks intermittently reset the TLS connection | 1 | Made IPv6 configurable in CDK, redeployed production with `enableIpv6=false`, removed the Route53 AAAA alias, and verified ten repeated public checks returned `200` |
 
 ## Notes
 - Update phase status as progress changes.

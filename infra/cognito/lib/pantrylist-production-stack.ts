@@ -40,6 +40,11 @@ export class PantryListProductionStack extends cdk.Stack {
     const originRecordName = this.readOptionalContext("originRecordName");
     const originTargetIp = this.readOptionalContext("originTargetIp");
     const originProtocolPolicy = this.readOriginProtocolPolicy();
+    const originRequestPolicy =
+      originProtocolPolicy === cloudfront.OriginProtocolPolicy.HTTPS_ONLY
+        ? cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER
+        : cloudfront.OriginRequestPolicy.ALL_VIEWER;
+    const enableIpv6 = this.readBooleanContext("enableIpv6", true);
     const ec2RoleName = this.readContext(
       "ec2RoleName",
       "EC2TraefikRoute53DNS01Role"
@@ -92,13 +97,13 @@ export class PantryListProductionStack extends cdk.Stack {
         allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
         cachedMethods: cloudfront.CachedMethods.CACHE_GET_HEAD_OPTIONS,
         cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
-        originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER,
+        originRequestPolicy,
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         compress: true,
       },
       certificate,
       domainNames: [domainName],
-      enableIpv6: true,
+      enableIpv6,
       httpVersion: cloudfront.HttpVersion.HTTP2_AND_3,
       minimumProtocolVersion: cloudfront.SecurityPolicyProtocol.TLS_V1_2_2021,
       priceClass: cloudfront.PriceClass.PRICE_CLASS_100,
@@ -111,13 +116,15 @@ export class PantryListProductionStack extends cdk.Stack {
         new targets.CloudFrontTarget(distribution)
       ),
     });
-    new route53.AaaaRecord(this, "AliasIpv6Record", {
-      zone,
-      recordName,
-      target: route53.RecordTarget.fromAlias(
-        new targets.CloudFrontTarget(distribution)
-      ),
-    });
+    if (enableIpv6) {
+      new route53.AaaaRecord(this, "AliasIpv6Record", {
+        zone,
+        recordName,
+        target: route53.RecordTarget.fromAlias(
+          new targets.CloudFrontTarget(distribution)
+        ),
+      });
+    }
 
     new cdk.CfnOutput(this, "AppDomainName", { value: domainName });
     new cdk.CfnOutput(this, "CloudFrontDistributionId", {
@@ -137,6 +144,9 @@ export class PantryListProductionStack extends cdk.Stack {
         value: originRecordName,
       });
     }
+    new cdk.CfnOutput(this, "Ipv6Enabled", {
+      value: enableIpv6.toString(),
+    });
     new cdk.CfnOutput(this, "DynamoDbUsersTable", {
       value: tables.users.tableName,
     });
@@ -284,6 +294,28 @@ export class PantryListProductionStack extends cdk.Stack {
           `Unsupported originProtocolPolicy "${value}". Use http-only, https-only, or match-viewer.`
         );
     }
+  }
+
+  private readBooleanContext(key: string, fallback: boolean): boolean {
+    const value = this.node.tryGetContext(key);
+
+    if (value === undefined || value === null) {
+      return fallback;
+    }
+
+    const normalizedValue = value.toString().trim().toLowerCase();
+
+    if (["1", "true", "yes", "y"].includes(normalizedValue)) {
+      return true;
+    }
+
+    if (["0", "false", "no", "n"].includes(normalizedValue)) {
+      return false;
+    }
+
+    throw new Error(
+      `Unsupported boolean context "${key}" value "${normalizedValue}".`
+    );
   }
 }
 
