@@ -167,13 +167,13 @@ Phase 20
 ### Phase 21: Production AWS Deployment with DynamoDB
 - [x] Capture production deployment requirements: `pantrylist.lynxpardelle.com`, later `test.` and `dev.`, Dokploy on EC2, new production Cognito, DynamoDB instead of MongoDB
 - [x] Run local repo and AWS preflight
-- [ ] Add production DynamoDB persistence adapters behind the existing DAO/repository ports
-- [ ] Add repeatable AWS infrastructure-as-code for DynamoDB, Cognito production, CloudFront, ACM, Route53, and EC2 IAM access
-- [ ] Update Dokploy production environment and compose topology to use DynamoDB
-- [ ] Deploy `main` to production domain
-- [ ] Verify Cognito, app health, API health, DynamoDB reads/writes, CloudFront/Route53 routing, and auth cookies
-- [ ] Create deployment report with AWS resources and cost notes
-- **Status:** in_progress
+- [x] Add production DynamoDB persistence adapters behind the existing DAO/repository ports
+- [x] Add repeatable AWS infrastructure-as-code for DynamoDB, Cognito production, CloudFront, ACM, Route53, and EC2 IAM access
+- [x] Update Dokploy production environment and compose topology to use DynamoDB
+- [x] Deploy `main` to production domain
+- [x] Verify Cognito, app health, API health, DynamoDB tables, CloudFront/Route53 routing, and auth cookies
+- [x] Create deployment report with AWS resources and cost notes
+- **Status:** completed
 
 ## Key Questions
 1. Which AWS integration path best fits PantryList's current maturity: container-first, serverless-first, or hybrid?
@@ -226,6 +226,10 @@ Phase 20
 | Consuming the final quantity deletes the lot and removes the product from the shopping plan | 1 | Root cause found: empty lots are deleted and `buildPantryOverview` only creates groups from existing inventory lots, so active product types with zero stock are absent from the planning read model |
 | Frontend production build exceeded the initial bundle warning budget at `513.26 kB` | 1 | Lazy-loaded `/pantry` with a dedicated `PantryModule`, reducing the initial bundle to `457.00 kB` and creating a `56.93 kB` pantry feature chunk |
 | First Docker HTTP smoke returned `ResponseEnded` / empty reply while watchers were still compiling | 1 | Checked container logs instead of repeating the same request immediately, waited for Nest/Angular watch compilation, then verified backend `200` and frontend `200` |
+| No Dokploy API key was available locally for first-class Dokploy app creation | 1 | Deployed through AWS SSM onto the existing Dokploy EC2 host with Docker Compose and a Traefik dynamic route; kept Dokploy API/UI recreation as an explicit follow-up |
+| The EC2 host had `docker-compose` but not `docker compose` | 1 | Retried the remote deployment command with `docker-compose -p pantrylist-prod ... up -d --build` |
+| CloudFront initially reached the EC2 origin but returned `404` | 1 | Added `/etc/dokploy/traefik/dynamic/pantrylist-prod.yml` so Traefik routes `Host(`pantrylist.lynxpardelle.com`)` to the PantryList frontend container |
+| AWS CLI SSM output hit a Windows character encoding issue while streaming Docker build output | 1 | Retrieved command status/output afterward with `PYTHONIOENCODING=utf-8` instead of relying on the failed console stream |
 
 ## Notes
 - Update phase status as progress changes.

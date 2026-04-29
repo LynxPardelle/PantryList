@@ -414,6 +414,33 @@
   backend persistence through `MONGO_*` environment variables. Production
   DynamoDB support requires code changes in `AppModule` plus DynamoDB
   repository/DAO adapters before deploying.
+- Production now supports `PERSISTENCE_PROVIDER=dynamodb` behind the existing
+  DAO/repository ports, while MongoDB remains the default local/development
+  provider.
+- Production AWS resources were deployed with CDK to account `765932874577` in
+  `us-east-1`: `pantrylist-prod-cognito` and `pantrylist-prod-app`.
+- PantryList production is live at `https://pantrylist.lynxpardelle.com`
+  through CloudFront distribution `E244X3QM2RVQYC` and Route53 A/AAAA aliases.
+- The production runtime on the Dokploy EC2 host is running through
+  `docker-compose.prod.yml` plus `docker-compose.dokploy.yml`, with backend and
+  frontend containers reported healthy.
+- No Dokploy API key was available locally, so the production runtime was
+  created through AWS SSM, Docker Compose, and a Traefik dynamic route instead
+  of through a first-class Dokploy UI/API app.
+- External production smoke checks passed for `/healthz`, `/api/healthz`,
+  `/login/`, `/api/auth/cognito/providers`, and the Cognito Hosted UI launch
+  path.
+- Google and Facebook must still be updated with the production Cognito social
+  redirect URI:
+  `https://pantrylist-prod-765932874577.auth.us-east-1.amazoncognito.com/oauth2/idpresponse`.
+- CloudFront currently terminates HTTPS for viewers but connects to the EC2
+  Traefik origin over HTTP. This is acceptable for the current Dokploy routing
+  shape, but should be hardened later with an HTTPS origin path.
+- DynamoDB adapters currently do not paginate all query/scan results. This is
+  acceptable for the first production MVP, but it is a scaling hardening item
+  before large household or multi-user data volumes.
+- The AWS deployment and cost report is tracked at
+  `C:\Users\lince\Documents\GitHub\PantryList\docs\deployment\aws-production-report.md`.
 
 ## Resources
 - `C:\Users\lince\Documents\GitHub\PantryList\.impeccable.md`
