@@ -183,7 +183,7 @@ const buildMongoUri = (configService: ConfigService): string => {
         COGNITO_AUTH_TRANSACTION_TTL_SECONDS: Joi.number()
           .integer()
           .positive()
-          .default(300),
+          .default(900),
         AUTH_COOKIE_SECURE: Joi.string().valid('true', 'false').optional(),
         AUTH_COOKIE_SAME_SITE: Joi.string()
           .valid('lax', 'strict', 'none')

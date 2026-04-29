@@ -345,6 +345,14 @@
 - Frontend and backend production dependency audits returned zero production
   vulnerabilities. Docker development containers can still report dev-tooling
   audit noise because they install watcher/test dependencies.
+- Facebook/Cognito login can legitimately take longer than 5 minutes when the
+  provider asks for consent, MFA, or account checks. The OAuth `state`, nonce,
+  and PKCE verifier cookies should stay short-lived but 900 seconds is a safer
+  local default than 300 seconds.
+- `Invalid Cognito auth state` should not be bypassed. It is the correct CSRF
+  defense. The safe recovery path is to clear stale transaction cookies and
+  redirect the user to `/login?authError=cognito_state` so they can start a
+  fresh provider flow.
 
 ## Resources
 - `C:\Users\lince\Documents\GitHub\PantryList\.impeccable.md`

@@ -210,7 +210,7 @@ export class AuthCookieService {
   private getCognitoTransactionTtlSeconds(): number {
     return Number(
       this.configService.get<string>('COGNITO_AUTH_TRANSACTION_TTL_SECONDS') ??
-        '300',
+        '900',
     );
   }
 }

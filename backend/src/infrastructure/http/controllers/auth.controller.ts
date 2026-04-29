@@ -108,12 +108,21 @@ export class AuthController {
     this.ensureCognitoEnabled();
 
     if (!code || !state) {
-      throw new UnauthorizedException('Cognito callback is incomplete');
+      this.authCookieService.clearCognitoAuthTransactionCookies(reply);
+      reply.redirect('/login?authError=cognito_callback', 302);
+      return;
     }
 
     const transaction =
       this.authCookieService.getCognitoAuthTransactionFromRequest(request);
-    this.transactionService.assertStateMatches(state, transaction.state);
+    try {
+      this.transactionService.assertStateMatches(state, transaction.state);
+    } catch {
+      this.authCookieService.clearCognitoAuthTransactionCookies(reply);
+      reply.redirect('/login?authError=cognito_state', 302);
+      return;
+    }
+
     const tokenSet = await this.tokenClient.exchangeCode({
       code,
       codeVerifier: transaction.codeVerifier,

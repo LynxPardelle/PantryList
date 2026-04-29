@@ -9,7 +9,7 @@ describe('AuthCookieService', () => {
         const values: Record<string, string> = {
           AUTH_COOKIE_SECURE: 'false',
           AUTH_COOKIE_SAME_SITE: 'lax',
-          COGNITO_AUTH_TRANSACTION_TTL_SECONDS: '300',
+          COGNITO_AUTH_TRANSACTION_TTL_SECONDS: '900',
         };
 
         return values[key];
@@ -74,7 +74,7 @@ describe('AuthCookieService', () => {
       expect.objectContaining({
         httpOnly: true,
         path: '/api/auth/cognito',
-        maxAge: 300,
+        maxAge: 900,
       }),
     );
     expect(service.getCognitoAuthTransactionFromRequest(request)).toEqual({

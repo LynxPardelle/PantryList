@@ -1,5 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import { FastifyReply, FastifyRequest } from 'fastify';
+import { UnauthorizedException } from '@nestjs/common';
 import {
   CognitoAuthUrlBuilder,
   CognitoTokenClient,
@@ -211,6 +212,35 @@ describe('AuthController Cognito flow', () => {
       },
     ]);
     expect(reply.redirect.mock.calls[0]).toEqual(['/pantry', 302]);
+  });
+
+  it('clears transaction cookies and redirects to login when callback state is invalid', async () => {
+    const {
+      controller,
+      authCookieService,
+      transactionService,
+      tokenClient,
+    } = makeController();
+    const reply = makeReply();
+    transactionService.assertStateMatches.mockImplementation(() => {
+      throw new UnauthorizedException('Invalid Cognito auth state');
+    });
+
+    await controller.completeCognitoLogin(
+      'authorization-code',
+      'stale-state',
+      {} as FastifyRequest,
+      reply,
+    );
+
+    expect(authCookieService.clearCognitoAuthTransactionCookies).toHaveBeenCalledWith(
+      reply,
+    );
+    expect(tokenClient.exchangeCode).not.toHaveBeenCalled();
+    expect(reply.redirect.mock.calls[0]).toEqual([
+      '/login?authError=cognito_state',
+      302,
+    ]);
   });
 
   it('refreshes Cognito tokens and returns the current user', async () => {

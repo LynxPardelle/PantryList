@@ -138,6 +138,14 @@ Phase 16
 - [x] Verify with unit, build, browser, and audit checks
 - **Status:** completed
 
+### Phase 18: Facebook Cognito Callback Recovery
+- [x] Reproduce the failing `Invalid Cognito auth state` path
+- [x] Trace Cognito transaction cookie TTL and callback validation
+- [x] Extend Cognito auth transaction TTL from 5 minutes to 15 minutes
+- [x] Redirect invalid or incomplete callbacks back to `/login` with a recoverable error
+- [x] Verify backend tests, frontend tests/build, Docker runtime, E2E, production audits, and secret scan
+- **Status:** completed
+
 ## Key Questions
 1. Which AWS integration path best fits PantryList's current maturity: container-first, serverless-first, or hybrid?
 2. What parts of the existing implementation are solid enough to preserve, and what parts are still mostly scaffold or incomplete?
@@ -173,6 +181,7 @@ Phase 16
 | Docker daemon was unavailable during the profile preferences validation pass | 1 | Started Docker Desktop, waited for `docker info`, rebuilt the app profile, and verified MongoDB, backend, and frontend were running |
 | A first changed-file secret scan used a nested PowerShell object array and produced path-binding errors | 1 | Re-ran the scan with a flattened string path array and then verified with the `security-compliance` secret scanner |
 | One frontend `npm run test:ci` run showed transient ChromeHeadless temp-directory/crashpad startup noise | 1 | Re-ran the frontend test workflow and confirmed the suite passed |
+| Facebook login returned `Invalid Cognito auth state` at callback | 1 | Kept strict state validation, extended the transaction TTL to 900 seconds, cleared stale transaction cookies, and redirected to `/login?authError=cognito_state` for a retry instead of showing JSON |
 
 ## Notes
 - Update phase status as progress changes.
@@ -213,3 +222,6 @@ Phase 16
   persistence swaps do not require controller or UI rewrites.
 - Expiration status is date-only and UTC-normalized to avoid Central Time
   false-expired results for values stored from browser date inputs.
+- Cognito auth transaction cookies now use a 900-second TTL. This better fits
+  social provider flows that include MFA, consent, or provider-side prompts
+  while still keeping PKCE, nonce, and state cookies short-lived.

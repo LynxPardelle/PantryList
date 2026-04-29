@@ -27,6 +27,9 @@ export class LoginPageComponent implements OnInit {
   readonly appName = environment.appName;
   readonly loginPending$ = this.authFacade.loginPending$;
   readonly authError$ = this.authFacade.authError$;
+  readonly callbackError$ = this.route.queryParamMap.pipe(
+    map((params) => this.getCallbackErrorMessage(params.get('authError'))),
+  );
   readonly providerOptions$: Observable<LoginProviderOption[]> =
     this.authApiService.getCognitoProviders().pipe(
       map((providers) => this.toProviderOptions(providers)),
@@ -71,5 +74,18 @@ export class LoginPageComponent implements OnInit {
     };
 
     return labels[provider] ?? `Entrar con ${provider}`;
+  }
+
+  private getCallbackErrorMessage(error: string | null): string | null {
+    const messages: Record<string, string> = {
+      cognito_state:
+        'El inicio de sesion caduco o se abrio otro intento. Vuelve a elegir tu proveedor.',
+      cognito_callback:
+        'Cognito no devolvio una respuesta completa. Vuelve a iniciar sesion.',
+    };
+
+    return error
+      ? (messages[error] ?? 'No pudimos completar el inicio de sesion.')
+      : null;
   }
 }

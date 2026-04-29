@@ -26,3 +26,13 @@ test('renders Cognito login options and starts provider redirect', async ({
 
   await expect(page).toHaveURL(/cognitoRedirect=stubbed/);
 });
+
+test('shows a recoverable message after an expired Cognito callback state', async ({
+  page,
+}) => {
+  await page.goto('/login?authError=cognito_state');
+
+  await expect(page.getByRole('alert')).toContainText(
+    'El inicio de sesion caduco o se abrio otro intento.',
+  );
+});

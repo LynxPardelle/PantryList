@@ -11,6 +11,12 @@
     </div>
 
     <div class="auth-form" aria-label="Opciones de inicio de sesi&oacute;n">
+      @if (callbackError$ | async; as callbackError) {
+        <p class="status-copy status-copy--error" role="alert">
+          {{ callbackError }}
+        </p>
+      }
+
       @if (authError$ | async; as authError) {
         <p class="status-copy status-copy--error" role="alert">{{ authError }}</p>
       }
