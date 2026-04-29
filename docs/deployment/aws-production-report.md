@@ -44,6 +44,11 @@ Future environments requested but not created in this pass:
 - Created `/pantrylist/prod/facebook-client-secret`.
 - Values were copied from the existing dev secrets without printing secret
   values to terminal output.
+- Created `/pantrylist/prod/cloudfront-origin-verify-header` for CloudFront to
+  Traefik origin verification.
+- Rotated `/pantrylist/prod/cloudfront-origin-verify-header` after an initial
+  Traefik route script used shell-interpreted backticks and exposed the previous
+  value in SSM command stderr. The rotated value is the active value.
 
 ### DynamoDB
 
@@ -76,6 +81,8 @@ point-in-time recovery:
   `origin.pantrylist.lynxpardelle.com`
 - CloudFront origin protocol policy:
   `https-only`
+- CloudFront custom origin verification header:
+  `X-PantryList-Origin-Verify`
 - Created Route53 A alias records for `pantrylist.lynxpardelle.com`.
 - Created Route53 A record for
   `origin.pantrylist.lynxpardelle.com -> 54.198.41.242`.
@@ -107,8 +114,19 @@ Runtime containers:
 - Connected service to GitHub `LynxPardelle/PantryList`, branch `main`.
 - Configured compose path `docker-compose.dokploy.prod.yml`.
 - Enabled Dokploy auto deploy.
-- Added Dokploy domain `origin.pantrylist.lynxpardelle.com` for service
-  `frontend` on port `4000` with HTTPS/Let's Encrypt.
+- Added Dokploy-visible domain `pantrylist.lynxpardelle.com` for service
+  `frontend` on port `4000`. Public TLS remains handled by CloudFront.
+- Removed the earlier Dokploy-visible `origin.pantrylist.lynxpardelle.com`
+  domain so the UI shows the public application domain.
+- Removed the earlier manual SSM-created runtime containers:
+  - `pantrylist-prod-backend-1`
+  - `pantrylist-prod-frontend-1`
+- Removed the earlier manual Traefik route file:
+  `/etc/dokploy/traefik/dynamic/pantrylist-prod.yml`.
+- Added protected CloudFront-origin Traefik route:
+  `/etc/dokploy/traefik/dynamic/pantrylist-cloudfront-origin.yml`.
+- Added direct public-host block Traefik route:
+  `/etc/dokploy/traefik/dynamic/pantrylist-direct-public-block.yml`.
 
 ## Verification
 
@@ -145,6 +163,13 @@ AWS/runtime verification after deploy:
   - Cognito Hosted UI rendered through the production callback configuration.
 - Post-hardening repeated public checks returned `200` for `/api/healthz` and
   `/api/auth/cognito/providers`.
+- Direct access to `https://origin.pantrylist.lynxpardelle.com/api/healthz`
+  without the CloudFront verification header returned `404`.
+- Direct HTTP access to the EC2 IP with `Host: pantrylist.lynxpardelle.com`
+  returned `502`.
+- Docker inventory showed only the Dokploy-managed PantryList containers:
+  `compose-compress-back-end-port-hiewlq-frontend-1` and
+  `compose-compress-back-end-port-hiewlq-backend-1`.
 
 ## Cost Notes
 
@@ -185,12 +210,9 @@ cost depends on traffic, active users, stored data, and API calls.
 
 - Add this production Cognito redirect URI to Google OAuth and Facebook Login:
   `https://pantrylist-prod-765932874577.auth.us-east-1.amazoncognito.com/oauth2/idpresponse`
-- Keep the manual SSM-created compose stack only as short-term rollback, then
-  remove it after the Dokploy-managed CI/CD path has been observed through a
-  normal production release.
 - Create separate CDK/deploy passes for `testing` and `development` after the
   production path is accepted.
 - Add CloudFront invalidation to the deploy process if aggressive browser/CDN
   caching becomes visible after frontend releases.
-- Restrict direct origin access so `origin.pantrylist.lynxpardelle.com` accepts
-  only CloudFront-originated traffic.
+- Consider moving Dokploy itself behind a more controlled access path later
+  before applying EC2 security-group-level restrictions to ports `80`/`443`.

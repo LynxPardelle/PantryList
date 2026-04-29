@@ -89,11 +89,16 @@ Completed on 2026-04-29 Central Time.
 - Runtime environment was saved in Dokploy through compose configuration.
 - Dokploy detected compose services: `backend`, `frontend`.
 - Dokploy domain:
-  - host: `origin.pantrylist.lynxpardelle.com`
+  - host: `pantrylist.lynxpardelle.com`
   - service: `frontend`
   - port: `4000`
-  - HTTPS: `true`
-  - certificate type: `letsencrypt`
+  - HTTPS: `false`
+  - certificate type: `none`
+
+`pantrylist.lynxpardelle.com` is intentionally the visible Dokploy domain. TLS
+for the public domain is handled by CloudFront. Dokploy does not issue the
+public certificate because the public DNS record points to CloudFront, not
+directly to the EC2 host.
 
 ### AWS
 
@@ -104,13 +109,29 @@ Completed on 2026-04-29 Central Time.
   - origin protocol policy: `https-only`
   - origin HTTPS port: `443`
   - origin request policy: `ALL_VIEWER_EXCEPT_HOST_HEADER`
+  - custom origin verification header: `X-PantryList-Origin-Verify`
 - Disabled CloudFront IPv6 for `pantrylist.lynxpardelle.com` after local
   validation showed intermittent IPv6 connection resets. Route53 now returns A
   records and no application AAAA alias for this hostname.
+- Created Secrets Manager secret:
+  `/pantrylist/prod/cloudfront-origin-verify-header`.
+- Granted EC2 role `EC2TraefikRoute53DNS01Role` read access to that secret.
+- Removed the old manual SSM-created Docker Compose stack:
+  `pantrylist-prod-backend-1` and `pantrylist-prod-frontend-1`.
+- Removed the old manual Traefik file:
+  `/etc/dokploy/traefik/dynamic/pantrylist-prod.yml`.
+- Added protected Traefik dynamic route:
+  `/etc/dokploy/traefik/dynamic/pantrylist-cloudfront-origin.yml`.
+- Added direct public-host block route:
+  `/etc/dokploy/traefik/dynamic/pantrylist-direct-public-block.yml`.
 
 ### Verification Evidence
 
 - `https://origin.pantrylist.lynxpardelle.com/api/healthz` returned `200`.
+- Direct access to `https://origin.pantrylist.lynxpardelle.com/api/healthz`
+  without the CloudFront verification header returned `404`.
+- Direct HTTP access to the EC2 IP with
+  `Host: pantrylist.lynxpardelle.com` returned `502`, not the application.
 - CloudFront distribution status returned `Deployed`.
 - CloudFront origin inspection returned:
   - domain: `origin.pantrylist.lynxpardelle.com`
@@ -122,6 +143,9 @@ Completed on 2026-04-29 Central Time.
 - `https://pantrylist.lynxpardelle.com/login/` returned `200`.
 - Cognito hosted login launch returned `200` with Cognito-managed cookies after
   the backend/provider flow reached the Hosted UI.
+- Final Docker inventory showed only the Dokploy-managed containers:
+  - `compose-compress-back-end-port-hiewlq-frontend-1`
+  - `compose-compress-back-end-port-hiewlq-backend-1`
 
 ## Incident During Rollout
 
@@ -139,13 +163,23 @@ Resolution:
   protocol policy is `https-only`.
 - Redeployed CloudFront to the HTTPS origin.
 
+A later route-hardening script initially used shell-interpreted backticks in
+the Traefik rule and exposed the previous origin verification value in SSM
+stderr. That value was immediately rotated in Secrets Manager, CloudFront was
+redeployed with the rotated value, and the Traefik route file was rewritten
+using escaped double quotes. The rotated value is the active one.
+
 ## Current Residual Risk
 
-- Direct access to `origin.pantrylist.lynxpardelle.com` is possible. It is now
-  encrypted, but it is not yet restricted to CloudFront-only traffic.
-- The manual SSM-created compose stack remains available as rollback until the
-  Dokploy-managed deployment has been observed through at least one normal
-  production release.
+- CloudFront IP ranges are represented indirectly by the CloudFront-managed
+  service and the custom verification header, not by a security group that
+  blocks every non-CloudFront source. The EC2 still hosts Dokploy itself, so a
+  host-level 443-only CloudFront security group is not safe without moving
+  Dokploy behind its own CloudFront or VPN path.
+- Two dynamic Traefik files are intentionally managed outside the Dokploy UI:
+  one for the CloudFront-only origin route and one to block direct public-host
+  HTTP access. Containers are still fully Dokploy-managed and visible in the
+  `PantryList` project.
 - CloudFront IPv6 is disabled for this distribution because local IPv6 checks
   showed intermittent resets. Re-enable only after validating IPv6 from a known
   stable network.

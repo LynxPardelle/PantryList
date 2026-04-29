@@ -44,6 +44,16 @@ export class PantryListProductionStack extends cdk.Stack {
       originProtocolPolicy === cloudfront.OriginProtocolPolicy.HTTPS_ONLY
         ? cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER
         : cloudfront.OriginRequestPolicy.ALL_VIEWER;
+    const originVerifyHeaderName = this.readOptionalContext(
+      "originVerifyHeaderName"
+    );
+    const originVerifyHeaderValue = this.readOptionalContext(
+      "originVerifyHeaderValue"
+    );
+    const originCustomHeaders =
+      originVerifyHeaderName && originVerifyHeaderValue
+        ? { [originVerifyHeaderName]: originVerifyHeaderValue }
+        : undefined;
     const enableIpv6 = this.readBooleanContext("enableIpv6", true);
     const ec2RoleName = this.readContext(
       "ec2RoleName",
@@ -93,6 +103,7 @@ export class PantryListProductionStack extends cdk.Stack {
           httpPort: 80,
           httpsPort: 443,
           originSslProtocols: [cloudfront.OriginSslPolicy.TLS_V1_2],
+          customHeaders: originCustomHeaders,
         }),
         allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
         cachedMethods: cloudfront.CachedMethods.CACHE_GET_HEAD_OPTIONS,
@@ -142,6 +153,11 @@ export class PantryListProductionStack extends cdk.Stack {
     if (originRecordName) {
       new cdk.CfnOutput(this, "OriginRecordName", {
         value: originRecordName,
+      });
+    }
+    if (originVerifyHeaderName) {
+      new cdk.CfnOutput(this, "OriginVerifyHeaderName", {
+        value: originVerifyHeaderName,
       });
     }
     new cdk.CfnOutput(this, "Ipv6Enabled", {

@@ -461,6 +461,26 @@
   rollback until one normal Dokploy auto-deploy release has been observed.
 - The Dokploy CI/CD and CloudFront origin HTTPS runbook is tracked at
   `C:\Users\lince\Documents\GitHub\PantryList\docs\deployment\dokploy-cicd-cloudfront-origin-hardening.md`.
+- Dokploy now shows `pantrylist.lynxpardelle.com` as the only domain on the
+  `pantrylist-production` compose service. `origin.pantrylist.lynxpardelle.com`
+  was removed from the Dokploy UI domain list.
+- The old manual `pantrylist-prod-backend-1` and `pantrylist-prod-frontend-1`
+  containers were stopped and removed. Docker inventory now shows only the
+  Dokploy-managed `compose-compress-back-end-port-hiewlq-*` PantryList
+  containers.
+- The old manual Traefik route
+  `/etc/dokploy/traefik/dynamic/pantrylist-prod.yml` was removed.
+- CloudFront now sends `X-PantryList-Origin-Verify` to the origin. Traefik
+  accepts `origin.pantrylist.lynxpardelle.com` only when that header matches
+  the rotated value stored in Secrets Manager.
+- Direct access to `origin.pantrylist.lynxpardelle.com` without the CloudFront
+  verification header returns `404`.
+- Direct HTTP access to the EC2 IP with `Host: pantrylist.lynxpardelle.com`
+  returns `502`, not the application.
+- The first protected-origin Traefik route script accidentally exposed the
+  previous verification value in SSM stderr because shell backticks were
+  interpreted. That value was immediately rotated and replaced in Secrets
+  Manager, CloudFront, and Traefik.
 
 ## Resources
 - `C:\Users\lince\Documents\GitHub\PantryList\.impeccable.md`

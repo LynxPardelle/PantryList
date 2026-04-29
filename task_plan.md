@@ -187,6 +187,17 @@ Phase 20
 - [x] Verify public health/API/login paths after hardening
 - **Status:** completed
 
+### Phase 23: Dokploy UI Cleanup and Origin Restriction
+- [x] Add `pantrylist.lynxpardelle.com` as the visible Dokploy domain for `pantrylist-production`
+- [x] Remove `origin.pantrylist.lynxpardelle.com` from the Dokploy UI domain list
+- [x] Rotate and store a CloudFront origin verification header in Secrets Manager
+- [x] Configure CloudFront to send `X-PantryList-Origin-Verify` to the origin
+- [x] Add a protected Traefik route for `origin.pantrylist.lynxpardelle.com`
+- [x] Remove the old manual `pantrylist-prod-*` containers and Traefik route
+- [x] Block direct EC2 HTTP access using `Host: pantrylist.lynxpardelle.com`
+- [x] Verify public CloudFront access remains healthy and direct origin access is rejected
+- **Status:** completed
+
 ## Key Questions
 1. Which AWS integration path best fits PantryList's current maturity: container-first, serverless-first, or hybrid?
 2. What parts of the existing implementation are solid enough to preserve, and what parts are still mostly scaffold or incomplete?
@@ -226,6 +237,8 @@ Phase 20
 | Use `origin.pantrylist.lynxpardelle.com` for CloudFront's custom origin | CloudFront can use HTTPS to EC2/Traefik with a certificate matching the origin hostname without changing the public application domain |
 | Exclude the viewer `Host` header for HTTPS origin requests | Forwarding `Host: pantrylist.lynxpardelle.com` to an origin certificate issued for `origin.pantrylist.lynxpardelle.com` caused CloudFront `502`; `ALL_VIEWER_EXCEPT_HOST_HEADER` preserves cookies/query strings while allowing TLS host validation to match |
 | Disable CloudFront IPv6 for now | Repeated local IPv6 checks showed intermittent connection resets while IPv4 checks were stable; IPv6 can be re-enabled after a clean network validation pass |
+| Keep `pantrylist.lynxpardelle.com` as the visible Dokploy domain and use a separate protected `origin.*` route for CloudFront | The user wants the public app visible in Dokploy UI, while CloudFront still needs a distinct origin hostname and verification header for secure edge-to-origin traffic |
+| Rotate the CloudFront origin verification value after any accidental command-output exposure | The first Traefik route script used backticks that `/bin/sh` interpreted; the previous value was invalidated immediately and replaced in Secrets Manager, CloudFront, and Traefik |
 
 ## Errors Encountered
 | Error | Attempt | Resolution |
@@ -248,6 +261,8 @@ Phase 20
 | AWS CLI SSM output hit a Windows character encoding issue while streaming Docker build output | 1 | Retrieved command status/output afterward with `PYTHONIOENCODING=utf-8` instead of relying on the failed console stream |
 | First CloudFront HTTPS-origin update returned `502 Bad Gateway` | 1 | Rolled back to HTTP-only, confirmed production health, then changed CDK to use `ALL_VIEWER_EXCEPT_HOST_HEADER` in HTTPS-origin mode and redeployed |
 | Repeated CloudFront IPv6 checks intermittently reset the TLS connection | 1 | Made IPv6 configurable in CDK, redeployed production with `enableIpv6=false`, removed the Route53 AAAA alias, and verified ten repeated public checks returned `200` |
+| First protected-origin Traefik route script leaked the old verification value in SSM stderr because shell backticks were interpreted | 1 | Rotated the Secrets Manager value immediately, redeployed CloudFront with the new header value, rewrote the Traefik rule with escaped double quotes, and verified SSM stderr was empty |
+| Dokploy domain update did not persist the documented `middlewares` field for compose domains | 1 | Kept `pantrylist.lynxpardelle.com` visible in Dokploy UI and added a higher-priority Traefik dynamic route to block direct public-host HTTP access to the EC2 |
 
 ## Notes
 - Update phase status as progress changes.
