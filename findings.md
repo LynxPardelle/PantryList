@@ -320,12 +320,20 @@
 - Account linking by email should remain restricted to verified Cognito email
   claims. If a provider does not send `email_verified=true`, the app should not
   silently attach that login to an existing PantryList account.
+- PantryList's design direction is now documented as `Hogar operativo`: warm
+  household clarity plus operational controls, while explicitly avoiding
+  corporate SaaS density, childlike styling, and alarm-heavy medical UX.
+- The profile/preferences feature should add real behavior-backed settings only:
+  expiration warning days, expired entry alert toggle, depletion warning ratio,
+  and shopping-plan lead days.
 
 ## Resources
+- `C:\Users\lince\Documents\GitHub\PantryList\.impeccable.md`
 - `C:\Users\lince\Documents\GitHub\PantryList\README.md`
 - `C:\Users\lince\Documents\GitHub\PantryList\docs\superpowers\specs\2026-04-21-expiration-lot-model-design.md`
 - `C:\Users\lince\Documents\GitHub\PantryList\docs\superpowers\specs\2026-04-24-durability-depletion-design.md`
 - `C:\Users\lince\Documents\GitHub\PantryList\docs\superpowers\specs\2026-04-27-cognito-auth-replacement-design.md`
+- `C:\Users\lince\Documents\GitHub\PantryList\docs\superpowers\specs\2026-04-28-profile-preferences-expired-alerts-design.md`
 - `C:\Users\lince\Documents\GitHub\PantryList\plan\feature-expiration-lots-1.md`
 - `C:\Users\lince\Documents\GitHub\PantryList\plan\feature-durability-depletion-1.md`
 - `C:\Users\lince\Documents\GitHub\PantryList\plan\feature-shopping-plan-1.md`

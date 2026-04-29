@@ -126,6 +126,18 @@ Phase 16
 - [x] Correct helper/docs to use explicit CDK `--context` deploy scripts instead of ignored `cdk.context.json`
 - **Status:** completed
 
+### Phase 17: Profile Preferences and Expired Alerts
+- [x] Capture design context for the `Hogar operativo` direction
+- [x] Approve feature design for `/profile`, user/app preferences, and expired-item entry alerts
+- [x] Write and self-review design spec
+- [ ] User review of written design spec
+- [ ] Create implementation plan
+- [ ] Implement backend preferences model/API
+- [ ] Implement frontend profile/settings surface and expired alerts
+- [ ] Apply focused design polish
+- [ ] Verify with unit, build, browser, and audit checks
+- **Status:** in progress
+
 ## Key Questions
 1. Which AWS integration path best fits PantryList's current maturity: container-first, serverless-first, or hybrid?
 2. What parts of the existing implementation are solid enough to preserve, and what parts are still mostly scaffold or incomplete?
@@ -150,6 +162,7 @@ Phase 16
 | Do not attempt to obtain Google/Facebook secrets without the user's authenticated provider consoles | Provider app secrets are sensitive and require access to the user's Google Cloud and Meta Developer accounts |
 | Render login provider buttons from backend configuration | Runtime infrastructure can enable or disable providers independently from the Angular build, so the UI should reflect `/api/auth/cognito/providers` |
 | Activate Google/Facebook through CDK only after provider secrets exist in Secrets Manager | CloudFormation can resolve secret values at deploy time without committing them to git or local docs |
+| Use `Hogar operativo` as PantryList's design direction | The user selected a mix of home-friendly clarity and operational control, explicitly avoiding corporate SaaS, childlike UI, and medical/alarm aesthetics |
 
 ## Errors Encountered
 | Error | Attempt | Resolution |
