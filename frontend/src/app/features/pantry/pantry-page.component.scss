@@ -235,10 +235,7 @@
 }
 
 .expiring-lot-row {
-  display: flex;
-  justify-content: space-between;
   gap: 0.8rem;
-  align-items: center;
   background: var(--color-surface);
 }
 
@@ -300,4 +297,5 @@
     justify-items: start;
     text-align: left;
   }
+
 }

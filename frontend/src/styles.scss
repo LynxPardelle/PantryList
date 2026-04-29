@@ -192,6 +192,13 @@ button:focus-visible {
   flex-wrap: wrap;
 }
 
+.expiration-split {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.85rem;
+}
+
 .group-summary-stats {
   display: grid;
   justify-items: end;
@@ -216,8 +223,30 @@ button:focus-visible {
   grid-column: 1 / -1;
 }
 
+.expiring-lot-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+}
+
+.expiring-lot-copy {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.expiring-lot-copy strong,
+.lot-copy-top strong {
+  overflow-wrap: anywhere;
+}
+
+.expiring-lot-copy small {
+  color: var(--color-text-muted);
+}
+
 .category-pill,
 .alert-pill,
+.expired-pill,
 .status-pill {
   display: inline-flex;
   align-items: center;
@@ -235,6 +264,11 @@ button:focus-visible {
 .alert-pill {
   background: var(--color-surface-warning);
   color: var(--color-accent-deep);
+}
+
+.expired-pill {
+  background: rgba(143, 45, 32, 0.16);
+  color: var(--color-danger-text);
 }
 
 .status-pill {
@@ -285,6 +319,11 @@ button:focus-visible {
 }
 
 @media (max-width: 760px) {
+  .expiring-lot-row {
+    grid-template-columns: 1fr;
+    align-items: flex-start;
+  }
+
   .expired-entry-alert {
     grid-template-columns: 1fr;
   }

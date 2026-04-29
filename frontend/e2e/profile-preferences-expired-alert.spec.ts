@@ -115,6 +115,14 @@ test.beforeEach(async ({ page }) => {
                 expirationStatus: 'expired',
                 updatedAt: '2026-04-21T00:00:00.000Z',
               },
+              {
+                lotId: 'lot-critical',
+                quantity: 1,
+                unit: 'piezas',
+                expiresAt: '2026-04-28T00:00:00.000Z',
+                expirationStatus: 'critical',
+                updatedAt: '2026-04-21T00:00:00.000Z',
+              },
             ],
           },
         ],
@@ -145,6 +153,10 @@ test('shows and dismisses expired entry alert on pantry entry', async ({
   const alert = page.getByTestId('expired-entry-alert');
   await expect(alert).toContainText('Hay productos que ya caducaron');
   await expect(alert).toContainText('1 lote');
+  await expect(page.getByText('Ya caducó: 2 piezas').first()).toBeVisible();
+  await expect(page.getByText('Por caducar: 1 pieza').first()).toBeVisible();
+  await expect(page.getByText('Ya caducó el 20 Apr 2026')).toBeVisible();
+  await expect(page.getByText('Primero caducó el 20 Apr 2026')).toBeVisible();
 
   await page.getByTestId('dismiss-expired-alert').click();
 

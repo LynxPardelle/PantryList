@@ -29,6 +29,7 @@ import {
   PRODUCT_CATEGORIES,
   PRODUCT_UNITS,
   ProductCategory,
+  PantryLotSummary,
   PantryOverviewItem,
   ProductTypeDepletionRuleRequest,
   ProductType,
@@ -87,9 +88,9 @@ export class PantryPageComponent implements OnInit {
   };
 
   readonly expirationLabels: Record<ExpirationStatus, string> = {
-    expired: 'Ya caduco',
-    critical: 'Critico',
-    soon: 'Proximo',
+    expired: 'Ya caducó',
+    critical: 'Crítico',
+    soon: 'Próximo',
     stable: 'Estable',
     none: 'Sin caducidad',
   };
@@ -431,6 +432,29 @@ export class PantryPageComponent implements OnInit {
     return lot.lotId;
   }
 
+  getExpiredQuantity(group: { lots: PantryLotSummary[] }): number {
+    return this.sumLotsByStatus(group.lots, ['expired']);
+  }
+
+  getPendingExpirationQuantity(group: { lots: PantryLotSummary[] }): number {
+    return this.sumLotsByStatus(group.lots, ['critical', 'soon']);
+  }
+
+  getReviewQuantity(group: { lots: PantryLotSummary[] }): number {
+    return Number(
+      (
+        this.getExpiredQuantity(group) +
+        this.getPendingExpirationQuantity(group)
+      ).toFixed(2),
+    );
+  }
+
+  formatQuantity(quantity: number, unit: ProductUnit | undefined): string {
+    const displayUnit = unit === 'piezas' && quantity === 1 ? 'pieza' : unit;
+
+    return displayUnit ? `${quantity} ${displayUnit}` : `${quantity}`;
+  }
+
   private resetLotForm(): void {
     this.selectedExistingType = null;
     this.lotForm.reset({
@@ -569,6 +593,22 @@ export class PantryPageComponent implements OnInit {
     }
 
     return 'No se pudo completar la solicitud.';
+  }
+
+  private sumLotsByStatus(
+    lots: PantryLotSummary[],
+    statuses: ExpirationStatus[],
+  ): number {
+    return Number(
+      lots
+        .filter((lot) => statuses.includes(lot.expirationStatus))
+        .reduce(
+          (sum, lot) =>
+            Number.isFinite(lot.quantity) ? sum + lot.quantity : sum,
+          0,
+        )
+        .toFixed(2),
+    );
   }
 }
 

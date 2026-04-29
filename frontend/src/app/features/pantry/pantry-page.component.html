@@ -100,7 +100,7 @@
         <small>reposiciones calculadas</small>
       </article>
       <article class="summary-card summary-card-critical">
-        <span>Criticos</span>
+        <span>Cr&iacute;ticos</span>
         <strong>{{ summary.criticalLots }}</strong>
         <small>lotes que requieren acci&oacute;n muy pronto</small>
       </article>
@@ -310,9 +310,21 @@
                     <div>
                       <p class="expiring-kicker">{{ categoryLabels[group.category] }}</p>
                       <h3>{{ group.baseName }}</h3>
+                      <div class="expiration-split" aria-label="Resumen de caducidad">
+                        @if (getExpiredQuantity(group) > 0) {
+                          <span class="expired-pill">
+                            Ya caduc&oacute;: {{ formatQuantity(getExpiredQuantity(group), group.lots[0]?.unit) }}
+                          </span>
+                        }
+                        @if (getPendingExpirationQuantity(group) > 0) {
+                          <span class="alert-pill">
+                            Por caducar: {{ formatQuantity(getPendingExpirationQuantity(group), group.lots[0]?.unit) }}
+                          </span>
+                        }
+                      </div>
                     </div>
                     <div class="expiring-quantity">
-                      <strong>{{ group.totalExpiringQuantity }}</strong>
+                      <strong>{{ getReviewQuantity(group) }}</strong>
                       <span>por revisar</span>
                     </div>
                   </div>
@@ -321,7 +333,11 @@
                     <span>{{ group.lotCount }} lotes involucrados</span>
                     <span>
                       @if (group.nextExpirationAt) {
-                        Caduca primero el {{ group.nextExpirationAt | date:'dd MMM y' }}
+                        @if (getExpiredQuantity(group) > 0) {
+                          Primero caduc&oacute; el {{ group.nextExpirationAt | date:'dd MMM y':'UTC' }}
+                        } @else {
+                          Caduca primero el {{ group.nextExpirationAt | date:'dd MMM y':'UTC' }}
+                        }
                       } @else {
                         Sin fecha disponible
                       }
@@ -331,8 +347,26 @@
                   <div class="expiring-lot-list">
                     @for (lot of group.lots; track trackByLotId($index, lot)) {
                       <div class="expiring-lot-row" [attr.data-status]="lot.expirationStatus">
-                        <span>{{ lot.variantName || 'Sin variante especifica' }}</span>
-                        <strong>{{ lot.quantity }} {{ lot.unit }}</strong>
+                        <div class="expiring-lot-copy">
+                          <strong>{{ lot.variantName || 'Sin variante espec&iacute;fica' }}</strong>
+                          <small>
+                            @if (lot.expiresAt) {
+                              @if (lot.expirationStatus === 'expired') {
+                                Ya caduc&oacute; el {{ lot.expiresAt | date:'dd MMM y':'UTC' }}
+                              } @else if (lot.expirationStatus === 'critical') {
+                                Caduca hoy, {{ lot.expiresAt | date:'dd MMM y':'UTC' }}
+                              } @else {
+                                Caduca el {{ lot.expiresAt | date:'dd MMM y':'UTC' }}
+                              }
+                            } @else {
+                              Sin fecha de caducidad
+                            }
+                          </small>
+                        </div>
+                        <span class="status-pill" [attr.data-status]="lot.expirationStatus">
+                          {{ expirationLabels[lot.expirationStatus] }}
+                        </span>
+                        <strong>{{ formatQuantity(lot.quantity, lot.unit) }}</strong>
                       </div>
                     }
                   </div>
@@ -379,7 +413,7 @@
                   </p>
 
                   <small class="depletion-date">
-                    Agotamiento estimado: {{ group.estimatedDepletionAt | date:'dd MMM y' }}
+                    Agotamiento estimado: {{ group.estimatedDepletionAt | date:'dd MMM y':'UTC' }}
                   </small>
                 </article>
               }
@@ -407,8 +441,8 @@
               @for (item of shoppingPlanItems; track trackByProductTypeId($index, item)) {
                 <article class="shopping-plan-row" [attr.data-urgency]="item.urgency">
                   <div class="shopping-plan-date">
-                    <span>{{ item.recommendedPurchaseAt | date:'MMM' }}</span>
-                    <strong>{{ item.recommendedPurchaseAt | date:'dd' }}</strong>
+                    <span>{{ item.recommendedPurchaseAt | date:'MMM':'UTC' }}</span>
+                    <strong>{{ item.recommendedPurchaseAt | date:'dd':'UTC' }}</strong>
                   </div>
 
                   <div class="shopping-plan-copy">
@@ -422,7 +456,7 @@
                     <p>
                       Sugerido: comprar {{ item.suggestedPurchaseQuantity }}
                       {{ item.defaultUnit }} antes de agotarse el
-                      {{ item.estimatedDepletionAt | date:'dd MMM y' }}.
+                      {{ item.estimatedDepletionAt | date:'dd MMM y':'UTC' }}.
                     </p>
                   </div>
 
@@ -470,8 +504,15 @@
                     <div class="group-summary-copy">
                       <div class="group-tags">
                         <span class="category-pill">{{ categoryLabels[group.category] }}</span>
-                        @if (group.expiringSoonQuantity > 0) {
-                          <span class="alert-pill">{{ group.expiringSoonQuantity }} por caducar</span>
+                        @if (getExpiredQuantity(group) > 0) {
+                          <span class="expired-pill">
+                            Ya caduc&oacute;: {{ formatQuantity(getExpiredQuantity(group), group.defaultUnit) }}
+                          </span>
+                        }
+                        @if (getPendingExpirationQuantity(group) > 0) {
+                          <span class="alert-pill">
+                            Por caducar: {{ formatQuantity(getPendingExpirationQuantity(group), group.defaultUnit) }}
+                          </span>
                         }
                         @if (group.hasDepletionRule) {
                           <span class="depletion-pill">durabilidad activa</span>
@@ -494,8 +535,10 @@
                       <small>
                         @if (group.hasDepletionRule) {
                           Estimado actual de {{ group.totalQuantity }} registrado
+                        } @else if (getExpiredQuantity(group) > 0 && group.nextExpirationAt) {
+                          Primero caduc&oacute; {{ group.nextExpirationAt | date:'dd MMM y':'UTC' }}
                         } @else if (group.nextExpirationAt) {
-                          Primero vence {{ group.nextExpirationAt | date:'dd MMM y' }}
+                          Primero vence {{ group.nextExpirationAt | date:'dd MMM y':'UTC' }}
                         } @else {
                           Sin caducidad registrada
                         }
@@ -636,9 +679,9 @@
                             <small>
                               @if (lot.expiresAt) {
                                 @if (lot.expirationStatus === 'expired') {
-                                  Ya caduc&oacute; el {{ lot.expiresAt | date:'dd MMM y' }}
+                                  Ya caduc&oacute; el {{ lot.expiresAt | date:'dd MMM y':'UTC' }}
                                 } @else {
-                                  Caduca el {{ lot.expiresAt | date:'dd MMM y' }}
+                                  Caduca el {{ lot.expiresAt | date:'dd MMM y':'UTC' }}
                                 }
                               } @else {
                                 Sin fecha de caducidad

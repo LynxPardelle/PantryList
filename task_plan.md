@@ -4,7 +4,7 @@
 Review PantryList end to end, define an AWS-aligned target architecture that fits the current Angular + NestJS + MongoDB codebase, and then implement the approved path to move the project toward a production-ready state while exercising the newly installed skills.
 
 ## Current Phase
-Phase 16
+Phase 20
 
 ## Phases
 
@@ -146,6 +146,24 @@ Phase 16
 - [x] Verify backend tests, frontend tests/build, Docker runtime, E2E, production audits, and secret scan
 - **Status:** completed
 
+### Phase 19: Expiration Visibility Split
+- [x] Split expired vs upcoming quantities in priority and base-type pantry summaries
+- [x] Mark each expired lot with an explicit `Ya caducó` label and date
+- [x] Preserve exact date-only display by rendering pantry calendar dates in UTC
+- [x] Verify frontend unit tests, production build, Docker frontend runtime, and Playwright E2E
+- **Status:** completed
+
+### Phase 20: Replenishment Intelligence, Per-Type Rules, and Guided UX
+- [x] Capture user-reported product gaps as feature requirements
+- [x] Inspect current durability, shopping-plan, criticity, purchase-date, and preferences boundaries
+- [ ] Present product/architecture approaches and choose one
+- [x] Write draft design spec under `docs/superpowers/specs/`
+- [ ] User review and approval of written design spec
+- [ ] Create detailed implementation plan under `plan/`
+- [ ] Implement after explicit approval
+- [ ] Verify with backend tests, frontend tests, build, Docker runtime, E2E, audits, and browser QA
+- **Status:** in_progress
+
 ## Key Questions
 1. Which AWS integration path best fits PantryList's current maturity: container-first, serverless-first, or hybrid?
 2. What parts of the existing implementation are solid enough to preserve, and what parts are still mostly scaffold or incomplete?
@@ -171,6 +189,10 @@ Phase 16
 | Render login provider buttons from backend configuration | Runtime infrastructure can enable or disable providers independently from the Angular build, so the UI should reflect `/api/auth/cognito/providers` |
 | Activate Google/Facebook through CDK only after provider secrets exist in Secrets Manager | CloudFormation can resolve secret values at deploy time without committing them to git or local docs |
 | Use `Hogar operativo` as PantryList's design direction | The user selected a mix of home-friendly clarity and operational control, explicitly avoiding corporate SaaS, childlike UI, and medical/alarm aesthetics |
+| Split expired and upcoming expiration quantities in the pantry UI from lot statuses | Backend `expiringSoonQuantity` groups all review-worthy lots, including expired ones; the UI needs separate `expired` vs `critical/soon` counts for household decisions |
+| Render pantry calendar dates with UTC date-only formatting | Expiration dates originate from browser date inputs and are stored as date-only UTC-midnight values; local timezone rendering can shift the visible day backward |
+| Treat the next feature as replenishment intelligence, not just UI copy polish | The reported issues span domain calculations, purchase planning, per-type configuration, onboarding guidance, and user-facing copy |
+| Keep global profile preferences as defaults and add product-type overrides before considering lot-level overrides | The profile should define household defaults, while product types such as detergent, shampoo, apples, or tuna need different thresholds without overloading every individual lot |
 
 ## Errors Encountered
 | Error | Attempt | Resolution |
@@ -182,6 +204,9 @@ Phase 16
 | A first changed-file secret scan used a nested PowerShell object array and produced path-binding errors | 1 | Re-ran the scan with a flattened string path array and then verified with the `security-compliance` secret scanner |
 | One frontend `npm run test:ci` run showed transient ChromeHeadless temp-directory/crashpad startup noise | 1 | Re-ran the frontend test workflow and confirmed the suite passed |
 | Facebook login returned `Invalid Cognito auth state` at callback | 1 | Kept strict state validation, extended the transaction TTL to 900 seconds, cleared stale transaction cookies, and redirected to `/login?authError=cognito_state` for a retry instead of showing JSON |
+| Playwright expected `20 Apr 2026` but Angular rendered `19 Apr 2026` for a UTC-midnight expiration value | 1 | Treated pantry calendar dates as date-only displays with `UTC` date-pipe formatting, then reran frontend tests, build, and E2E |
+| A product with one monthly-use liter purchased one month ago still showed one liter remaining and depletion one month ahead | 1 | Root cause found: the depletion forecast uses the product-type rule `anchorDate`, not the lot `purchaseDate`, so the purchase date does not currently drive consumption aging |
+| Consuming the final quantity deletes the lot and removes the product from the shopping plan | 1 | Root cause found: empty lots are deleted and `buildPantryOverview` only creates groups from existing inventory lots, so active product types with zero stock are absent from the planning read model |
 
 ## Notes
 - Update phase status as progress changes.

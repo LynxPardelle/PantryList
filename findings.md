@@ -353,6 +353,32 @@
   defense. The safe recovery path is to clear stale transaction cookies and
   redirect the user to `/login?authError=cognito_state` so they can start a
   fresh provider flow.
+- `expiringSoonQuantity` is useful as a compatibility total, but it is not a
+  user-facing "por caducar" count because expired lots also satisfy the
+  review-worthy expiration window. UI summaries should derive "Ya caducó" from
+  `expirationStatus === 'expired'` and "Por caducar" from `critical/soon`.
+- Pantry date fields are date-only values from browser date inputs. Rendering
+  UTC-midnight API values in the local timezone can shift the visible date to
+  the previous Central Time day, so pantry calendar date displays should use
+  UTC formatting unless the backend changes to a pure date string contract.
+- Current depletion forecasting is product-type-rule anchored. It calculates
+  elapsed intervals from `ProductType.defaultDepletionRule.anchorDate`, not
+  from each lot's `purchaseDate`. This explains why a lot bought a month ago
+  can still show the original quantity if the depletion rule anchor is today.
+- The current read model builds pantry groups by iterating active inventory
+  lots. When the final quantity of a durable product is consumed, the lot is
+  deleted and the product type no longer appears in `items` or
+  `shoppingPlanItems`, even if its durable rule says the user should restock.
+- `PantryLotSummary` does not expose `purchaseDate`, although
+  `InventoryLot` and `ApiInventoryLot` already have it. The UI therefore
+  cannot show when the object was bought from the grouped pantry view.
+- Profile preferences currently act globally only. The existing product-type
+  depletion rule already gives a natural place to add per-type operational
+  overrides before considering per-lot overrides.
+- Existing shopping-plan urgency labels are technically correct but user copy
+  is not household-obvious enough. The next pass should prefer action language
+  such as "Comprar ya", "Comprar esta semana", and "Comprar pronto" over
+  abstract system states.
 
 ## Resources
 - `C:\Users\lince\Documents\GitHub\PantryList\.impeccable.md`

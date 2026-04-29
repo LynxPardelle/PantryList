@@ -233,6 +233,45 @@ describe('PantryPageComponent', () => {
       compiled.querySelector('[data-testid="expired-entry-alert"]'),
     ).toBeNull();
   });
+
+  it('separates expired quantity from upcoming expiration quantity for a base type', () => {
+    const group = makePantryGroup({
+      lots: [
+        {
+          lotId: 'lot-expired',
+          quantity: 3,
+          unit: 'piezas',
+          expiresAt: new Date('2026-04-23T00:00:00.000Z'),
+          expirationStatus: 'expired',
+          updatedAt: new Date('2026-04-23T00:00:00.000Z'),
+        },
+        {
+          lotId: 'lot-critical',
+          quantity: 1,
+          unit: 'piezas',
+          expiresAt: new Date('2026-04-29T00:00:00.000Z'),
+          expirationStatus: 'critical',
+          updatedAt: new Date('2026-04-23T00:00:00.000Z'),
+        },
+        {
+          lotId: 'lot-stable',
+          quantity: 8,
+          unit: 'piezas',
+          expiresAt: new Date('2026-05-30T00:00:00.000Z'),
+          expirationStatus: 'stable',
+          updatedAt: new Date('2026-04-23T00:00:00.000Z'),
+        },
+      ],
+    });
+
+    expect(component.getExpiredQuantity(group)).toBe(3);
+    expect(component.getPendingExpirationQuantity(group)).toBe(1);
+  });
+
+  it('formats one piece in singular Spanish for pantry quantities', () => {
+    expect(component.formatQuantity(1, 'piezas')).toBe('1 pieza');
+    expect(component.formatQuantity(2, 'piezas')).toBe('2 piezas');
+  });
 });
 
 class AuthFacadeStub {
