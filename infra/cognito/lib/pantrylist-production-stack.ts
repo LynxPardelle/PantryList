@@ -37,6 +37,9 @@ export class PantryListProductionStack extends cdk.Stack {
       "originDomainName",
       "ec2-54-198-41-242.compute-1.amazonaws.com"
     );
+    const originRecordName = this.readOptionalContext("originRecordName");
+    const originTargetIp = this.readOptionalContext("originTargetIp");
+    const originProtocolPolicy = this.readOriginProtocolPolicy();
     const ec2RoleName = this.readContext(
       "ec2RoleName",
       "EC2TraefikRoute53DNS01Role"
@@ -69,12 +72,22 @@ export class PantryListProductionStack extends cdk.Stack {
       subjectAlternativeNames: [`test.${domainName}`, `dev.${domainName}`],
       validation: acm.CertificateValidation.fromDns(zone),
     });
+    if (originRecordName && originTargetIp) {
+      new route53.ARecord(this, "OriginRecord", {
+        zone,
+        recordName: toRecordName(originRecordName, hostedZoneName),
+        target: route53.RecordTarget.fromIpAddresses(originTargetIp),
+      });
+    }
+
     const distribution = new cloudfront.Distribution(this, "Distribution", {
       comment: `${projectName}-${stage} via Dokploy EC2 origin`,
       defaultBehavior: {
         origin: new origins.HttpOrigin(originDomainName, {
-          protocolPolicy: cloudfront.OriginProtocolPolicy.HTTP_ONLY,
+          protocolPolicy: originProtocolPolicy,
           httpPort: 80,
+          httpsPort: 443,
+          originSslProtocols: [cloudfront.OriginSslPolicy.TLS_V1_2],
         }),
         allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
         cachedMethods: cloudfront.CachedMethods.CACHE_GET_HEAD_OPTIONS,
@@ -113,6 +126,17 @@ export class PantryListProductionStack extends cdk.Stack {
     new cdk.CfnOutput(this, "CloudFrontDomainName", {
       value: distribution.distributionDomainName,
     });
+    new cdk.CfnOutput(this, "OriginDomainName", {
+      value: originDomainName,
+    });
+    new cdk.CfnOutput(this, "OriginProtocolPolicy", {
+      value: originProtocolPolicy,
+    });
+    if (originRecordName) {
+      new cdk.CfnOutput(this, "OriginRecordName", {
+        value: originRecordName,
+      });
+    }
     new cdk.CfnOutput(this, "DynamoDbUsersTable", {
       value: tables.users.tableName,
     });
@@ -229,6 +253,37 @@ export class PantryListProductionStack extends cdk.Stack {
     const normalizedValue = value.toString().trim();
 
     return normalizedValue.length > 0 ? normalizedValue : fallback;
+  }
+
+  private readOptionalContext(key: string): string | undefined {
+    const value = this.node.tryGetContext(key);
+
+    if (value === undefined || value === null) {
+      return undefined;
+    }
+
+    const normalizedValue = value.toString().trim();
+
+    return normalizedValue.length > 0 ? normalizedValue : undefined;
+  }
+
+  private readOriginProtocolPolicy(): cloudfront.OriginProtocolPolicy {
+    const value = this.readContext("originProtocolPolicy", "http-only")
+      .toLowerCase()
+      .replace(/_/g, "-");
+
+    switch (value) {
+      case "https-only":
+        return cloudfront.OriginProtocolPolicy.HTTPS_ONLY;
+      case "match-viewer":
+        return cloudfront.OriginProtocolPolicy.MATCH_VIEWER;
+      case "http-only":
+        return cloudfront.OriginProtocolPolicy.HTTP_ONLY;
+      default:
+        throw new Error(
+          `Unsupported originProtocolPolicy "${value}". Use http-only, https-only, or match-viewer.`
+        );
+    }
   }
 }
 
