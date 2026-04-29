@@ -10,6 +10,16 @@ This CDK app creates the AWS Cognito side of PantryList authentication:
 - Optional Google and Facebook social IdPs that read provider secrets from AWS
   Secrets Manager dynamic references.
 
+When `includeProductionInfra=true`, it also creates the production application
+support stack:
+
+- DynamoDB tables for users, products, product types, and inventory lots.
+- IAM permissions for the Dokploy EC2 instance role.
+- ACM certificate for `pantrylist.lynxpardelle.com` plus the planned
+  `test.` and `dev.` subdomains.
+- CloudFront distribution with a Dokploy EC2 HTTP origin.
+- Route53 A/AAAA aliases for the production domain.
+
 No Google/Facebook client secret belongs in this repository.
 
 ## Why CDK
@@ -151,6 +161,36 @@ npx cdk deploy `
 Use `removalPolicy=retain` by default. Use `removalPolicy=destroy` only for
 throwaway environments.
 
+## Deploy: Production AWS App Support
+
+This creates production Cognito plus the production support stack for
+`https://pantrylist.lynxpardelle.com`:
+
+```powershell
+npx cdk deploy pantrylist-prod-cognito pantrylist-prod-app `
+  --require-approval never `
+  --context stage=prod `
+  --context awsRegion=us-east-1 `
+  --context domainPrefix=pantrylist-prod-765932874577 `
+  --context productionFrontendBaseUrl=https://pantrylist.lynxpardelle.com `
+  --context includeProductionInfra=true `
+  --context appDomainName=pantrylist.lynxpardelle.com `
+  --context hostedZoneId=Z05088763QG63CC5SE7PN `
+  --context hostedZoneName=lynxpardelle.com `
+  --context originDomainName=ec2-54-198-41-242.compute-1.amazonaws.com `
+  --context ec2RoleName=EC2TraefikRoute53DNS01Role `
+  --context deletionProtection=true `
+  --context enableGoogle=true `
+  --context googleClientId=<google-oauth-client-id> `
+  --context googleClientSecretName=/pantrylist/prod/google-client-secret `
+  --context enableFacebook=true `
+  --context facebookClientId=<facebook-app-id> `
+  --context facebookClientSecretName=/pantrylist/prod/facebook-client-secret
+```
+
+Do not put OAuth client secrets in command-line context. Store them in Secrets
+Manager and reference only the secret names.
+
 ## Apply Outputs To PantryList
 
 After deploy, get stack outputs:
@@ -190,3 +230,12 @@ COGNITO_LOGOUT_REDIRECT_URI=https://<your-dokploy-domain>/login
 - `CognitoDomain`: value for `COGNITO_DOMAIN`.
 - `SocialProviderRedirectUri`: URL to configure in Google/Facebook.
 - `AllowedProviders`: value for `COGNITO_ALLOWED_PROVIDERS`.
+- `DynamoDbUsersTable`: value for `DYNAMODB_USERS_TABLE`.
+- `DynamoDbProductsTable`: value for `DYNAMODB_PRODUCTS_TABLE`.
+- `DynamoDbProductTypesTable`: value for `DYNAMODB_PRODUCT_TYPES_TABLE`.
+- `DynamoDbInventoryLotsTable`: value for
+  `DYNAMODB_INVENTORY_LOTS_TABLE`.
+- `CloudFrontDistributionId`: distribution to invalidate after production
+  redeploys when needed.
+- `CloudFrontDomainName`: generated CloudFront hostname backing the Route53
+  alias.

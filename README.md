@@ -421,11 +421,13 @@ Verificacion de replenishment, reglas por tipo y archivado:
 
 Para Dokploy no hace falta usar el flujo local de desarrollo con `ng serve` y
 watchers. Usa `docker-compose.prod.yml`, que construye imagenes de runtime,
-sirve el frontend SSR en un proceso Node estable y mantiene backend/MongoDB
-solo en la red interna.
+sirve el frontend SSR en un proceso Node estable y mantiene el backend solo en
+la red interna. Produccion usa DynamoDB administrado por AWS; MongoDB queda para
+desarrollo/local.
 
-- Backend: configura `DATABASE_URL`, `DATABASE_NAME`, `API_PREFIX`,
-  `CORS_ORIGIN`, `HELMET_ENABLED` y `SWAGGER_ENABLED`.
+- Backend: configura `PERSISTENCE_PROVIDER=dynamodb`, `AWS_REGION`,
+  `DYNAMODB_*_TABLE`, `API_PREFIX`, `CORS_ORIGIN`, `HELMET_ENABLED` y
+  `SWAGGER_ENABLED`.
 - Frontend SSR: si se despliega el servidor SSR, puedes definir `BACKEND_URL`
   para que el proxy del servidor apunte al backend correcto.
 - Frontend SSR/proxy: el navegador llama `/api` en el mismo dominio del
@@ -433,19 +435,23 @@ solo en la red interna.
 - Si quieres una topologia de produccion local o una base para Dokploy segun el
   spec aprobado del `2026-04-23`, usa `docker-compose.prod.yml`.
 - Ese compose mantiene `frontend` SSR publico, `backend` solo por red interna y
-  MongoDB sin bind mounts de codigo.
-- Variables obligatorias para ese flujo: `MONGO_INITDB_ROOT_USERNAME`,
-  `MONGO_INITDB_ROOT_PASSWORD`, `MONGO_APP_USERNAME`, `MONGO_APP_PASSWORD`,
+  DynamoDB como persistencia externa.
+- Variables obligatorias para ese flujo: `PERSISTENCE_PROVIDER=dynamodb`,
+  `AWS_REGION`, `DYNAMODB_USERS_TABLE`, `DYNAMODB_PRODUCTS_TABLE`,
+  `DYNAMODB_PRODUCT_TYPES_TABLE`, `DYNAMODB_INVENTORY_LOTS_TABLE`,
   `COGNITO_ENABLED=true`, `COGNITO_ISSUER`, `COGNITO_DOMAIN`,
   `COGNITO_CLIENT_ID`, `COGNITO_REDIRECT_URI` y
   `COGNITO_LOGOUT_REDIRECT_URI`.
 - Para crear esos valores con infraestructura versionada, usa el CDK app en
-  `infra/cognito`.
+  `infra/cognito`; ahora tambien crea DynamoDB, CloudFront, ACM, Route53 e IAM
+  para produccion.
 - Variables utiles para override: `DATABASE_NAME`, `FRONTEND_PORT`,
   `CORS_ORIGIN`, `API_PREFIX`, `BACKEND_URL`, `AUTH_COOKIE_SECURE`,
   `AUTH_COOKIE_SAME_SITE` y `AUTH_COOKIE_DOMAIN`.
 - Revisa `docs/deployment/dokploy.md` y copia
   `.env.production.example` a un archivo local no versionado para pruebas.
+- En la EC2 de Dokploy, agrega `docker-compose.dokploy.yml` al comando de
+  Compose para conectar el frontend a `dokploy-network`.
 - Smoke local de produccion:
 
 ```bash

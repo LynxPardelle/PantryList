@@ -164,6 +164,17 @@ Phase 20
 - [x] Verify with backend tests, frontend tests, build, Docker runtime, E2E, audits, and browser QA
 - **Status:** completed
 
+### Phase 21: Production AWS Deployment with DynamoDB
+- [x] Capture production deployment requirements: `pantrylist.lynxpardelle.com`, later `test.` and `dev.`, Dokploy on EC2, new production Cognito, DynamoDB instead of MongoDB
+- [x] Run local repo and AWS preflight
+- [ ] Add production DynamoDB persistence adapters behind the existing DAO/repository ports
+- [ ] Add repeatable AWS infrastructure-as-code for DynamoDB, Cognito production, CloudFront, ACM, Route53, and EC2 IAM access
+- [ ] Update Dokploy production environment and compose topology to use DynamoDB
+- [ ] Deploy `main` to production domain
+- [ ] Verify Cognito, app health, API health, DynamoDB reads/writes, CloudFront/Route53 routing, and auth cookies
+- [ ] Create deployment report with AWS resources and cost notes
+- **Status:** in_progress
+
 ## Key Questions
 1. Which AWS integration path best fits PantryList's current maturity: container-first, serverless-first, or hybrid?
 2. What parts of the existing implementation are solid enough to preserve, and what parts are still mostly scaffold or incomplete?
@@ -197,6 +208,8 @@ Phase 20
 | Build future shopping plans from active product types, not only active lots | Planned products must remain visible for restock decisions after the final lot is consumed or reaches zero |
 | Keep Pantry archive/planning mutations component-local for this slice | The existing pantry NgRx state only owns overview loading; direct service mutations plus overview reload keep the feature small and verifiable before adding a broader mutation state machine |
 | Lazy-load `/pantry` through `PantryModule` | The richer Pantry workspace pushed the initial Angular bundle above the `500kB` warning threshold; lazy-loading the route reduced the initial production bundle to `457.00 kB` while moving Pantry into a `56.93 kB` feature chunk |
+| Use DynamoDB only for production initially and keep MongoDB as the default local/development provider | This avoids blocking local Docker workflows while meeting the production requirement to stop using MongoDB |
+| Use CDK for PantryList production AWS resources | Cognito, DynamoDB, CloudFront, Route53, ACM, and IAM permissions need to be reproducible for main/testing/development environments instead of console-only state |
 
 ## Errors Encountered
 | Error | Attempt | Resolution |

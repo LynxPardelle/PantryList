@@ -48,6 +48,12 @@ import { SchedulingDomainService } from './domain/services/scheduling.service';
 import { CognitoAuthUrlBuilderService } from './infrastructure/auth/cognito/cognito-auth-url-builder.service';
 import { CognitoTokenClientService } from './infrastructure/auth/cognito/cognito-token-client.service';
 import { CognitoTokenVerifierService } from './infrastructure/auth/cognito/cognito-token-verifier.service';
+import { DynamoDbDocumentClientService } from './infrastructure/database/dynamodb/dynamodb-document-client.service';
+import { DynamoDbInventoryLotRepository } from './infrastructure/database/dynamodb/dynamodb-inventory-lot.repository';
+import { DynamoDbProductRepository } from './infrastructure/database/dynamodb/dynamodb-product.repository';
+import { DynamoDbProductTypeRepository } from './infrastructure/database/dynamodb/dynamodb-product-type.repository';
+import { DynamoDbUserDao } from './infrastructure/database/dynamodb/dynamodb-user.dao';
+import { DynamoDbUserPreferencesDao } from './infrastructure/database/dynamodb/dynamodb-user-preferences.dao';
 import { MongoInventoryLotRepository } from './infrastructure/database/mongodb/mongodb-inventory-lot.repository';
 import { MongoProductRepository } from './infrastructure/database/mongodb/mongodb-product.repository';
 import { MongoProductTypeRepository } from './infrastructure/database/mongodb/mongodb-product-type.repository';
@@ -108,6 +114,60 @@ const buildMongoUri = (configService: ConfigService): string => {
   return `mongodb://${host}:${port}/${databaseName}`;
 };
 
+const persistenceProvider = (
+  process.env.PERSISTENCE_PROVIDER ?? 'mongodb'
+).toLowerCase();
+const useDynamoDb = persistenceProvider === 'dynamodb';
+const databaseImports = useDynamoDb
+  ? []
+  : [
+      MongooseModule.forRootAsync({
+        inject: [ConfigService],
+        useFactory: (configService: ConfigService) => ({
+          uri: buildMongoUri(configService),
+          dbName:
+            configService.get<string>('MONGO_APP_DATABASE') ??
+            configService.get<string>('DATABASE_NAME') ??
+            'pantrylist',
+        }),
+      }),
+      MongooseModule.forFeature([
+        { name: ProductDocument.name, schema: ProductSchema },
+        { name: ProductTypeDocument.name, schema: ProductTypeSchema },
+        { name: InventoryLotDocument.name, schema: InventoryLotSchema },
+        { name: UserDocument.name, schema: UserSchema },
+      ]),
+    ];
+const databaseClassProviders = useDynamoDb
+  ? [
+      DynamoDbDocumentClientService,
+      DynamoDbUserDao,
+      DynamoDbUserPreferencesDao,
+      DynamoDbProductRepository,
+      DynamoDbProductTypeRepository,
+      DynamoDbInventoryLotRepository,
+    ]
+  : [
+      MongoUserDao,
+      MongoUserPreferencesDao,
+      MongoProductRepository,
+      MongoProductTypeRepository,
+      MongoInventoryLotRepository,
+    ];
+const userDaoProvider = useDynamoDb ? DynamoDbUserDao : MongoUserDao;
+const userPreferencesDaoProvider = useDynamoDb
+  ? DynamoDbUserPreferencesDao
+  : MongoUserPreferencesDao;
+const productRepositoryProvider = useDynamoDb
+  ? DynamoDbProductRepository
+  : MongoProductRepository;
+const productTypeRepositoryProvider = useDynamoDb
+  ? DynamoDbProductTypeRepository
+  : MongoProductTypeRepository;
+const inventoryLotRepositoryProvider = useDynamoDb
+  ? DynamoDbInventoryLotRepository
+  : MongoInventoryLotRepository;
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -117,6 +177,9 @@ const buildMongoUri = (configService: ConfigService): string => {
           .valid('development', 'test', 'production')
           .default('development'),
         PORT: Joi.number().port().default(3000),
+        PERSISTENCE_PROVIDER: Joi.string()
+          .valid('mongodb', 'dynamodb')
+          .default('mongodb'),
         DATABASE_URL: Joi.string()
           .uri({ scheme: ['mongodb', 'mongodb+srv'] })
           .optional(),
@@ -126,6 +189,28 @@ const buildMongoUri = (configService: ConfigService): string => {
         MONGO_APP_DATABASE: Joi.string().optional(),
         MONGO_APP_USERNAME: Joi.string().optional(),
         MONGO_APP_PASSWORD: Joi.string().optional(),
+        DYNAMODB_REGION: Joi.string().optional(),
+        DYNAMODB_ENDPOINT: Joi.string().uri().optional(),
+        DYNAMODB_USERS_TABLE: Joi.when('PERSISTENCE_PROVIDER', {
+          is: 'dynamodb',
+          then: Joi.string().required(),
+          otherwise: Joi.string().optional(),
+        }),
+        DYNAMODB_PRODUCTS_TABLE: Joi.when('PERSISTENCE_PROVIDER', {
+          is: 'dynamodb',
+          then: Joi.string().required(),
+          otherwise: Joi.string().optional(),
+        }),
+        DYNAMODB_PRODUCT_TYPES_TABLE: Joi.when('PERSISTENCE_PROVIDER', {
+          is: 'dynamodb',
+          then: Joi.string().required(),
+          otherwise: Joi.string().optional(),
+        }),
+        DYNAMODB_INVENTORY_LOTS_TABLE: Joi.when('PERSISTENCE_PROVIDER', {
+          is: 'dynamodb',
+          then: Joi.string().required(),
+          otherwise: Joi.string().optional(),
+        }),
         API_PREFIX: Joi.string().default('api'),
         CORS_ORIGIN: Joi.string().default('http://localhost:4200'),
         HELMET_ENABLED: Joi.string().valid('true', 'false').default('true'),
@@ -205,22 +290,7 @@ const buildMongoUri = (configService: ConfigService): string => {
         SWAGGER_VERSION: Joi.string().default('1.0'),
       }),
     }),
-    MongooseModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        uri: buildMongoUri(configService),
-        dbName:
-          configService.get<string>('MONGO_APP_DATABASE') ??
-          configService.get<string>('DATABASE_NAME') ??
-          'pantrylist',
-      }),
-    }),
-    MongooseModule.forFeature([
-      { name: ProductDocument.name, schema: ProductSchema },
-      { name: ProductTypeDocument.name, schema: ProductTypeSchema },
-      { name: InventoryLotDocument.name, schema: InventoryLotSchema },
-      { name: UserDocument.name, schema: UserSchema },
-    ]),
+    ...databaseImports,
   ],
   controllers: [
     AppController,
@@ -264,42 +334,38 @@ const buildMongoUri = (configService: ConfigService): string => {
     DeleteInventoryLotUseCase,
     UpdateProductQuantityUseCase,
     UpdateUserPreferencesUseCase,
-    MongoUserDao,
-    MongoUserPreferencesDao,
-    MongoProductRepository,
-    MongoProductTypeRepository,
-    MongoInventoryLotRepository,
+    ...databaseClassProviders,
     {
       provide: USER_DAO,
-      useExisting: MongoUserDao,
+      useExisting: userDaoProvider,
     },
     {
       provide: USER_PREFERENCES_DAO,
-      useExisting: MongoUserPreferencesDao,
+      useExisting: userPreferencesDaoProvider,
     },
     {
       provide: PRODUCT_REPOSITORY,
-      useExisting: MongoProductRepository,
+      useExisting: productRepositoryProvider,
     },
     {
       provide: PRODUCT_DAO,
-      useExisting: MongoProductRepository,
+      useExisting: productRepositoryProvider,
     },
     {
       provide: PRODUCT_TYPE_REPOSITORY,
-      useExisting: MongoProductTypeRepository,
+      useExisting: productTypeRepositoryProvider,
     },
     {
       provide: PRODUCT_TYPE_DAO,
-      useExisting: MongoProductTypeRepository,
+      useExisting: productTypeRepositoryProvider,
     },
     {
       provide: INVENTORY_LOT_REPOSITORY,
-      useExisting: MongoInventoryLotRepository,
+      useExisting: inventoryLotRepositoryProvider,
     },
     {
       provide: INVENTORY_LOT_DAO,
-      useExisting: MongoInventoryLotRepository,
+      useExisting: inventoryLotRepositoryProvider,
     },
     {
       provide: SCHEDULING_SERVICE,

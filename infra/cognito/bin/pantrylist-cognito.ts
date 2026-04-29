@@ -1,16 +1,17 @@
 #!/usr/bin/env node
-import * as cdk from 'aws-cdk-lib';
-import { PantryListCognitoStack } from '../lib/pantrylist-cognito-stack';
+import * as cdk from "aws-cdk-lib";
+import { PantryListCognitoStack } from "../lib/pantrylist-cognito-stack";
+import { PantryListProductionStack } from "../lib/pantrylist-production-stack";
 
 const app = new cdk.App();
 
 const projectName =
-  app.node.tryGetContext('projectName')?.toString().trim() || 'pantrylist';
-const stage = app.node.tryGetContext('stage')?.toString().trim() || 'dev';
+  app.node.tryGetContext("projectName")?.toString().trim() || "pantrylist";
+const stage = app.node.tryGetContext("stage")?.toString().trim() || "dev";
 const region =
-  app.node.tryGetContext('awsRegion')?.toString().trim() ||
+  app.node.tryGetContext("awsRegion")?.toString().trim() ||
   process.env.CDK_DEFAULT_REGION ||
-  'us-east-1';
+  "us-east-1";
 const account = process.env.CDK_DEFAULT_ACCOUNT;
 
 new PantryListCognitoStack(app, `${projectName}-${stage}-cognito`, {
@@ -19,3 +20,20 @@ new PantryListCognitoStack(app, `${projectName}-${stage}-cognito`, {
     region,
   },
 });
+
+const includeProductionInfra = ["1", "true", "yes", "y"].includes(
+  app.node
+    .tryGetContext("includeProductionInfra")
+    ?.toString()
+    .trim()
+    .toLowerCase() ?? "false"
+);
+
+if (includeProductionInfra) {
+  new PantryListProductionStack(app, `${projectName}-${stage}-app`, {
+    env: {
+      account,
+      region,
+    },
+  });
+}

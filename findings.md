@@ -398,6 +398,22 @@
   `30` suites / `95` tests, backend e2e `2` tests, frontend unit `31` tests,
   Playwright e2e `5` tests, backend/frontend builds, Docker app profile,
   production dependency audits with `total = 0`, and secret scan `count = 0`.
+- Production deployment preflight on 2026-04-29 Central Time found AWS account
+  `765932874577` in default region `us-east-1`, public Route53 hosted zone
+  `lynxpardelle.com` with id `Z05088763QG63CC5SE7PN`, and one running EC2
+  instance `LynxServer` (`i-061f471ff5edea8a9`, public IP `54.198.41.242`).
+- Existing DNS has `dokploy.lynxpardelle.com` as an A record to
+  `54.198.41.242`; there are no current Route53 records for
+  `pantrylist.lynxpardelle.com`, `test.pantrylist.lynxpardelle.com`, or
+  `dev.pantrylist.lynxpardelle.com`.
+- Existing CloudFront distributions do not have a `pantrylist.lynxpardelle.com`
+  alias. One distribution already points to the EC2 origin but reports
+  `DomainName` as `-` and has no aliases, so PantryList production should use a
+  clean, named distribution managed by CDK.
+- The current production compose file still defines a MongoDB service and wires
+  backend persistence through `MONGO_*` environment variables. Production
+  DynamoDB support requires code changes in `AppModule` plus DynamoDB
+  repository/DAO adapters before deploying.
 
 ## Resources
 - `C:\Users\lince\Documents\GitHub\PantryList\.impeccable.md`

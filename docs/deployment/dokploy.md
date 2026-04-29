@@ -6,22 +6,39 @@ This project can run as a production-like Compose stack with:
 docker compose -f docker-compose.prod.yml --env-file .env.production.local up -d --build
 ```
 
+On the Dokploy EC2 host, include the Dokploy network override so Traefik can
+reach the frontend container:
+
+```bash
+docker compose \
+  -f docker-compose.prod.yml \
+  -f docker-compose.dokploy.yml \
+  --env-file .env.production.local \
+  up -d --build
+```
+
 ## Topology
 
 - `frontend`: public Angular SSR server on container port `4000`.
 - `backend`: internal NestJS/Fastify API on container port `3000`.
-- `mongodb`: internal MongoDB on container port `27017`.
+- `DynamoDB`: managed AWS persistence for production.
 - Browser API calls use same-origin `/api`; the frontend SSR server proxies
   those requests to `BACKEND_URL`.
+- `docker-compose.dokploy.yml` attaches only the frontend to the external
+  `dokploy-network` so Traefik can route public traffic without exposing the
+  backend directly.
 
 ## Required Secrets
 
 Set these in Dokploy or in a local untracked env file:
 
-- `MONGO_INITDB_ROOT_USERNAME`
-- `MONGO_INITDB_ROOT_PASSWORD`
-- `MONGO_APP_USERNAME`
-- `MONGO_APP_PASSWORD`
+- `PERSISTENCE_PROVIDER=dynamodb`
+- `AWS_REGION=us-east-1`
+- `DYNAMODB_REGION=us-east-1`
+- `DYNAMODB_USERS_TABLE=pantrylist-prod-users`
+- `DYNAMODB_PRODUCTS_TABLE=pantrylist-prod-products`
+- `DYNAMODB_PRODUCT_TYPES_TABLE=pantrylist-prod-product-types`
+- `DYNAMODB_INVENTORY_LOTS_TABLE=pantrylist-prod-inventory-lots`
 - `COGNITO_ENABLED=true`
 - `COGNITO_ISSUER`
 - `COGNITO_DOMAIN`
@@ -32,12 +49,26 @@ Set these in Dokploy or in a local untracked env file:
 `COGNITO_CLIENT_SECRET` is optional. Set it only when the Cognito app client is
 configured as confidential.
 
+The production Dokploy containers should use the EC2 instance profile for AWS
+credentials. Do not place long-lived AWS access keys in Dokploy variables unless
+there is a separate incident-approved reason.
+
 ## Cognito URLs
 
 Register these URLs in the Cognito app client for the deployment domain:
 
-- Callback URL: `https://<your-dokploy-domain>/api/auth/cognito/callback`
-- Sign-out URL: `https://<your-dokploy-domain>/login`
+- Callback URL:
+  `https://pantrylist.lynxpardelle.com/api/auth/cognito/callback`
+- Sign-out URL: `https://pantrylist.lynxpardelle.com/login`
+
+The production Cognito social provider redirect URI is:
+
+```text
+https://pantrylist-prod-765932874577.auth.us-east-1.amazoncognito.com/oauth2/idpresponse
+```
+
+Add that URI to Google OAuth and Facebook Login before expecting social login to
+work in production.
 
 For local production-like smoke testing on `FRONTEND_PORT=48674`, the example
 callbacks are:

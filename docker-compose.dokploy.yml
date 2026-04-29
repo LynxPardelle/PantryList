@@ -1,0 +1,9 @@
+services:
+  frontend:
+    networks:
+      - pantrylist-network
+      - dokploy-network
+
+networks:
+  dokploy-network:
+    external: true
