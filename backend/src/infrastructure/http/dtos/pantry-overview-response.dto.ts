@@ -16,6 +16,9 @@ export class PantryLotSummaryResponseDto {
   @ApiProperty({ required: false })
   expiresAt?: Date;
 
+  @ApiProperty({ required: false })
+  purchaseDate?: Date;
+
   @ApiProperty()
   expirationStatus: string;
 
@@ -66,6 +69,29 @@ export class DepletionRuleResponseDto {
   anchorDate: Date;
 }
 
+export class ProductTypeEffectivePlanningSettingsResponseDto {
+  @ApiProperty()
+  planningEnabled: boolean;
+
+  @ApiProperty()
+  expirationWarningDays: number;
+
+  @ApiProperty()
+  depletionWarningThresholdRatio: number;
+
+  @ApiProperty()
+  shoppingPlanLeadDays: number;
+
+  @ApiProperty()
+  expirationWarningDaysSource: string;
+
+  @ApiProperty()
+  depletionWarningThresholdRatioSource: string;
+
+  @ApiProperty()
+  shoppingPlanLeadDaysSource: string;
+}
+
 export class DepletingProductGroupResponseDto {
   @ApiProperty()
   productTypeId: string;
@@ -93,6 +119,9 @@ export class DepletingProductGroupResponseDto {
 
   @ApiProperty({ type: DepletionRuleResponseDto })
   depletionRule: DepletionRuleResponseDto;
+
+  @ApiProperty({ type: ProductTypeEffectivePlanningSettingsResponseDto })
+  effectivePlanningSettings: ProductTypeEffectivePlanningSettingsResponseDto;
 }
 
 export class ShoppingPlanItemResponseDto {
@@ -131,6 +160,9 @@ export class ShoppingPlanItemResponseDto {
 
   @ApiProperty({ type: DepletionRuleResponseDto })
   depletionRule: DepletionRuleResponseDto;
+
+  @ApiProperty({ type: ProductTypeEffectivePlanningSettingsResponseDto })
+  effectivePlanningSettings: ProductTypeEffectivePlanningSettingsResponseDto;
 }
 
 export class PantryOverviewItemResponseDto {
@@ -164,6 +196,9 @@ export class PantryOverviewItemResponseDto {
   @ApiProperty({ required: false, type: DepletionRuleResponseDto })
   depletionRule?: DepletionRuleResponseDto;
 
+  @ApiProperty({ type: ProductTypeEffectivePlanningSettingsResponseDto })
+  effectivePlanningSettings: ProductTypeEffectivePlanningSettingsResponseDto;
+
   @ApiProperty({ required: false })
   estimatedCurrentQuantity?: number;
 
@@ -193,6 +228,7 @@ export class PantryOverviewResponseDto {
     showExpiredEntryAlert: boolean;
     depletionWarningThresholdRatio: number;
     shoppingPlanLeadDays: number;
+    showGuidanceTips: boolean;
   };
 
   @ApiProperty({ type: [PantryOverviewItemResponseDto] })

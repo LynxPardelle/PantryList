@@ -5,13 +5,14 @@ import {
   UserPreferences,
   UserPreferencesPatch,
 } from '../../domain/value-objects/user-preferences.vo';
-import { calculateDepletionForecast } from '../services/depletion-forecast.service';
+import { calculateGroupedDepletionForecast } from '../services/depletion-forecast.service';
 import {
   DepletingProductGroup,
   ExpiringProductGroup,
   PantryLotSummary,
   PantryOverview,
   PantryOverviewItem,
+  ProductTypeEffectivePlanningSettings,
   ShoppingPlanItem,
   ShoppingPlanUrgency,
 } from '../read-models/pantry-overview.read-model';
@@ -24,26 +25,28 @@ export function buildPantryOverview(
   preferencesInput?: UserPreferencesPatch,
 ): PantryOverview {
   const preferences = UserPreferences.resolve(preferencesInput).toPrimitives();
+  const activeProductTypes = productTypes.filter(
+    (productType) => !productType.isArchived(),
+  );
   const productTypeMap = new Map(
-    productTypes.map((productType) => [productType.id.toString(), productType]),
+    activeProductTypes.map((productType) => [
+      productType.id.toString(),
+      productType,
+    ]),
   );
 
   const groupedItems = new Map<
     string,
-    PantryOverviewItem & { variantSet: Set<string> }
+    PantryOverviewItem & { lotEntities: InventoryLot[]; variantSet: Set<string> }
   >();
 
-  for (const inventoryLot of inventoryLots) {
-    const productType = productTypeMap.get(
-      inventoryLot.productTypeId.toString(),
-    );
-
-    if (!productType) {
-      continue;
-    }
-
+  for (const productType of activeProductTypes) {
     const groupKey = productType.id.toString();
-    const existingGroup = groupedItems.get(groupKey) ?? {
+    const effectivePlanningSettings = resolveEffectivePlanningSettings(
+      productType,
+      preferences,
+    );
+    groupedItems.set(groupKey, {
       productTypeId: groupKey,
       baseName: productType.baseName,
       category: productType.category,
@@ -53,21 +56,45 @@ export function buildPantryOverview(
       nextExpirationAt: undefined,
       expiringSoonQuantity: 0,
       hasDepletionRule: false,
+      effectivePlanningSettings,
       variants: [],
       lots: [],
+      lotEntities: [],
       variantSet: new Set<string>(),
-    };
+    });
+  }
+
+  for (const inventoryLot of inventoryLots) {
+    if (inventoryLot.isArchived()) {
+      continue;
+    }
+
+    const productType = productTypeMap.get(
+      inventoryLot.productTypeId.toString(),
+    );
+
+    if (!productType) {
+      continue;
+    }
+
+    const groupKey = productType.id.toString();
+    const existingGroup = groupedItems.get(groupKey);
+
+    if (!existingGroup) {
+      continue;
+    }
 
     const lotSummary = toLotSummary(
       inventoryLot,
       referenceDate,
-      preferences.expirationWarningDays,
+      existingGroup.effectivePlanningSettings.expirationWarningDays,
     );
 
     existingGroup.totalQuantity = Number(
       (existingGroup.totalQuantity + inventoryLot.quantity).toFixed(2),
     );
     existingGroup.lotCount += 1;
+    existingGroup.lotEntities.push(inventoryLot);
     existingGroup.lots.push(lotSummary);
 
     if (inventoryLot.variantName) {
@@ -84,7 +111,7 @@ export function buildPantryOverview(
 
     if (
       inventoryLot.isExpiringWithinDays(
-        preferences.expirationWarningDays,
+        existingGroup.effectivePlanningSettings.expirationWarningDays,
         referenceDate,
       )
     ) {
@@ -93,15 +120,17 @@ export function buildPantryOverview(
       );
     }
 
-    groupedItems.set(groupKey, existingGroup);
   }
 
   const items = Array.from(groupedItems.values())
-    .map(({ variantSet, ...group }) => {
+    .map(({ lotEntities, variantSet, ...group }) => {
       const productType = productTypeMap.get(group.productTypeId);
-      const depletionForecast = calculateDepletionForecast(
+      const depletionForecast = calculateGroupedDepletionForecast(
         productType?.defaultDepletionRule,
-        group.totalQuantity,
+        lotEntities.map((lot) => ({
+          recordedAvailableQuantity: lot.quantity,
+          startDate: lot.purchaseDate,
+        })),
         referenceDate,
       );
 
@@ -112,6 +141,7 @@ export function buildPantryOverview(
         estimatedCurrentQuantity: depletionForecast?.estimatedCurrentQuantity,
         estimatedConsumedQuantity: depletionForecast?.estimatedConsumedQuantity,
         estimatedDepletionAt: depletionForecast?.estimatedDepletionAt,
+        effectivePlanningSettings: group.effectivePlanningSettings,
         variants: Array.from(variantSet).sort(compareText),
         lots: [...group.lots].sort(compareLotSummary),
       };
@@ -145,11 +175,12 @@ export function buildPantryOverview(
     .filter(
       (item) =>
         item.hasDepletionRule &&
+        item.effectivePlanningSettings.planningEnabled &&
         item.depletionRule &&
         item.estimatedCurrentQuantity !== undefined &&
         item.estimatedCurrentQuantity <=
           item.depletionRule.consumeAmount *
-            preferences.depletionWarningThresholdRatio,
+            item.effectivePlanningSettings.depletionWarningThresholdRatio,
     )
     .map<DepletingProductGroup>((item) => ({
       productTypeId: item.productTypeId,
@@ -161,6 +192,7 @@ export function buildPantryOverview(
       estimatedConsumedQuantity: item.estimatedConsumedQuantity ?? 0,
       estimatedDepletionAt: item.estimatedDepletionAt ?? referenceDate,
       depletionRule: item.depletionRule!,
+      effectivePlanningSettings: item.effectivePlanningSettings,
     }))
     .sort(compareDepletingGroup);
 
@@ -168,6 +200,7 @@ export function buildPantryOverview(
     .filter(
       (item) =>
         item.hasDepletionRule &&
+        item.effectivePlanningSettings.planningEnabled &&
         item.depletionRule &&
         item.estimatedCurrentQuantity !== undefined &&
         item.estimatedConsumedQuantity !== undefined &&
@@ -176,7 +209,10 @@ export function buildPantryOverview(
     .map<ShoppingPlanItem>((item) => {
       const estimatedDepletionAt = item.estimatedDepletionAt ?? referenceDate;
       const recommendedPurchaseAt = clampToReferenceDate(
-        subtractDays(estimatedDepletionAt, preferences.shoppingPlanLeadDays),
+        subtractDays(
+          estimatedDepletionAt,
+          item.effectivePlanningSettings.shoppingPlanLeadDays,
+        ),
         referenceDate,
       );
 
@@ -191,8 +227,10 @@ export function buildPantryOverview(
         estimatedDepletionAt,
         recommendedPurchaseAt,
         suggestedPurchaseQuantity: item.depletionRule!.consumeAmount,
+        effectivePlanningSettings: item.effectivePlanningSettings,
         urgency: getShoppingPlanUrgency(
           item.estimatedCurrentQuantity ?? 0,
+          estimatedDepletionAt,
           recommendedPurchaseAt,
           referenceDate,
         ),
@@ -223,6 +261,7 @@ function toLotSummary(
     quantity: inventoryLot.quantity,
     unit: inventoryLot.unit,
     expiresAt: inventoryLot.expiresAt,
+    purchaseDate: inventoryLot.purchaseDate,
     expirationStatus: inventoryLot.getExpirationStatus(
       referenceDate,
       expirationWarningDays,
@@ -330,6 +369,37 @@ function compareText(left: string, right: string): number {
   return left.localeCompare(right, 'es', { sensitivity: 'base' });
 }
 
+function resolveEffectivePlanningSettings(
+  productType: ProductType,
+  preferences: ReturnType<UserPreferences['toPrimitives']>,
+): ProductTypeEffectivePlanningSettings {
+  const settings = productType.planningSettings;
+
+  return {
+    planningEnabled: settings.planningEnabled,
+    expirationWarningDays:
+      settings.expirationWarningDaysOverride ??
+      preferences.expirationWarningDays,
+    depletionWarningThresholdRatio:
+      settings.depletionWarningThresholdRatioOverride ??
+      preferences.depletionWarningThresholdRatio,
+    shoppingPlanLeadDays:
+      settings.shoppingPlanLeadDaysOverride ?? preferences.shoppingPlanLeadDays,
+    expirationWarningDaysSource:
+      settings.expirationWarningDaysOverride === undefined
+        ? 'profile'
+        : 'productType',
+    depletionWarningThresholdRatioSource:
+      settings.depletionWarningThresholdRatioOverride === undefined
+        ? 'profile'
+        : 'productType',
+    shoppingPlanLeadDaysSource:
+      settings.shoppingPlanLeadDaysOverride === undefined
+        ? 'profile'
+        : 'productType',
+  };
+}
+
 function subtractDays(date: Date, days: number): Date {
   const nextDate = new Date(date);
   nextDate.setDate(nextDate.getDate() - days);
@@ -342,6 +412,7 @@ function clampToReferenceDate(date: Date, referenceDate: Date): Date {
 
 function getShoppingPlanUrgency(
   estimatedCurrentQuantity: number,
+  estimatedDepletionAt: Date,
   recommendedPurchaseAt: Date,
   referenceDate: Date,
 ): ShoppingPlanUrgency {
@@ -349,5 +420,18 @@ function getShoppingPlanUrgency(
     return 'depleted';
   }
 
-  return recommendedPurchaseAt <= referenceDate ? 'critical' : 'upcoming';
+  if (
+    recommendedPurchaseAt <= referenceDate ||
+    estimatedDepletionAt <= addDays(referenceDate, 7)
+  ) {
+    return 'critical';
+  }
+
+  return 'upcoming';
+}
+
+function addDays(date: Date, days: number): Date {
+  const nextDate = new Date(date);
+  nextDate.setDate(nextDate.getDate() + days);
+  return nextDate;
 }

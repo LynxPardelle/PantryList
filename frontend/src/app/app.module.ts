@@ -9,7 +9,6 @@ import { StoreDevtoolsModule } from '@ngrx/store-devtools';
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { LoginPageComponent } from './features/auth/login-page.component';
-import { PantryPageComponent } from './features/pantry/pantry-page.component';
 import { authReducer } from './store/auth/auth.reducer';
 import { AuthEffects } from './store/auth/auth.effects';
 import { productReducer } from './store/product/product.reducer';
@@ -22,7 +21,6 @@ import { environment } from '../environments/environment';
   declarations: [
     AppComponent,
     LoginPageComponent,
-    PantryPageComponent,
   ],
   imports: [
     BrowserModule,

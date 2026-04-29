@@ -9,9 +9,11 @@ describe('GetProductTypeByIdUseCase', () => {
     save: jest.fn(),
     findById: jest.fn(),
     findByUserId: jest.fn(),
+    findArchivedByUserId: jest.fn(),
     searchByUserId: jest.fn(),
     findByBaseName: jest.fn(),
     reassignUserOwnership: jest.fn(),
+    delete: jest.fn(),
   });
 
   const makeProductType = (userId: string): ProductType =>

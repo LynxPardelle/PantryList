@@ -94,7 +94,8 @@ button:focus-visible {
 
 .primary-button,
 .secondary-button,
-.ghost-button {
+.ghost-button,
+.danger-button {
   border: 0;
   border-radius: 16px;
   padding: 0.85rem 1.1rem;
@@ -104,7 +105,8 @@ button:focus-visible {
 
 .primary-button:hover,
 .secondary-button:hover,
-.ghost-button:hover {
+.ghost-button:hover,
+.danger-button:hover {
   transform: translateY(-1px);
 }
 
@@ -122,6 +124,11 @@ button:focus-visible {
 .ghost-button {
   color: var(--color-accent-deep);
   background: rgba(196, 122, 75, 0.08);
+}
+
+.danger-button {
+  color: var(--color-danger-text);
+  background: rgba(248, 211, 193, 0.78);
 }
 
 .field-error {
@@ -311,6 +318,31 @@ button:focus-visible {
   margin: 0;
 }
 
+.guidance-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: center;
+  margin-top: 1.25rem;
+  padding: 1.15rem 1.25rem;
+  border: 1px solid rgba(96, 113, 74, 0.22);
+  border-radius: 24px;
+  background: linear-gradient(135deg, rgba(221, 230, 207, 0.64), #fffaf2);
+  box-shadow: var(--shadow-soft);
+}
+
+.guidance-card h2,
+.guidance-card p {
+  margin: 0;
+}
+
+.guidance-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
 .expired-alert-actions {
   display: flex;
   flex-wrap: wrap;
@@ -403,6 +435,7 @@ button:focus-visible {
 }
 
 .depletion-settings,
+.planning-settings-card,
 .depletion-editor-actions {
   display: flex;
   gap: 0.9rem;
@@ -411,7 +444,9 @@ button:focus-visible {
 }
 
 .depletion-settings,
-.depletion-editor {
+.depletion-editor,
+.planning-settings-card,
+.planning-settings-editor {
   padding: 1rem;
   border: 1px dashed rgba(96, 113, 74, 0.28);
   border-radius: 20px;
@@ -419,18 +454,36 @@ button:focus-visible {
 }
 
 .depletion-settings h4,
-.depletion-settings p {
+.depletion-settings p,
+.planning-settings-card h4,
+.planning-settings-card p {
   margin: 0;
 }
 
 .depletion-settings-copy,
-.depletion-editor {
+.depletion-editor,
+.planning-settings-copy,
+.planning-settings-editor,
+.archived-list {
   display: grid;
   gap: 1rem;
 }
 
-.depletion-settings-copy {
+.depletion-settings-copy,
+.planning-settings-copy {
   gap: 0.3rem;
+}
+
+.section-actions,
+.archived-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.planning-settings-editor {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .depletion-meter {
@@ -487,6 +540,22 @@ button:focus-visible {
   border-radius: 18px;
   background: var(--color-surface);
   color: var(--color-accent-deep);
+}
+
+.archived-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 22px;
+  background: var(--color-surface-tint);
+}
+
+.archived-row h3,
+.archived-row p {
+  margin: 0;
 }
 
 .shopping-plan-date span {
@@ -554,14 +623,24 @@ button:focus-visible {
 @media (max-width: 760px) {
   .durability-grid,
   .depletion-card,
-  .shopping-plan-row {
+  .shopping-plan-row,
+  .planning-settings-editor,
+  .archived-row,
+  .guidance-card {
     grid-template-columns: 1fr;
   }
 
   .depletion-settings,
+  .planning-settings-card,
   .depletion-editor-actions {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .section-actions,
+  .archived-actions,
+  .guidance-actions {
+    justify-content: flex-start;
   }
 
   .depletion-meter,

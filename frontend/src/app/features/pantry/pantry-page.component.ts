@@ -1,5 +1,6 @@
 import {
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
   Component,
   DestroyRef,
   OnInit,
@@ -11,7 +12,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormBuilder, Validators } from '@angular/forms';
 import { Store } from '@ngrx/store';
-import { BehaviorSubject, of } from 'rxjs';
+import { BehaviorSubject, Observable, of } from 'rxjs';
 import {
   catchError,
   debounceTime,
@@ -23,15 +24,19 @@ import {
 import { AuthFacade } from '../../core/services/auth.facade';
 import { PantryService } from '../../core/services/pantry.service';
 import {
+  ArchivedPantryItems,
   DEPLETION_PERIODS,
   DepletionPeriod,
   ExpirationStatus,
+  InventoryLot,
   PRODUCT_CATEGORIES,
   PRODUCT_UNITS,
   ProductCategory,
+  ProductTypeEffectivePlanningSettings,
   PantryLotSummary,
   PantryOverviewItem,
   ProductTypeDepletionRuleRequest,
+  ProductTypePlanningSettingsRequest,
   ProductType,
   ProductTypeSelectionMode,
   ProductUnit,
@@ -46,6 +51,7 @@ import {
   selectPantryGroupsSorted,
   selectPantryLoading,
   selectPantrySummary,
+  selectShowGuidanceTips,
   selectShoppingPlanItems,
 } from '../../store/pantry/pantry.selectors';
 
@@ -63,6 +69,7 @@ export class PantryPageComponent implements OnInit {
   private readonly store = inject(Store);
   private readonly destroyRef = inject(DestroyRef);
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly changeDetector = inject(ChangeDetectorRef);
 
   readonly username$ = this.authFacade.currentUsername$;
   readonly loading$ = this.store.select(selectPantryLoading);
@@ -73,6 +80,7 @@ export class PantryPageComponent implements OnInit {
   readonly depletingGroups$ = this.store.select(selectDepletingGroups);
   readonly shoppingPlanItems$ = this.store.select(selectShoppingPlanItems);
   readonly pantryGroups$ = this.store.select(selectPantryGroupsSorted);
+  readonly showGuidanceTips$ = this.store.select(selectShowGuidanceTips);
 
   readonly searchingTypeSuggestions$ = new BehaviorSubject(false);
   readonly selectionModeOptions: ProductTypeSelectionMode[] = ['existing', 'new'];
@@ -103,8 +111,8 @@ export class PantryPageComponent implements OnInit {
 
   readonly shoppingPlanUrgencyLabels: Record<ShoppingPlanUrgency, string> = {
     depleted: 'Comprar ya',
-    critical: 'Esta semana',
-    upcoming: 'Próxima compra',
+    critical: 'Comprar esta semana',
+    upcoming: 'Comprar pronto',
   };
 
   readonly lotForm = this.formBuilder.nonNullable.group({
@@ -131,6 +139,22 @@ export class PantryPageComponent implements OnInit {
     everyAmount: [1, [Validators.required, Validators.min(1)]],
     everyPeriod: ['month' as DepletionPeriod, Validators.required],
     anchorDate: [toDateInputValue(new Date()), Validators.required],
+  });
+
+  readonly planningSettingsForm = this.formBuilder.group({
+    planningEnabled: [true],
+    expirationWarningDaysOverride: [
+      null as number | null,
+      [Validators.min(1), Validators.max(60)],
+    ],
+    depletionWarningThresholdRatioOverride: [
+      null as number | null,
+      [Validators.min(0.25), Validators.max(4)],
+    ],
+    shoppingPlanLeadDaysOverride: [
+      null as number | null,
+      [Validators.min(0), Validators.max(30)],
+    ],
   });
 
   readonly existingTypeSuggestions$ =
@@ -169,6 +193,15 @@ export class PantryPageComponent implements OnInit {
   depletionRuleSavingProductTypeId: string | null = null;
   depletionRuleError: string | null = null;
   expiredAlertDismissed = false;
+  guidanceDismissed = false;
+  archivedPanelOpen = false;
+  archivedLoading = false;
+  archivedError: string | null = null;
+  archivedItems: ArchivedPantryItems | null = null;
+  mutationBusyKey: string | null = null;
+  editingPlanningProductTypeId: string | null = null;
+  planningSettingsSavingProductTypeId: string | null = null;
+  planningSettingsError: string | null = null;
   readonly consumeErrors: Record<string, string> = {};
   private readonly expandedProductTypeIds = new Set<string>();
 
@@ -272,6 +305,65 @@ export class PantryPageComponent implements OnInit {
   cancelEditingDepletionRule(): void {
     this.editingDepletionProductTypeId = null;
     this.depletionRuleError = null;
+  }
+
+  startEditingPlanningSettings(group: PantryOverviewItem): void {
+    const settings = group.effectivePlanningSettings;
+    this.editingPlanningProductTypeId = group.productTypeId;
+    this.planningSettingsError = null;
+    this.planningSettingsForm.reset({
+      planningEnabled: settings.planningEnabled,
+      expirationWarningDaysOverride:
+        settings.expirationWarningDaysSource === 'productType'
+          ? settings.expirationWarningDays
+          : null,
+      depletionWarningThresholdRatioOverride:
+        settings.depletionWarningThresholdRatioSource === 'productType'
+          ? settings.depletionWarningThresholdRatio
+          : null,
+      shoppingPlanLeadDaysOverride:
+        settings.shoppingPlanLeadDaysSource === 'productType'
+          ? settings.shoppingPlanLeadDays
+          : null,
+    });
+  }
+
+  cancelEditingPlanningSettings(): void {
+    this.editingPlanningProductTypeId = null;
+    this.planningSettingsError = null;
+  }
+
+  savePlanningSettings(group: PantryOverviewItem): void {
+    if (this.planningSettingsForm.invalid) {
+      this.planningSettingsForm.markAllAsTouched();
+      this.planningSettingsError = 'Revisa los rangos antes de guardar estas reglas.';
+      return;
+    }
+
+    this.planningSettingsSavingProductTypeId = group.productTypeId;
+    this.planningSettingsError = null;
+
+    this.pantryService
+      .updateProductTypePlanningSettings(
+        group.productTypeId,
+        this.buildPlanningSettingsRequest(),
+      )
+      .pipe(
+        finalize(() => {
+          this.planningSettingsSavingProductTypeId = null;
+          this.changeDetector.markForCheck();
+        }),
+      )
+      .subscribe({
+        next: () => {
+          this.editingPlanningProductTypeId = null;
+          this.loadOverview();
+        },
+        error: (error) => {
+          this.planningSettingsError = this.getErrorMessage(error);
+          this.changeDetector.markForCheck();
+        },
+      });
   }
 
   saveDepletionRule(group: PantryOverviewItem): void {
@@ -410,6 +502,123 @@ export class PantryPageComponent implements OnInit {
     this.expiredAlertDismissed = true;
   }
 
+  dismissGuidance(): void {
+    this.guidanceDismissed = true;
+  }
+
+  toggleArchivedPanel(): void {
+    this.archivedPanelOpen = !this.archivedPanelOpen;
+
+    if (this.archivedPanelOpen && !this.archivedItems) {
+      this.loadArchivedItems();
+    }
+  }
+
+  loadArchivedItems(): void {
+    this.archivedLoading = true;
+    this.archivedError = null;
+
+    this.pantryService
+      .getArchivedPantryItems()
+      .pipe(
+        finalize(() => {
+          this.archivedLoading = false;
+          this.changeDetector.markForCheck();
+        }),
+      )
+      .subscribe({
+        next: (archivedItems) => {
+          this.archivedItems = archivedItems;
+        },
+        error: (error) => {
+          this.archivedError = this.getErrorMessage(error);
+        },
+      });
+  }
+
+  archiveProductType(group: PantryOverviewItem): void {
+    if (
+      !this.confirmAction(
+        `Archivar "${group.baseName}" lo quitara de la despensa activa, busquedas y compras sugeridas. Sus lotes activos tambien dejaran de contarse. Continuar?`,
+      )
+    ) {
+      return;
+    }
+
+    this.runMutation(
+      `archive-type-${group.productTypeId}`,
+      this.pantryService.archiveProductType(group.productTypeId, {
+        reason: 'Archivado desde la despensa',
+      }),
+      { refreshArchived: true },
+    );
+  }
+
+  archiveLot(lot: PantryLotSummary): void {
+    const lotName = this.getLotDisplayName(lot);
+
+    if (
+      !this.confirmAction(
+        `Archivar "${lotName}" lo quitara del inventario activo y de los calculos. Continuar?`,
+      )
+    ) {
+      return;
+    }
+
+    this.runMutation(
+      `archive-lot-${lot.lotId}`,
+      this.pantryService.archiveInventoryLot(lot.lotId, {
+        reason: 'Archivado desde la despensa',
+      }),
+      { refreshArchived: true },
+    );
+  }
+
+  restoreProductType(productType: ProductType): void {
+    this.runMutation(
+      `restore-type-${productType.id}`,
+      this.pantryService.restoreProductType(productType.id),
+      { refreshArchived: true },
+    );
+  }
+
+  restoreInventoryLot(lot: InventoryLot): void {
+    this.runMutation(
+      `restore-lot-${lot.id}`,
+      this.pantryService.restoreInventoryLot(lot.id),
+      { refreshArchived: true },
+    );
+  }
+
+  deleteArchivedProductType(productType: ProductType): void {
+    const confirmationText = this.promptDeleteConfirmation(productType.baseName);
+
+    if (confirmationText === null) {
+      return;
+    }
+
+    this.runMutation(
+      `delete-type-${productType.id}`,
+      this.pantryService.deleteProductType(productType.id, { confirmationText }),
+      { refreshArchived: true },
+    );
+  }
+
+  deleteArchivedInventoryLot(lot: InventoryLot): void {
+    const displayName = this.getInventoryLotDisplayName(lot);
+    const confirmationText = this.promptDeleteConfirmation(displayName);
+
+    if (confirmationText === null) {
+      return;
+    }
+
+    this.runMutation(
+      `delete-lot-${lot.id}`,
+      this.pantryService.deleteInventoryLot(lot.id, { confirmationText }),
+      { refreshArchived: true },
+    );
+  }
+
   reviewExpiredLots(): void {
     if (!isPlatformBrowser(this.platformId)) {
       return;
@@ -455,6 +664,25 @@ export class PantryPageComponent implements OnInit {
     return displayUnit ? `${quantity} ${displayUnit}` : `${quantity}`;
   }
 
+  getPlanningSourceLabel(
+    settings: ProductTypeEffectivePlanningSettings,
+    key:
+      | 'expirationWarningDays'
+      | 'depletionWarningThresholdRatio'
+      | 'shoppingPlanLeadDays',
+  ): string {
+    const source = settings[`${key}Source`];
+    return source === 'productType' ? 'Este tipo' : 'Perfil';
+  }
+
+  getLotDisplayName(lot: PantryLotSummary): string {
+    return lot.variantName?.trim() || `Lote ${lot.lotId}`;
+  }
+
+  getInventoryLotDisplayName(lot: InventoryLot): string {
+    return lot.variantName?.trim() || `Lote ${lot.id}`;
+  }
+
   private resetLotForm(): void {
     this.selectedExistingType = null;
     this.lotForm.reset({
@@ -478,6 +706,23 @@ export class PantryPageComponent implements OnInit {
 
   private loadOverview(): void {
     this.store.dispatch(PantryActions.loadPantryOverview());
+  }
+
+  private buildPlanningSettingsRequest(): ProductTypePlanningSettingsRequest {
+    const rawValue = this.planningSettingsForm.getRawValue();
+
+    return {
+      planningEnabled: rawValue.planningEnabled ?? true,
+      expirationWarningDaysOverride: this.toOptionalNumber(
+        rawValue.expirationWarningDaysOverride,
+      ),
+      depletionWarningThresholdRatioOverride: this.toOptionalNumber(
+        rawValue.depletionWarningThresholdRatioOverride,
+      ),
+      shoppingPlanLeadDaysOverride: this.toOptionalNumber(
+        rawValue.shoppingPlanLeadDaysOverride,
+      ),
+    };
   }
 
   private buildDefaultDepletionRule(
@@ -593,6 +838,67 @@ export class PantryPageComponent implements OnInit {
     }
 
     return 'No se pudo completar la solicitud.';
+  }
+
+  private runMutation(
+    busyKey: string,
+    request: Observable<unknown>,
+    options: { refreshArchived?: boolean } = {},
+  ): void {
+    if (this.mutationBusyKey) {
+      return;
+    }
+
+    this.mutationBusyKey = busyKey;
+    this.archivedError = null;
+
+    request
+      .pipe(
+        finalize(() => {
+          this.mutationBusyKey = null;
+          this.changeDetector.markForCheck();
+        }),
+      )
+      .subscribe({
+        next: () => {
+          this.loadOverview();
+
+          if (options.refreshArchived || this.archivedPanelOpen) {
+            this.loadArchivedItems();
+          }
+        },
+        error: (error) => {
+          this.archivedError = this.getErrorMessage(error);
+          this.changeDetector.markForCheck();
+        },
+      });
+  }
+
+  private confirmAction(message: string): boolean {
+    if (!isPlatformBrowser(this.platformId)) {
+      return false;
+    }
+
+    return window.confirm(message);
+  }
+
+  private promptDeleteConfirmation(expectedText: string): string | null {
+    if (!isPlatformBrowser(this.platformId)) {
+      return null;
+    }
+
+    return window.prompt(
+      `Esta eliminacion es permanente. Escribe exactamente "${expectedText}" para confirmar.`,
+    );
+  }
+
+  private toOptionalNumber(value: number | string | null | undefined): number | undefined {
+    if (value === null || value === undefined || value === '') {
+      return undefined;
+    }
+
+    const numericValue = Number(value);
+    return Number.isFinite(numericValue) ? numericValue : undefined;
   }
 
   private sumLotsByStatus(

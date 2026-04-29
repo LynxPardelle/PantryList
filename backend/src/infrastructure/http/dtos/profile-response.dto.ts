@@ -12,6 +12,9 @@ export class UserPreferencesResponseDto {
 
   @ApiProperty()
   shoppingPlanLeadDays: number;
+
+  @ApiProperty()
+  showGuidanceTips: boolean;
 }
 
 export class UserProfileResponseDto {

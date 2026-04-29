@@ -12,6 +12,7 @@ export interface PantryLotSummary {
   quantity: number;
   unit: QuantityUnit;
   expiresAt?: Date;
+  purchaseDate?: Date;
   expirationStatus: ExpirationStatus;
   updatedAt: Date;
 }
@@ -36,6 +37,7 @@ export interface DepletingProductGroup {
   estimatedConsumedQuantity: number;
   estimatedDepletionAt: Date;
   depletionRule: DepletionRulePrimitives;
+  effectivePlanningSettings: ProductTypeEffectivePlanningSettings;
 }
 
 export type ShoppingPlanUrgency = 'depleted' | 'critical' | 'upcoming';
@@ -53,6 +55,19 @@ export interface ShoppingPlanItem {
   suggestedPurchaseQuantity: number;
   urgency: ShoppingPlanUrgency;
   depletionRule: DepletionRulePrimitives;
+  effectivePlanningSettings: ProductTypeEffectivePlanningSettings;
+}
+
+export type PlanningSettingSource = 'profile' | 'productType';
+
+export interface ProductTypeEffectivePlanningSettings {
+  planningEnabled: boolean;
+  expirationWarningDays: number;
+  depletionWarningThresholdRatio: number;
+  shoppingPlanLeadDays: number;
+  expirationWarningDaysSource: PlanningSettingSource;
+  depletionWarningThresholdRatioSource: PlanningSettingSource;
+  shoppingPlanLeadDaysSource: PlanningSettingSource;
 }
 
 export interface PantryOverviewItem {
@@ -66,6 +81,7 @@ export interface PantryOverviewItem {
   expiringSoonQuantity: number;
   hasDepletionRule: boolean;
   depletionRule?: DepletionRulePrimitives;
+  effectivePlanningSettings: ProductTypeEffectivePlanningSettings;
   estimatedCurrentQuantity?: number;
   estimatedConsumedQuantity?: number;
   estimatedDepletionAt?: Date;

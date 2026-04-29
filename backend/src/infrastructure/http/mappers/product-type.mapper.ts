@@ -12,6 +12,9 @@ export class ProductTypeMapper {
       category: primitives.category,
       defaultUnit: primitives.defaultUnit,
       defaultDepletionRule: primitives.defaultDepletionRule,
+      planningSettings: productType.planningSettings,
+      archivedAt: primitives.archivedAt,
+      archivedReason: primitives.archivedReason,
       createdAt: primitives.createdAt,
       updatedAt: primitives.updatedAt,
     };

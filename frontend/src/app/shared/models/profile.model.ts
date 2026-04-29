@@ -3,6 +3,7 @@ export interface UserPreferences {
   showExpiredEntryAlert: boolean;
   depletionWarningThresholdRatio: number;
   shoppingPlanLeadDays: number;
+  showGuidanceTips: boolean;
 }
 
 export type UserPreferencesUpdate = Partial<UserPreferences>;

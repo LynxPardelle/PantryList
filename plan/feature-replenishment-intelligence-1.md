@@ -4,19 +4,28 @@ version: 1.0
 date_created: 2026-04-29
 last_updated: 2026-04-29
 owner: Codex
-status: Planned
+status: Implemented
 tags: [feature, pantry, replenishment, durability, ux, backend, frontend]
 ---
 
 # Introduction
 
-![Status: Planned](https://img.shields.io/badge/status-Planned-blue)
+![Status: Implemented](https://img.shields.io/badge/status-Implemented-green)
 
 This plan implements PantryList's next replenishment feature. The work makes
 durability estimates use real purchase dates, keeps products in the shopping
 plan after stock reaches zero, adds per-type planning overrides, exposes
 purchase dates in the UI, improves user-facing copy, and adds safe archive and
 delete flows for things users no longer want to track or buy.
+
+Implementation note, 2026-04-29 Central Time:
+- Runtime implementation is complete and verified in this repository.
+- The frontend intentionally keeps archive/planning mutations component-local
+  for this slice instead of adding a larger NgRx mutation state machine. The
+  existing pantry store still owns overview loading, and mutations reload that
+  overview after success.
+- `/pantry` was moved behind a lazy `PantryModule` so the richer workspace does
+  not push the initial production bundle over budget.
 
 ## 1. Requirements & Constraints
 

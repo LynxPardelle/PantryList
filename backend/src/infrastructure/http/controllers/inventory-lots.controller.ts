@@ -3,23 +3,32 @@ import {
   Body,
   Controller,
   DefaultValuePipe,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
   Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { FastifyRequest } from 'fastify';
+import { ArchiveInventoryLotUseCase } from '../../../application/use-cases/archive-inventory-lot.use-case';
 import { ConsumeInventoryLotUseCase } from '../../../application/use-cases/consume-inventory-lot.use-case';
 import { CreateInventoryLotUseCase } from '../../../application/use-cases/create-inventory-lot.use-case';
+import { DeleteInventoryLotUseCase } from '../../../application/use-cases/delete-inventory-lot.use-case';
 import { GetExpiringLotsUseCase } from '../../../application/use-cases/get-expiring-lots.use-case';
 import { ListInventoryLotsUseCase } from '../../../application/use-cases/list-inventory-lots.use-case';
+import { RestoreInventoryLotUseCase } from '../../../application/use-cases/restore-inventory-lot.use-case';
 import { AccessTokenGuard } from '../auth/access-token.guard';
+import { AuthCookieService } from '../auth/auth-cookie.service';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
+import { ArchivePantryItemDto } from '../dtos/archive-pantry-item.dto';
 import { ConsumeInventoryLotDto } from '../dtos/consume-inventory-lot.dto';
 import { CreateInventoryLotDto } from '../dtos/create-inventory-lot.dto';
+import { DeletePantryItemDto } from '../dtos/delete-pantry-item.dto';
 import { ExpiringProductGroupResponseDto } from '../dtos/pantry-overview-response.dto';
 import { InventoryLotResponseDto } from '../dtos/inventory-lot-response.dto';
 import { InventoryLotMapper } from '../mappers/inventory-lot.mapper';
@@ -34,6 +43,10 @@ export class InventoryLotsController {
     private readonly listInventoryLotsUseCase: ListInventoryLotsUseCase,
     private readonly getExpiringLotsUseCase: GetExpiringLotsUseCase,
     private readonly consumeInventoryLotUseCase: ConsumeInventoryLotUseCase,
+    private readonly archiveInventoryLotUseCase: ArchiveInventoryLotUseCase,
+    private readonly restoreInventoryLotUseCase: RestoreInventoryLotUseCase,
+    private readonly deleteInventoryLotUseCase: DeleteInventoryLotUseCase,
+    private readonly authCookieService: AuthCookieService,
   ) {}
 
   @Post()
@@ -106,5 +119,58 @@ export class InventoryLotsController {
     );
 
     return inventoryLot ? InventoryLotMapper.toResponse(inventoryLot) : null;
+  }
+
+  @Post(':id/archive')
+  @ApiOperation({ summary: 'Archivar un lote de inventario' })
+  async archive(
+    @Param('id') id: string,
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Body() dto: ArchivePantryItemDto,
+    @Req() request: FastifyRequest,
+  ): Promise<InventoryLotResponseDto> {
+    this.authCookieService.ensureXsrfForRequest(request);
+
+    const inventoryLot = await this.archiveInventoryLotUseCase.execute({
+      lotId: id,
+      userId: currentUser.userId,
+      reason: dto.reason,
+    });
+
+    return InventoryLotMapper.toResponse(inventoryLot);
+  }
+
+  @Post(':id/restore')
+  @ApiOperation({ summary: 'Restaurar un lote archivado' })
+  async restore(
+    @Param('id') id: string,
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Req() request: FastifyRequest,
+  ): Promise<InventoryLotResponseDto> {
+    this.authCookieService.ensureXsrfForRequest(request);
+
+    const inventoryLot = await this.restoreInventoryLotUseCase.execute({
+      lotId: id,
+      userId: currentUser.userId,
+    });
+
+    return InventoryLotMapper.toResponse(inventoryLot);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Eliminar permanentemente un lote archivado' })
+  async delete(
+    @Param('id') id: string,
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Body() dto: DeletePantryItemDto,
+    @Req() request: FastifyRequest,
+  ): Promise<void> {
+    this.authCookieService.ensureXsrfForRequest(request);
+
+    return this.deleteInventoryLotUseCase.execute({
+      lotId: id,
+      userId: currentUser.userId,
+      confirmationText: dto.confirmationText,
+    });
   }
 }

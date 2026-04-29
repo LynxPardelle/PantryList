@@ -55,6 +55,11 @@ export const selectShoppingPlanItems = createSelector(
   (overview) => overview?.shoppingPlanItems ?? [],
 );
 
+export const selectShowGuidanceTips = createSelector(
+  selectPantryOverview,
+  (overview) => overview?.preferences.showGuidanceTips ?? true,
+);
+
 export const selectPantrySummary = createSelector(
   selectPantryGroups,
   selectExpiringGroups,

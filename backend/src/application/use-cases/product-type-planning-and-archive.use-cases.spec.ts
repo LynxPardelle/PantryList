@@ -1,0 +1,151 @@
+import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { ProductType } from '../../domain/entities/product-type.entity';
+import { ProductCategory, QuantityUnit } from '../../domain/enums';
+import { InventoryLotRepository } from '../../domain/repositories/inventory-lot.repository';
+import { ProductTypeRepository } from '../../domain/repositories/product-type.repository';
+import { ProductTypeId } from '../../domain/value-objects/product-type-id.vo';
+import { UserId } from '../../domain/value-objects/user-id.vo';
+import { ArchiveProductTypeUseCase } from './archive-product-type.use-case';
+import { DeleteProductTypeUseCase } from './delete-product-type.use-case';
+import { RestoreProductTypeUseCase } from './restore-product-type.use-case';
+import { UpdateProductTypePlanningSettingsUseCase } from './update-product-type-planning-settings.use-case';
+
+describe('product type planning settings and archive use cases', () => {
+  const makeProductTypeRepository =
+    (): jest.Mocked<ProductTypeRepository> => ({
+      save: jest.fn((productType) => Promise.resolve(productType)),
+      findById: jest.fn(),
+      findByUserId: jest.fn(),
+      findArchivedByUserId: jest.fn(),
+      searchByUserId: jest.fn(),
+      findByBaseName: jest.fn(),
+      reassignUserOwnership: jest.fn(),
+      delete: jest.fn(),
+    });
+
+  const makeInventoryLotRepository =
+    (): jest.Mocked<InventoryLotRepository> => ({
+      save: jest.fn((lot) => Promise.resolve(lot)),
+      findById: jest.fn(),
+      findByUserId: jest.fn(),
+      findArchivedByUserId: jest.fn(),
+      findByProductTypeId: jest.fn(),
+      reassignUserOwnership: jest.fn(),
+      delete: jest.fn(),
+      deleteByProductTypeId: jest.fn(),
+    });
+
+  const makeProductType = (): ProductType =>
+    ProductType.fromPrimitives({
+      id: 'type-1',
+      userId: 'owner-user',
+      baseName: 'Detergente',
+      category: ProductCategory.CLEANING,
+      defaultUnit: QuantityUnit.LITER,
+      defaultDepletionRule: {
+        enabled: true,
+        consumeAmount: 1,
+        unit: QuantityUnit.LITER,
+        everyAmount: 1,
+        everyPeriod: 'month',
+        anchorDate: new Date('2026-04-01T00:00:00.000Z'),
+      },
+      createdAt: new Date('2026-04-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-04-01T00:00:00.000Z'),
+    });
+
+  it('updates planning settings for the owning user', async () => {
+    const repository = makeProductTypeRepository();
+    const productType = makeProductType();
+    repository.findById.mockResolvedValue(productType);
+    const useCase = new UpdateProductTypePlanningSettingsUseCase(repository);
+
+    const updated = await useCase.execute({
+      productTypeId: 'type-1',
+      userId: 'owner-user',
+      planningSettings: {
+        planningEnabled: false,
+        shoppingPlanLeadDaysOverride: 10,
+      },
+    });
+
+    expect(updated.toPrimitives().planningSettings).toMatchObject({
+      planningEnabled: false,
+      shoppingPlanLeadDaysOverride: 10,
+    });
+    expect(repository.save).toHaveBeenCalledWith(productType);
+  });
+
+  it('rejects planning settings updates from another user', async () => {
+    const repository = makeProductTypeRepository();
+    repository.findById.mockResolvedValue(makeProductType());
+    const useCase = new UpdateProductTypePlanningSettingsUseCase(repository);
+
+    await expect(
+      useCase.execute({
+        productTypeId: 'type-1',
+        userId: 'other-user',
+        planningSettings: {
+          planningEnabled: false,
+        },
+      }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('archives and restores product types for the owning user', async () => {
+    const repository = makeProductTypeRepository();
+    const productType = makeProductType();
+    repository.findById.mockResolvedValue(productType);
+
+    const archived = await new ArchiveProductTypeUseCase(repository).execute({
+      productTypeId: 'type-1',
+      userId: 'owner-user',
+      reason: 'Ya no se compra',
+    });
+
+    expect(archived.isArchived()).toBe(true);
+    expect(archived.toPrimitives().archivedReason).toBe('Ya no se compra');
+
+    const restored = await new RestoreProductTypeUseCase(repository).execute({
+      productTypeId: 'type-1',
+      userId: 'owner-user',
+    });
+
+    expect(restored.isArchived()).toBe(false);
+  });
+
+  it('requires archive and confirmation before permanent product type delete', async () => {
+    const productTypeRepository = makeProductTypeRepository();
+    const inventoryLotRepository = makeInventoryLotRepository();
+    const productType = makeProductType();
+    productTypeRepository.findById.mockResolvedValue(productType);
+    const useCase = new DeleteProductTypeUseCase(
+      productTypeRepository,
+      inventoryLotRepository,
+    );
+
+    await expect(
+      useCase.execute({
+        productTypeId: 'type-1',
+        userId: 'owner-user',
+        confirmationText: 'Detergente',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    productType.archive();
+
+    await expect(
+      useCase.execute({
+        productTypeId: 'type-1',
+        userId: 'owner-user',
+        confirmationText: 'Detergente',
+      }),
+    ).resolves.toBeUndefined();
+    expect(inventoryLotRepository.deleteByProductTypeId).toHaveBeenCalledWith(
+      ProductTypeId.fromString('type-1'),
+    );
+    expect(productTypeRepository.delete).toHaveBeenCalledWith(
+      ProductTypeId.fromString('type-1'),
+    );
+  });
+});

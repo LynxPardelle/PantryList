@@ -3,6 +3,7 @@ export interface UserPreferencesPrimitives {
   showExpiredEntryAlert: boolean;
   depletionWarningThresholdRatio: number;
   shoppingPlanLeadDays: number;
+  showGuidanceTips: boolean;
 }
 
 export type UserPreferencesPatch = Partial<UserPreferencesPrimitives>;
@@ -12,6 +13,7 @@ export const DEFAULT_USER_PREFERENCES: UserPreferencesPrimitives = {
   showExpiredEntryAlert: true,
   depletionWarningThresholdRatio: 1,
   shoppingPlanLeadDays: 3,
+  showGuidanceTips: true,
 };
 
 export class UserPreferences {
@@ -66,6 +68,10 @@ function validate(
     throw new Error('Show expired entry alert must be a boolean');
   }
 
+  if (typeof preferences.showGuidanceTips !== 'boolean') {
+    throw new Error('Show guidance tips must be a boolean');
+  }
+
   return {
     expirationWarningDays: Math.trunc(preferences.expirationWarningDays),
     showExpiredEntryAlert: preferences.showExpiredEntryAlert,
@@ -73,6 +79,7 @@ function validate(
       preferences.depletionWarningThresholdRatio.toFixed(2),
     ),
     shoppingPlanLeadDays: Math.trunc(preferences.shoppingPlanLeadDays),
+    showGuidanceTips: preferences.showGuidanceTips,
   };
 }
 

@@ -37,6 +37,12 @@ export class InventoryLotDocument {
   @Prop()
   purchaseDate?: Date;
 
+  @Prop({ required: false, index: true })
+  archivedAt?: Date;
+
+  @Prop({ required: false, trim: true })
+  archivedReason?: string;
+
   @Prop({ required: true })
   createdAt: Date;
 
@@ -49,3 +55,4 @@ export const InventoryLotSchema =
 
 InventoryLotSchema.index({ userId: 1, productTypeId: 1 });
 InventoryLotSchema.index({ userId: 1, expiresAt: 1 });
+InventoryLotSchema.index({ userId: 1, archivedAt: 1 });

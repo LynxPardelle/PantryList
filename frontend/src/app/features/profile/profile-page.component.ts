@@ -51,6 +51,7 @@ export class ProfilePageComponent implements OnInit {
       3,
       [Validators.required, Validators.min(0), Validators.max(30)],
     ],
+    showGuidanceTips: [true],
   });
 
   ngOnInit(): void {

@@ -28,11 +28,43 @@ export class MongoInventoryLotRepository implements InventoryLotRepository {
 
   async save(lot: InventoryLot): Promise<InventoryLot> {
     const primitives = lot.toPrimitives();
+    const unsetFields: Record<string, 1> = {};
+
+    if (!primitives.archivedAt) {
+      unsetFields.archivedAt = 1;
+    }
+
+    if (!primitives.archivedReason) {
+      unsetFields.archivedReason = 1;
+    }
+
+    const archiveSet = {
+      ...(primitives.archivedAt ? { archivedAt: primitives.archivedAt } : {}),
+      ...(primitives.archivedReason
+        ? { archivedReason: primitives.archivedReason }
+        : {}),
+    };
+    const setPrimitives = { ...primitives };
+    delete setPrimitives.archivedAt;
+    delete setPrimitives.archivedReason;
+
     const savedLot = await this.inventoryLotModel
-      .findOneAndUpdate({ id: primitives.id }, primitives, {
-        new: true,
-        upsert: true,
-      })
+      .findOneAndUpdate(
+        { id: primitives.id },
+        {
+          $set: {
+            ...setPrimitives,
+            ...archiveSet,
+          },
+          ...(Object.keys(unsetFields).length > 0
+            ? { $unset: unsetFields }
+            : {}),
+        },
+        {
+          new: true,
+          upsert: true,
+        },
+      )
       .lean()
       .exec();
 
@@ -50,8 +82,18 @@ export class MongoInventoryLotRepository implements InventoryLotRepository {
 
   async findByUserId(userId: UserId): Promise<InventoryLot[]> {
     const lots = await this.inventoryLotModel
-      .find({ userId: userId.toString() })
+      .find({ userId: userId.toString(), archivedAt: { $exists: false } })
       .sort({ updatedAt: -1 })
+      .lean()
+      .exec();
+
+    return lots.map((lot) => this.toDomain(lot as PersistedInventoryLot));
+  }
+
+  async findArchivedByUserId(userId: UserId): Promise<InventoryLot[]> {
+    const lots = await this.inventoryLotModel
+      .find({ userId: userId.toString(), archivedAt: { $exists: true } })
+      .sort({ archivedAt: -1 })
       .lean()
       .exec();
 
@@ -62,7 +104,10 @@ export class MongoInventoryLotRepository implements InventoryLotRepository {
     productTypeId: ProductTypeId,
   ): Promise<InventoryLot[]> {
     const lots = await this.inventoryLotModel
-      .find({ productTypeId: productTypeId.toString() })
+      .find({
+        productTypeId: productTypeId.toString(),
+        archivedAt: { $exists: false },
+      })
       .sort({ updatedAt: -1 })
       .lean()
       .exec();
@@ -88,6 +133,12 @@ export class MongoInventoryLotRepository implements InventoryLotRepository {
     await this.inventoryLotModel.deleteOne({ id: id.toString() }).exec();
   }
 
+  async deleteByProductTypeId(productTypeId: ProductTypeId): Promise<void> {
+    await this.inventoryLotModel
+      .deleteMany({ productTypeId: productTypeId.toString() })
+      .exec();
+  }
+
   private toDomain(lot: PersistedInventoryLot): InventoryLot {
     return InventoryLot.fromPrimitives({
       id: lot.id,
@@ -98,6 +149,8 @@ export class MongoInventoryLotRepository implements InventoryLotRepository {
       unit: lot.unit,
       expiresAt: lot.expiresAt ?? undefined,
       purchaseDate: lot.purchaseDate ?? undefined,
+      archivedAt: lot.archivedAt ?? undefined,
+      archivedReason: lot.archivedReason,
       createdAt: new Date(lot.createdAt),
       updatedAt: new Date(lot.updatedAt),
     });

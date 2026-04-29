@@ -14,6 +14,8 @@ export class InventoryLotMapper {
       unit: primitives.unit,
       expiresAt: primitives.expiresAt,
       purchaseDate: primitives.purchaseDate,
+      archivedAt: primitives.archivedAt,
+      archivedReason: primitives.archivedReason,
       expirationStatus: inventoryLot.getExpirationStatus(),
       createdAt: primitives.createdAt,
       updatedAt: primitives.updatedAt,

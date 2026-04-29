@@ -7,6 +7,7 @@ describe('UserPreferences', () => {
       showExpiredEntryAlert: true,
       depletionWarningThresholdRatio: 1,
       shoppingPlanLeadDays: 3,
+      showGuidanceTips: true,
     });
   });
 
@@ -16,6 +17,7 @@ describe('UserPreferences', () => {
       showExpiredEntryAlert: false,
       depletionWarningThresholdRatio: 1.5,
       shoppingPlanLeadDays: 4,
+      showGuidanceTips: true,
     });
 
     const updated = current.patch({
@@ -28,6 +30,7 @@ describe('UserPreferences', () => {
       showExpiredEntryAlert: true,
       depletionWarningThresholdRatio: 1.5,
       shoppingPlanLeadDays: 4,
+      showGuidanceTips: true,
     });
   });
 

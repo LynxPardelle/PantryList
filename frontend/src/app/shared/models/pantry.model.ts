@@ -6,6 +6,7 @@ export type ExpirationStatus = 'expired' | 'critical' | 'soon' | 'stable' | 'non
 export type ProductTypeSelectionMode = 'existing' | 'new';
 export type DepletionPeriod = 'day' | 'week' | 'month';
 export type ShoppingPlanUrgency = 'depleted' | 'critical' | 'upcoming';
+export type PlanningSettingSource = 'profile' | 'productType';
 
 export const PRODUCT_UNITS: ProductUnit[] = ['lt', 'kg', 'g', 'piezas', 'ml'];
 export const PRODUCT_CATEGORIES: ProductCategory[] = [
@@ -34,6 +35,23 @@ export interface ProductTypeDepletionRuleRequest {
   anchorDate: string;
 }
 
+export interface ProductTypePlanningSettings {
+  planningEnabled: boolean;
+  expirationWarningDaysOverride?: number;
+  depletionWarningThresholdRatioOverride?: number;
+  shoppingPlanLeadDaysOverride?: number;
+}
+
+export interface ProductTypeEffectivePlanningSettings {
+  planningEnabled: boolean;
+  expirationWarningDays: number;
+  depletionWarningThresholdRatio: number;
+  shoppingPlanLeadDays: number;
+  expirationWarningDaysSource: PlanningSettingSource;
+  depletionWarningThresholdRatioSource: PlanningSettingSource;
+  shoppingPlanLeadDaysSource: PlanningSettingSource;
+}
+
 export interface ProductType {
   id: string;
   userId: string;
@@ -41,6 +59,9 @@ export interface ProductType {
   category: ProductCategory;
   defaultUnit: ProductUnit;
   defaultDepletionRule?: ProductTypeDepletionRule;
+  planningSettings: ProductTypePlanningSettings;
+  archivedAt: Date | null;
+  archivedReason?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -54,6 +75,8 @@ export interface InventoryLot {
   unit: ProductUnit;
   expiresAt: Date | null;
   purchaseDate: Date | null;
+  archivedAt: Date | null;
+  archivedReason?: string;
   expirationStatus: ExpirationStatus;
   createdAt: Date;
   updatedAt: Date;
@@ -65,6 +88,7 @@ export interface PantryLotSummary {
   quantity: number;
   unit: ProductUnit;
   expiresAt: Date | null;
+  purchaseDate: Date | null;
   expirationStatus: ExpirationStatus;
   updatedAt: Date;
 }
@@ -80,6 +104,7 @@ export interface PantryOverviewItem {
   expiringSoonQuantity: number;
   hasDepletionRule: boolean;
   depletionRule?: ProductTypeDepletionRule;
+  effectivePlanningSettings: ProductTypeEffectivePlanningSettings;
   estimatedCurrentQuantity?: number;
   estimatedConsumedQuantity?: number;
   estimatedDepletionAt?: Date;
@@ -107,6 +132,7 @@ export interface DepletingProductGroup {
   estimatedConsumedQuantity: number;
   estimatedDepletionAt: Date;
   depletionRule: ProductTypeDepletionRule;
+  effectivePlanningSettings: ProductTypeEffectivePlanningSettings;
 }
 
 export interface ShoppingPlanItem {
@@ -122,6 +148,7 @@ export interface ShoppingPlanItem {
   suggestedPurchaseQuantity: number;
   urgency: ShoppingPlanUrgency;
   depletionRule: ProductTypeDepletionRule;
+  effectivePlanningSettings: ProductTypeEffectivePlanningSettings;
 }
 
 export interface PantryOverview {
@@ -154,6 +181,26 @@ export interface ConsumeInventoryLotRequest {
   quantity: number;
 }
 
+export interface ArchivePantryItemRequest {
+  reason?: string;
+}
+
+export interface DeletePantryItemRequest {
+  confirmationText: string;
+}
+
+export interface ProductTypePlanningSettingsRequest {
+  planningEnabled?: boolean;
+  expirationWarningDaysOverride?: number;
+  depletionWarningThresholdRatioOverride?: number;
+  shoppingPlanLeadDaysOverride?: number;
+}
+
+export interface ArchivedPantryItems {
+  productTypes: ProductType[];
+  inventoryLots: InventoryLot[];
+}
+
 export interface RegisterLotRequest {
   selectionMode: ProductTypeSelectionMode;
   existingProductTypeId?: string;
@@ -178,6 +225,9 @@ export interface ApiProductType {
   category: ProductCategory;
   defaultUnit: ProductUnit;
   defaultDepletionRule?: ApiProductTypeDepletionRule;
+  planningSettings: ProductTypePlanningSettings;
+  archivedAt?: string | null;
+  archivedReason?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -197,6 +247,7 @@ export interface ApiPantryLotSummary {
   quantity: number;
   unit: ProductUnit;
   expiresAt?: string | null;
+  purchaseDate?: string | null;
   expirationStatus: ExpirationStatus;
   updatedAt: string;
 }
@@ -212,6 +263,7 @@ export interface ApiPantryOverviewItem {
   expiringSoonQuantity: number;
   hasDepletionRule: boolean;
   depletionRule?: ApiProductTypeDepletionRule;
+  effectivePlanningSettings: ProductTypeEffectivePlanningSettings;
   estimatedCurrentQuantity?: number;
   estimatedConsumedQuantity?: number;
   estimatedDepletionAt?: string | null;
@@ -239,6 +291,7 @@ export interface ApiDepletingProductGroup {
   estimatedConsumedQuantity: number;
   estimatedDepletionAt: string;
   depletionRule: ApiProductTypeDepletionRule;
+  effectivePlanningSettings: ProductTypeEffectivePlanningSettings;
 }
 
 export interface ApiShoppingPlanItem {
@@ -254,6 +307,7 @@ export interface ApiShoppingPlanItem {
   suggestedPurchaseQuantity: number;
   urgency: ShoppingPlanUrgency;
   depletionRule: ApiProductTypeDepletionRule;
+  effectivePlanningSettings: ProductTypeEffectivePlanningSettings;
 }
 
 export interface ApiPantryOverview {
@@ -275,7 +329,14 @@ export interface ApiInventoryLot {
   unit: ProductUnit;
   expiresAt?: string | null;
   purchaseDate?: string | null;
+  archivedAt?: string | null;
+  archivedReason?: string;
   expirationStatus: ExpirationStatus;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ApiArchivedPantryItems {
+  productTypes: ApiProductType[];
+  inventoryLots: ApiInventoryLot[];
 }

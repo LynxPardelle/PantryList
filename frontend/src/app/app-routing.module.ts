@@ -2,7 +2,6 @@ import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { AuthGuard } from './core/guards/auth.guard';
 import { LoginPageComponent } from './features/auth/login-page.component';
-import { PantryPageComponent } from './features/pantry/pantry-page.component';
 
 const routes: Routes = [
   {
@@ -31,7 +30,10 @@ const routes: Routes = [
   },
   {
     path: 'pantry',
-    component: PantryPageComponent,
+    loadChildren: () =>
+      import('./features/pantry/pantry.module').then(
+        (module) => module.PantryModule,
+      ),
     canActivate: [AuthGuard],
     data: {
       authMode: 'authenticated',

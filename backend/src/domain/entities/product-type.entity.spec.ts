@@ -1,0 +1,118 @@
+import { ProductCategory, QuantityUnit } from '../enums';
+import { UserId } from '../value-objects/user-id.vo';
+import { ProductType } from './product-type.entity';
+
+describe('ProductType planning settings and archive state', () => {
+  it('defaults planning to enabled when a depletion rule is active', () => {
+    const productType = ProductType.create(
+      UserId.fromString('user-1'),
+      'Detergente',
+      ProductCategory.CLEANING,
+      QuantityUnit.LITER,
+      {
+        enabled: true,
+        consumeAmount: 1,
+        unit: QuantityUnit.LITER,
+        everyAmount: 1,
+        everyPeriod: 'month',
+        anchorDate: new Date('2026-04-01T00:00:00.000Z'),
+      },
+    );
+
+    expect(productType.toPrimitives().planningSettings).toEqual({
+      planningEnabled: true,
+    });
+  });
+
+  it('stores validated per-type planning overrides', () => {
+    const productType = ProductType.fromPrimitives({
+      id: 'type-1',
+      userId: 'user-1',
+      baseName: 'Shampoo',
+      category: ProductCategory.CLEANING,
+      defaultUnit: QuantityUnit.LITER,
+      planningSettings: {
+        planningEnabled: true,
+      },
+      createdAt: new Date('2026-04-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-04-01T00:00:00.000Z'),
+    });
+
+    productType.updatePlanningSettings({
+      planningEnabled: false,
+      expirationWarningDaysOverride: 10,
+      depletionWarningThresholdRatioOverride: 1.5,
+      shoppingPlanLeadDaysOverride: 14,
+    });
+
+    expect(productType.toPrimitives().planningSettings).toEqual({
+      planningEnabled: false,
+      expirationWarningDaysOverride: 10,
+      depletionWarningThresholdRatioOverride: 1.5,
+      shoppingPlanLeadDaysOverride: 14,
+    });
+  });
+
+  it('rejects invalid planning override boundaries', () => {
+    const productType = ProductType.fromPrimitives({
+      id: 'type-1',
+      userId: 'user-1',
+      baseName: 'Shampoo',
+      category: ProductCategory.CLEANING,
+      defaultUnit: QuantityUnit.LITER,
+      createdAt: new Date('2026-04-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-04-01T00:00:00.000Z'),
+    });
+
+    expect(() =>
+      productType.updatePlanningSettings({
+        expirationWarningDaysOverride: 0,
+      }),
+    ).toThrow('Expiration warning days override must be between 1 and 60');
+    expect(() =>
+      productType.updatePlanningSettings({
+        depletionWarningThresholdRatioOverride: 4.5,
+      }),
+    ).toThrow(
+      'Depletion warning threshold ratio override must be between 0.25 and 4',
+    );
+    expect(() =>
+      productType.updatePlanningSettings({
+        shoppingPlanLeadDaysOverride: 31,
+      }),
+    ).toThrow('Shopping plan lead days override must be between 0 and 30');
+  });
+
+  it('archives and restores product types without losing planning settings', () => {
+    const productType = ProductType.fromPrimitives({
+      id: 'type-1',
+      userId: 'user-1',
+      baseName: 'Atun',
+      category: ProductCategory.FOOD,
+      defaultUnit: QuantityUnit.PIECE,
+      planningSettings: {
+        planningEnabled: true,
+        shoppingPlanLeadDaysOverride: 5,
+      },
+      createdAt: new Date('2026-04-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-04-01T00:00:00.000Z'),
+    });
+
+    productType.archive('Ya no se compra');
+
+    expect(productType.isArchived()).toBe(true);
+    expect(productType.toPrimitives()).toMatchObject({
+      archivedReason: 'Ya no se compra',
+      planningSettings: {
+        planningEnabled: true,
+        shoppingPlanLeadDaysOverride: 5,
+      },
+    });
+
+    productType.restore();
+
+    expect(productType.isArchived()).toBe(false);
+    expect(productType.toPrimitives().archivedAt).toBeUndefined();
+    expect(productType.toPrimitives().archivedReason).toBeUndefined();
+  });
+});

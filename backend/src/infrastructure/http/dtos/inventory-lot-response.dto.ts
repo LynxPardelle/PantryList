@@ -25,6 +25,12 @@ export class InventoryLotResponseDto {
   @ApiProperty({ required: false })
   purchaseDate?: Date;
 
+  @ApiProperty({ required: false })
+  archivedAt?: Date;
+
+  @ApiProperty({ required: false })
+  archivedReason?: string;
+
   @ApiProperty()
   expirationStatus: string;
 

@@ -4,6 +4,7 @@ import { Model } from 'mongoose';
 import {
   DepletionRulePrimitives,
   ProductType,
+  ProductTypePlanningSettingsPrimitives,
   ProductTypePrimitives,
 } from '../../../domain/entities/product-type.entity';
 import { ProductTypeRepository } from '../../../domain/repositories/product-type.repository';
@@ -17,10 +18,11 @@ type PersistedDepletionRule = Omit<DepletionRulePrimitives, 'everyPeriod'> & {
 
 type PersistedProductType = Omit<
   ProductTypePrimitives,
-  'defaultDepletionRule'
+  'defaultDepletionRule' | 'planningSettings'
 > & {
   normalizedBaseName: string;
   defaultDepletionRule?: PersistedDepletionRule;
+  planningSettings?: ProductTypePlanningSettingsPrimitives;
 };
 
 @Injectable()
@@ -33,6 +35,23 @@ export class MongoProductTypeRepository implements ProductTypeRepository {
   async save(productType: ProductType): Promise<ProductType> {
     const primitives = productType.toPrimitives();
     const normalizedBaseName = normalizeBaseName(primitives.baseName);
+    const unsetFields: Record<string, 1> = {};
+
+    if (!primitives.archivedAt) {
+      unsetFields.archivedAt = 1;
+    }
+
+    if (!primitives.archivedReason) {
+      unsetFields.archivedReason = 1;
+    }
+
+    const archiveSet = {
+      ...(primitives.archivedAt ? { archivedAt: primitives.archivedAt } : {}),
+      ...(primitives.archivedReason
+        ? { archivedReason: primitives.archivedReason }
+        : {}),
+    };
+
     const savedProductType = await this.productTypeModel
       .findOneAndUpdate(
         {
@@ -50,9 +69,14 @@ export class MongoProductTypeRepository implements ProductTypeRepository {
             category: primitives.category,
             defaultUnit: primitives.defaultUnit,
             defaultDepletionRule: primitives.defaultDepletionRule,
+            planningSettings: primitives.planningSettings,
+            ...archiveSet,
             updatedAt: primitives.updatedAt,
             normalizedBaseName,
           },
+          ...(Object.keys(unsetFields).length > 0
+            ? { $unset: unsetFields }
+            : {}),
         },
         {
           new: true,
@@ -76,8 +100,20 @@ export class MongoProductTypeRepository implements ProductTypeRepository {
 
   async findByUserId(userId: UserId): Promise<ProductType[]> {
     const productTypes = await this.productTypeModel
-      .find({ userId: userId.toString() })
+      .find({ userId: userId.toString(), archivedAt: { $exists: false } })
       .sort({ baseName: 1 })
+      .lean()
+      .exec();
+
+    return productTypes.map((productType) =>
+      this.toDomain(productType as PersistedProductType),
+    );
+  }
+
+  async findArchivedByUserId(userId: UserId): Promise<ProductType[]> {
+    const productTypes = await this.productTypeModel
+      .find({ userId: userId.toString(), archivedAt: { $exists: true } })
+      .sort({ archivedAt: -1 })
       .lean()
       .exec();
 
@@ -94,9 +130,10 @@ export class MongoProductTypeRepository implements ProductTypeRepository {
     const query = normalizedSearch
       ? {
           userId: userId.toString(),
+          archivedAt: { $exists: false },
           normalizedBaseName: { $regex: escapeRegExp(normalizedSearch) },
         }
-      : { userId: userId.toString() };
+      : { userId: userId.toString(), archivedAt: { $exists: false } };
 
     const productTypes = await this.productTypeModel
       .find(query)
@@ -117,6 +154,7 @@ export class MongoProductTypeRepository implements ProductTypeRepository {
       .findOne({
         userId: userId.toString(),
         normalizedBaseName: normalizeBaseName(baseName),
+        archivedAt: { $exists: false },
       })
       .lean()
       .exec();
@@ -138,6 +176,10 @@ export class MongoProductTypeRepository implements ProductTypeRepository {
     return result.modifiedCount;
   }
 
+  async delete(id: ProductTypeId): Promise<void> {
+    await this.productTypeModel.deleteOne({ id: id.toString() }).exec();
+  }
+
   private toDomain(productType: PersistedProductType): ProductType {
     return ProductType.fromPrimitives({
       id: productType.id,
@@ -154,6 +196,11 @@ export class MongoProductTypeRepository implements ProductTypeRepository {
             anchorDate: new Date(productType.defaultDepletionRule.anchorDate),
           }
         : undefined,
+      planningSettings: productType.planningSettings,
+      archivedAt: productType.archivedAt
+        ? new Date(productType.archivedAt)
+        : undefined,
+      archivedReason: productType.archivedReason,
       createdAt: new Date(productType.createdAt),
       updatedAt: new Date(productType.updatedAt),
     });

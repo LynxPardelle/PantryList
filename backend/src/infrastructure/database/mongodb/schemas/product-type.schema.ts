@@ -29,6 +29,25 @@ export const ProductTypeDepletionRuleSchema = SchemaFactory.createForClass(
   ProductTypeDepletionRuleDocument,
 );
 
+@Schema({ _id: false, versionKey: false })
+export class ProductTypePlanningSettingsDocument {
+  @Prop({ required: true })
+  planningEnabled: boolean;
+
+  @Prop({ required: false, min: 1, max: 60 })
+  expirationWarningDaysOverride?: number;
+
+  @Prop({ required: false, min: 0.25, max: 4 })
+  depletionWarningThresholdRatioOverride?: number;
+
+  @Prop({ required: false, min: 0, max: 30 })
+  shoppingPlanLeadDaysOverride?: number;
+}
+
+export const ProductTypePlanningSettingsSchema = SchemaFactory.createForClass(
+  ProductTypePlanningSettingsDocument,
+);
+
 @Schema({
   collection: 'product_types',
   timestamps: false,
@@ -55,6 +74,15 @@ export class ProductTypeDocument {
 
   @Prop({ type: ProductTypeDepletionRuleSchema, required: false })
   defaultDepletionRule?: ProductTypeDepletionRuleDocument;
+
+  @Prop({ type: ProductTypePlanningSettingsSchema, required: false })
+  planningSettings?: ProductTypePlanningSettingsDocument;
+
+  @Prop({ required: false, index: true })
+  archivedAt?: Date;
+
+  @Prop({ required: false, trim: true })
+  archivedReason?: string;
 
   @Prop({ required: true })
   createdAt: Date;

@@ -53,4 +53,22 @@ describe('InventoryLot expiration status', () => {
     expect(lot.isExpiringWithinDays(3, referenceDate)).toBe(false);
     expect(lot.isExpiringWithinDays(5, referenceDate)).toBe(true);
   });
+
+  it('archives and restores inventory lots without changing quantity', () => {
+    const lot = InventoryLot.fromPrimitives(baseLot);
+
+    lot.archive('Regalado');
+
+    expect(lot.isArchived()).toBe(true);
+    expect(lot.toPrimitives()).toMatchObject({
+      quantity: 1,
+      archivedReason: 'Regalado',
+    });
+
+    lot.restore();
+
+    expect(lot.isArchived()).toBe(false);
+    expect(lot.toPrimitives().archivedAt).toBeUndefined();
+    expect(lot.toPrimitives().archivedReason).toBeUndefined();
+  });
 });

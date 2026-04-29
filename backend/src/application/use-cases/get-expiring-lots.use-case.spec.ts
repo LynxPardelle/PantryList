@@ -11,9 +11,11 @@ describe('GetExpiringLotsUseCase', () => {
     save: jest.fn(),
     findById: jest.fn(),
     findByUserId: jest.fn(),
+    findArchivedByUserId: jest.fn(),
     searchByUserId: jest.fn(),
     findByBaseName: jest.fn(),
     reassignUserOwnership: jest.fn(),
+    delete: jest.fn(),
   });
 
   const makeInventoryLotRepository =
@@ -21,9 +23,11 @@ describe('GetExpiringLotsUseCase', () => {
       save: jest.fn(),
       findById: jest.fn(),
       findByUserId: jest.fn(),
+      findArchivedByUserId: jest.fn(),
       findByProductTypeId: jest.fn(),
       reassignUserOwnership: jest.fn(),
       delete: jest.fn(),
+      deleteByProductTypeId: jest.fn(),
     });
 
   const userId = UserId.fromString('lot-user');

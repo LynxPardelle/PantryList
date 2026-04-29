@@ -44,6 +44,7 @@ describe('ProfileService', () => {
         showExpiredEntryAlert: true,
         depletionWarningThresholdRatio: 1.5,
         shoppingPlanLeadDays: 5,
+        showGuidanceTips: true,
       },
     });
 
@@ -67,6 +68,7 @@ describe('ProfileService', () => {
       showExpiredEntryAlert: false,
       depletionWarningThresholdRatio: 1,
       shoppingPlanLeadDays: 3,
+      showGuidanceTips: true,
     });
   });
 });

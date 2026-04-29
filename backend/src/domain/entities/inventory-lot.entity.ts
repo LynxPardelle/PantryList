@@ -14,6 +14,8 @@ export interface InventoryLotPrimitives {
   unit: QuantityUnit;
   expiresAt?: Date;
   purchaseDate?: Date;
+  archivedAt?: Date;
+  archivedReason?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -28,6 +30,8 @@ export class InventoryLot {
     private readonly _unit: QuantityUnit,
     private _expiresAt: Date | undefined,
     private _purchaseDate: Date | undefined,
+    private _archivedAt: Date | undefined,
+    private _archivedReason: string | undefined,
     private readonly _createdAt: Date = new Date(),
     private _updatedAt: Date = new Date(),
   ) {}
@@ -54,6 +58,8 @@ export class InventoryLot {
       unit,
       expiresAt,
       purchaseDate,
+      undefined,
+      undefined,
     );
   }
 
@@ -67,6 +73,8 @@ export class InventoryLot {
       primitives.unit,
       primitives.expiresAt,
       primitives.purchaseDate,
+      primitives.archivedAt ? new Date(primitives.archivedAt) : undefined,
+      normalizeOptionalText(primitives.archivedReason),
       primitives.createdAt,
       primitives.updatedAt,
     );
@@ -104,6 +112,14 @@ export class InventoryLot {
     return this._purchaseDate;
   }
 
+  get archivedAt(): Date | undefined {
+    return this._archivedAt ? new Date(this._archivedAt) : undefined;
+  }
+
+  get archivedReason(): string | undefined {
+    return this._archivedReason;
+  }
+
   get createdAt(): Date {
     return this._createdAt;
   }
@@ -127,6 +143,36 @@ export class InventoryLot {
 
   isEmpty(): boolean {
     return this._quantity <= 0;
+  }
+
+  archive(reason?: string): void {
+    this._archivedAt = new Date();
+    this._archivedReason = normalizeOptionalText(reason);
+    this._updatedAt = new Date();
+  }
+
+  restore(): void {
+    this._archivedAt = undefined;
+    this._archivedReason = undefined;
+    this._updatedAt = new Date();
+  }
+
+  isArchived(): boolean {
+    return Boolean(this._archivedAt);
+  }
+
+  getDisplayName(): string {
+    return this._variantName ?? this._id.toString();
+  }
+
+  assertDeleteConfirmation(confirmationText: string): void {
+    if (confirmationText.trim() !== this.getDisplayName()) {
+      throw new Error('Delete confirmation must match inventory lot name');
+    }
+  }
+
+  canDeletePermanently(): boolean {
+    return this.isArchived();
   }
 
   getExpirationStatus(
@@ -178,6 +224,8 @@ export class InventoryLot {
       unit: this._unit,
       expiresAt: this._expiresAt,
       purchaseDate: this._purchaseDate,
+      archivedAt: this._archivedAt ? new Date(this._archivedAt) : undefined,
+      archivedReason: this._archivedReason,
       createdAt: this._createdAt,
       updatedAt: this._updatedAt,
     };

@@ -9,6 +9,9 @@ export interface ProductTypePrimitives {
   category: ProductCategory;
   defaultUnit: QuantityUnit;
   defaultDepletionRule?: DepletionRulePrimitives;
+  planningSettings?: ProductTypePlanningSettingsPrimitives;
+  archivedAt?: Date;
+  archivedReason?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -24,6 +27,16 @@ export interface DepletionRulePrimitives {
   anchorDate: Date;
 }
 
+export interface ProductTypePlanningSettingsPrimitives {
+  planningEnabled: boolean;
+  expirationWarningDaysOverride?: number;
+  depletionWarningThresholdRatioOverride?: number;
+  shoppingPlanLeadDaysOverride?: number;
+}
+
+export type ProductTypePlanningSettingsPatch =
+  Partial<ProductTypePlanningSettingsPrimitives>;
+
 export class ProductType {
   private constructor(
     private readonly _id: ProductTypeId,
@@ -32,6 +45,9 @@ export class ProductType {
     private _category: ProductCategory,
     private _defaultUnit: QuantityUnit,
     private _defaultDepletionRule: DepletionRulePrimitives | undefined,
+    private _planningSettings: ProductTypePlanningSettingsPrimitives,
+    private _archivedAt: Date | undefined,
+    private _archivedReason: string | undefined,
     private readonly _createdAt: Date = new Date(),
     private _updatedAt: Date = new Date(),
   ) {}
@@ -56,20 +72,31 @@ export class ProductType {
       category,
       defaultUnit,
       normalizeDefaultDepletionRule(defaultDepletionRule, defaultUnit),
+      normalizePlanningSettings(undefined, defaultDepletionRule),
+      undefined,
+      undefined,
     );
   }
 
   static fromPrimitives(primitives: ProductTypePrimitives): ProductType {
+    const defaultDepletionRule = normalizeDefaultDepletionRule(
+      primitives.defaultDepletionRule,
+      primitives.defaultUnit,
+    );
+
     return new ProductType(
       ProductTypeId.fromString(primitives.id),
       UserId.fromString(primitives.userId),
       primitives.baseName,
       primitives.category,
       primitives.defaultUnit,
-      normalizeDefaultDepletionRule(
-        primitives.defaultDepletionRule,
-        primitives.defaultUnit,
+      defaultDepletionRule,
+      normalizePlanningSettings(
+        primitives.planningSettings,
+        defaultDepletionRule,
       ),
+      primitives.archivedAt ? new Date(primitives.archivedAt) : undefined,
+      normalizeOptionalText(primitives.archivedReason),
       primitives.createdAt,
       primitives.updatedAt,
     );
@@ -99,6 +126,18 @@ export class ProductType {
     return cloneDefaultDepletionRule(this._defaultDepletionRule);
   }
 
+  get planningSettings(): ProductTypePlanningSettingsPrimitives {
+    return clonePlanningSettings(this._planningSettings);
+  }
+
+  get archivedAt(): Date | undefined {
+    return this._archivedAt ? new Date(this._archivedAt) : undefined;
+  }
+
+  get archivedReason(): string | undefined {
+    return this._archivedReason;
+  }
+
   get createdAt(): Date {
     return this._createdAt;
   }
@@ -114,7 +153,48 @@ export class ProductType {
       defaultDepletionRule,
       this._defaultUnit,
     );
+    this._planningSettings = normalizePlanningSettings(
+      this._planningSettings,
+      this._defaultDepletionRule,
+    );
     this._updatedAt = new Date();
+  }
+
+  updatePlanningSettings(input: ProductTypePlanningSettingsPatch): void {
+    this._planningSettings = normalizePlanningSettings(
+      {
+        ...this._planningSettings,
+        ...input,
+      },
+      this._defaultDepletionRule,
+    );
+    this._updatedAt = new Date();
+  }
+
+  archive(reason?: string): void {
+    this._archivedAt = new Date();
+    this._archivedReason = normalizeOptionalText(reason);
+    this._updatedAt = new Date();
+  }
+
+  restore(): void {
+    this._archivedAt = undefined;
+    this._archivedReason = undefined;
+    this._updatedAt = new Date();
+  }
+
+  isArchived(): boolean {
+    return Boolean(this._archivedAt);
+  }
+
+  assertDeleteConfirmation(confirmationText: string): void {
+    if (confirmationText.trim() !== this._baseName) {
+      throw new Error('Delete confirmation must match product type base name');
+    }
+  }
+
+  canDeletePermanently(): boolean {
+    return this.isArchived();
   }
 
   toPrimitives(): ProductTypePrimitives {
@@ -127,6 +207,9 @@ export class ProductType {
       defaultDepletionRule: cloneDefaultDepletionRule(
         this._defaultDepletionRule,
       ),
+      planningSettings: clonePlanningSettings(this._planningSettings),
+      archivedAt: this._archivedAt ? new Date(this._archivedAt) : undefined,
+      archivedReason: this._archivedReason,
       createdAt: this._createdAt,
       updatedAt: this._updatedAt,
     };
@@ -161,6 +244,82 @@ function normalizeDefaultDepletionRule(
     ...rule,
     anchorDate: new Date(rule.anchorDate),
   };
+}
+
+function normalizePlanningSettings(
+  settings: ProductTypePlanningSettingsPatch | undefined,
+  defaultDepletionRule: DepletionRulePrimitives | undefined,
+): ProductTypePlanningSettingsPrimitives {
+  const planningEnabled =
+    settings?.planningEnabled ?? Boolean(defaultDepletionRule?.enabled);
+
+  if (typeof planningEnabled !== 'boolean') {
+    throw new Error('Planning enabled must be a boolean');
+  }
+
+  const normalized: ProductTypePlanningSettingsPrimitives = {
+    planningEnabled,
+  };
+
+  if (settings?.expirationWarningDaysOverride !== undefined) {
+    assertNumberBetween(
+      settings.expirationWarningDaysOverride,
+      1,
+      60,
+      'Expiration warning days override must be between 1 and 60',
+    );
+    normalized.expirationWarningDaysOverride = Math.trunc(
+      settings.expirationWarningDaysOverride,
+    );
+  }
+
+  if (settings?.depletionWarningThresholdRatioOverride !== undefined) {
+    assertNumberBetween(
+      settings.depletionWarningThresholdRatioOverride,
+      0.25,
+      4,
+      'Depletion warning threshold ratio override must be between 0.25 and 4',
+    );
+    normalized.depletionWarningThresholdRatioOverride = Number(
+      settings.depletionWarningThresholdRatioOverride.toFixed(2),
+    );
+  }
+
+  if (settings?.shoppingPlanLeadDaysOverride !== undefined) {
+    assertNumberBetween(
+      settings.shoppingPlanLeadDaysOverride,
+      0,
+      30,
+      'Shopping plan lead days override must be between 0 and 30',
+    );
+    normalized.shoppingPlanLeadDaysOverride = Math.trunc(
+      settings.shoppingPlanLeadDaysOverride,
+    );
+  }
+
+  return normalized;
+}
+
+function clonePlanningSettings(
+  settings: ProductTypePlanningSettingsPrimitives,
+): ProductTypePlanningSettingsPrimitives {
+  return { ...settings };
+}
+
+function assertNumberBetween(
+  value: number,
+  min: number,
+  max: number,
+  message: string,
+): void {
+  if (!Number.isFinite(value) || value < min || value > max) {
+    throw new Error(message);
+  }
+}
+
+function normalizeOptionalText(value?: string): string | undefined {
+  const normalized = value?.trim();
+  return normalized ? normalized : undefined;
 }
 
 function cloneDefaultDepletionRule(

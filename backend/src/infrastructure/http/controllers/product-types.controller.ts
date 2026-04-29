@@ -1,26 +1,37 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
   Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { FastifyRequest } from 'fastify';
+import { ArchiveProductTypeUseCase } from '../../../application/use-cases/archive-product-type.use-case';
 import { CreateProductTypeUseCase } from '../../../application/use-cases/create-product-type.use-case';
+import { DeleteProductTypeUseCase } from '../../../application/use-cases/delete-product-type.use-case';
 import { GetProductTypeByIdUseCase } from '../../../application/use-cases/get-product-type-by-id.use-case';
+import { RestoreProductTypeUseCase } from '../../../application/use-cases/restore-product-type.use-case';
 import { SearchProductTypesUseCase } from '../../../application/use-cases/search-product-types.use-case';
 import { UpdateProductTypeDepletionRuleUseCase } from '../../../application/use-cases/update-product-type-depletion-rule.use-case';
+import { UpdateProductTypePlanningSettingsUseCase } from '../../../application/use-cases/update-product-type-planning-settings.use-case';
+import { AuthCookieService } from '../auth/auth-cookie.service';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { AccessTokenGuard } from '../auth/access-token.guard';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
+import { ArchivePantryItemDto } from '../dtos/archive-pantry-item.dto';
 import {
   CreateProductTypeDto,
   UpdateProductTypeDepletionRuleDto,
 } from '../dtos/create-product-type.dto';
+import { DeletePantryItemDto } from '../dtos/delete-pantry-item.dto';
 import { ProductTypeResponseDto } from '../dtos/product-type-response.dto';
+import { UpdateProductTypePlanningSettingsDto } from '../dtos/update-product-type-planning-settings.dto';
 import { ProductTypeMapper } from '../mappers/product-type.mapper';
 
 @Controller('product-types')
@@ -32,6 +43,11 @@ export class ProductTypesController {
     private readonly getProductTypeByIdUseCase: GetProductTypeByIdUseCase,
     private readonly searchProductTypesUseCase: SearchProductTypesUseCase,
     private readonly updateProductTypeDepletionRuleUseCase: UpdateProductTypeDepletionRuleUseCase,
+    private readonly updateProductTypePlanningSettingsUseCase: UpdateProductTypePlanningSettingsUseCase,
+    private readonly archiveProductTypeUseCase: ArchiveProductTypeUseCase,
+    private readonly restoreProductTypeUseCase: RestoreProductTypeUseCase,
+    private readonly deleteProductTypeUseCase: DeleteProductTypeUseCase,
+    private readonly authCookieService: AuthCookieService,
   ) {}
 
   @Post()
@@ -95,5 +111,78 @@ export class ProductTypesController {
       });
 
     return ProductTypeMapper.toResponse(productType);
+  }
+
+  @Patch(':id/planning-settings')
+  @ApiOperation({ summary: 'Actualizar reglas de planeación de un tipo base' })
+  async updatePlanningSettings(
+    @Param('id') id: string,
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Body() dto: UpdateProductTypePlanningSettingsDto,
+    @Req() request: FastifyRequest,
+  ): Promise<ProductTypeResponseDto> {
+    this.authCookieService.ensureXsrfForRequest(request);
+
+    const productType =
+      await this.updateProductTypePlanningSettingsUseCase.execute({
+        productTypeId: id,
+        userId: currentUser.userId,
+        planningSettings: dto,
+      });
+
+    return ProductTypeMapper.toResponse(productType);
+  }
+
+  @Post(':id/archive')
+  @ApiOperation({ summary: 'Archivar un tipo base' })
+  async archive(
+    @Param('id') id: string,
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Body() dto: ArchivePantryItemDto,
+    @Req() request: FastifyRequest,
+  ): Promise<ProductTypeResponseDto> {
+    this.authCookieService.ensureXsrfForRequest(request);
+
+    const productType = await this.archiveProductTypeUseCase.execute({
+      productTypeId: id,
+      userId: currentUser.userId,
+      reason: dto.reason,
+    });
+
+    return ProductTypeMapper.toResponse(productType);
+  }
+
+  @Post(':id/restore')
+  @ApiOperation({ summary: 'Restaurar un tipo base archivado' })
+  async restore(
+    @Param('id') id: string,
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Req() request: FastifyRequest,
+  ): Promise<ProductTypeResponseDto> {
+    this.authCookieService.ensureXsrfForRequest(request);
+
+    const productType = await this.restoreProductTypeUseCase.execute({
+      productTypeId: id,
+      userId: currentUser.userId,
+    });
+
+    return ProductTypeMapper.toResponse(productType);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Eliminar permanentemente un tipo base archivado' })
+  async delete(
+    @Param('id') id: string,
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Body() dto: DeletePantryItemDto,
+    @Req() request: FastifyRequest,
+  ): Promise<void> {
+    this.authCookieService.ensureXsrfForRequest(request);
+
+    return this.deleteProductTypeUseCase.execute({
+      productTypeId: id,
+      userId: currentUser.userId,
+      confirmationText: dto.confirmationText,
+    });
   }
 }

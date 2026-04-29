@@ -7,7 +7,9 @@ export interface InventoryLotRepository {
   save(lot: InventoryLot): Promise<InventoryLot>;
   findById(id: InventoryLotId): Promise<InventoryLot | null>;
   findByUserId(userId: UserId): Promise<InventoryLot[]>;
+  findArchivedByUserId(userId: UserId): Promise<InventoryLot[]>;
   findByProductTypeId(productTypeId: ProductTypeId): Promise<InventoryLot[]>;
   reassignUserOwnership(fromUserId: UserId, toUserId: UserId): Promise<number>;
   delete(id: InventoryLotId): Promise<void>;
+  deleteByProductTypeId(productTypeId: ProductTypeId): Promise<void>;
 }

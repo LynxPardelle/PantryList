@@ -30,6 +30,7 @@ describe('ProfilePageComponent', () => {
           showExpiredEntryAlert: false,
           depletionWarningThresholdRatio: 1.5,
           shoppingPlanLeadDays: 5,
+          showGuidanceTips: false,
         },
       }),
     );
@@ -39,6 +40,7 @@ describe('ProfilePageComponent', () => {
         showExpiredEntryAlert: true,
         depletionWarningThresholdRatio: 1,
         shoppingPlanLeadDays: 3,
+        showGuidanceTips: true,
       }),
     );
 
@@ -72,6 +74,7 @@ describe('ProfilePageComponent', () => {
       showExpiredEntryAlert: false,
       depletionWarningThresholdRatio: 1.5,
       shoppingPlanLeadDays: 5,
+      showGuidanceTips: false,
     });
   });
 

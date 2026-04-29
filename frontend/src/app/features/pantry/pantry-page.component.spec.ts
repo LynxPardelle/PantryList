@@ -23,11 +23,29 @@ describe('PantryPageComponent', () => {
       'registerLot',
       'consumeInventoryLot',
       'updateProductTypeDepletionRule',
+      'updateProductTypePlanningSettings',
+      'archiveProductType',
+      'restoreProductType',
+      'deleteProductType',
+      'archiveInventoryLot',
+      'restoreInventoryLot',
+      'deleteInventoryLot',
+      'getArchivedPantryItems',
     ]);
     pantryService.searchProductTypes.and.returnValue(of([]));
     pantryService.registerLot.and.returnValue(of({} as any));
     pantryService.consumeInventoryLot.and.returnValue(of(null));
     pantryService.updateProductTypeDepletionRule.and.returnValue(of({} as any));
+    pantryService.updateProductTypePlanningSettings.and.returnValue(of({} as any));
+    pantryService.archiveProductType.and.returnValue(of({} as any));
+    pantryService.restoreProductType.and.returnValue(of({} as any));
+    pantryService.deleteProductType.and.returnValue(of(undefined));
+    pantryService.archiveInventoryLot.and.returnValue(of({} as any));
+    pantryService.restoreInventoryLot.and.returnValue(of({} as any));
+    pantryService.deleteInventoryLot.and.returnValue(of(undefined));
+    pantryService.getArchivedPantryItems.and.returnValue(
+      of({ productTypes: [], inventoryLots: [] }),
+    );
     authFacade = new AuthFacadeStub();
     store = {
       select: jasmine.createSpy('select').and.returnValue(of(null)),
@@ -69,6 +87,10 @@ describe('PantryPageComponent', () => {
       baseName: 'Atun',
       category: 'food',
       defaultUnit: 'kg',
+      planningSettings: {
+        planningEnabled: true,
+      },
+      archivedAt: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -242,6 +264,7 @@ describe('PantryPageComponent', () => {
           quantity: 3,
           unit: 'piezas',
           expiresAt: new Date('2026-04-23T00:00:00.000Z'),
+          purchaseDate: null,
           expirationStatus: 'expired',
           updatedAt: new Date('2026-04-23T00:00:00.000Z'),
         },
@@ -250,6 +273,7 @@ describe('PantryPageComponent', () => {
           quantity: 1,
           unit: 'piezas',
           expiresAt: new Date('2026-04-29T00:00:00.000Z'),
+          purchaseDate: null,
           expirationStatus: 'critical',
           updatedAt: new Date('2026-04-23T00:00:00.000Z'),
         },
@@ -258,6 +282,7 @@ describe('PantryPageComponent', () => {
           quantity: 8,
           unit: 'piezas',
           expiresAt: new Date('2026-05-30T00:00:00.000Z'),
+          purchaseDate: null,
           expirationStatus: 'stable',
           updatedAt: new Date('2026-04-23T00:00:00.000Z'),
         },
@@ -271,6 +296,50 @@ describe('PantryPageComponent', () => {
   it('formats one piece in singular Spanish for pantry quantities', () => {
     expect(component.formatQuantity(1, 'piezas')).toBe('1 pieza');
     expect(component.formatQuantity(2, 'piezas')).toBe('2 piezas');
+  });
+
+  it('uses action-oriented shopping labels', () => {
+    expect(component.shoppingPlanUrgencyLabels.depleted).toBe('Comprar ya');
+    expect(component.shoppingPlanUrgencyLabels.critical).toBe(
+      'Comprar esta semana',
+    );
+    expect(component.shoppingPlanUrgencyLabels.upcoming).toBe('Comprar pronto');
+  });
+
+  it('saves product type planning overrides and reloads the pantry overview', () => {
+    const group = makePantryGroup();
+    component.startEditingPlanningSettings(group);
+    component.planningSettingsForm.patchValue({
+      planningEnabled: true,
+      expirationWarningDaysOverride: 14,
+      depletionWarningThresholdRatioOverride: 0.75,
+      shoppingPlanLeadDaysOverride: 6,
+    });
+
+    component.savePlanningSettings(group);
+
+    expect(pantryService.updateProductTypePlanningSettings).toHaveBeenCalledWith(
+      'type-detergent',
+      {
+        planningEnabled: true,
+        expirationWarningDaysOverride: 14,
+        depletionWarningThresholdRatioOverride: 0.75,
+        shoppingPlanLeadDaysOverride: 6,
+      },
+    );
+    expect(component.editingPlanningProductTypeId).toBeNull();
+    expect(store.dispatch).toHaveBeenCalled();
+  });
+
+  it('loads archived pantry items when the archived panel is opened', () => {
+    component.toggleArchivedPanel();
+
+    expect(pantryService.getArchivedPantryItems).toHaveBeenCalled();
+    expect(component.archivedPanelOpen).toBeTrue();
+    expect(component.archivedItems).toEqual({
+      productTypes: [],
+      inventoryLots: [],
+    });
   });
 });
 
@@ -295,6 +364,15 @@ function makePantryGroup(
     nextExpirationAt: null,
     expiringSoonQuantity: 0,
     hasDepletionRule: Boolean(overrides.depletionRule),
+    effectivePlanningSettings: {
+      planningEnabled: true,
+      expirationWarningDays: 7,
+      depletionWarningThresholdRatio: 1,
+      shoppingPlanLeadDays: 3,
+      expirationWarningDaysSource: 'profile',
+      depletionWarningThresholdRatioSource: 'profile',
+      shoppingPlanLeadDaysSource: 'profile',
+    },
     variants: [],
     lots: [],
     ...overrides,

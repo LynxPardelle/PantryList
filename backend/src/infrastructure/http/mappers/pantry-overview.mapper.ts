@@ -30,6 +30,7 @@ export class PantryOverviewMapper {
         expiringSoonQuantity: item.expiringSoonQuantity,
         hasDepletionRule: item.hasDepletionRule,
         depletionRule: item.depletionRule,
+        effectivePlanningSettings: item.effectivePlanningSettings,
         estimatedCurrentQuantity: item.estimatedCurrentQuantity,
         estimatedConsumedQuantity: item.estimatedConsumedQuantity,
         estimatedDepletionAt: item.estimatedDepletionAt,
@@ -75,6 +76,7 @@ export class PantryOverviewMapper {
       estimatedConsumedQuantity: item.estimatedConsumedQuantity,
       estimatedDepletionAt: item.estimatedDepletionAt,
       depletionRule: item.depletionRule,
+      effectivePlanningSettings: item.effectivePlanningSettings,
     };
   }
 
@@ -94,6 +96,7 @@ export class PantryOverviewMapper {
       suggestedPurchaseQuantity: item.suggestedPurchaseQuantity,
       urgency: item.urgency,
       depletionRule: item.depletionRule,
+      effectivePlanningSettings: item.effectivePlanningSettings,
     };
   }
 
@@ -106,6 +109,7 @@ export class PantryOverviewMapper {
       quantity: lot.quantity,
       unit: lot.unit,
       expiresAt: lot.expiresAt,
+      purchaseDate: lot.purchaseDate,
       expirationStatus: lot.expirationStatus,
       updatedAt: lot.updatedAt,
     };

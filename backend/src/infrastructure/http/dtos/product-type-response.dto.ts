@@ -20,6 +20,20 @@ export class ProductTypeDepletionRuleResponseDto {
   anchorDate: Date;
 }
 
+export class ProductTypePlanningSettingsResponseDto {
+  @ApiProperty()
+  planningEnabled: boolean;
+
+  @ApiProperty({ required: false })
+  expirationWarningDaysOverride?: number;
+
+  @ApiProperty({ required: false })
+  depletionWarningThresholdRatioOverride?: number;
+
+  @ApiProperty({ required: false })
+  shoppingPlanLeadDaysOverride?: number;
+}
+
 export class ProductTypeResponseDto {
   @ApiProperty()
   id: string;
@@ -38,6 +52,15 @@ export class ProductTypeResponseDto {
 
   @ApiProperty({ required: false, type: ProductTypeDepletionRuleResponseDto })
   defaultDepletionRule?: ProductTypeDepletionRuleResponseDto;
+
+  @ApiProperty({ type: ProductTypePlanningSettingsResponseDto })
+  planningSettings: ProductTypePlanningSettingsResponseDto;
+
+  @ApiProperty({ required: false })
+  archivedAt?: Date;
+
+  @ApiProperty({ required: false })
+  archivedReason?: string;
 
   @ApiProperty()
   createdAt: Date;

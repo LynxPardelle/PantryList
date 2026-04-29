@@ -9,9 +9,11 @@ describe('UpdateProductTypeDepletionRuleUseCase', () => {
     save: jest.fn((productType) => Promise.resolve(productType)),
     findById: jest.fn(),
     findByUserId: jest.fn(),
+    findArchivedByUserId: jest.fn(),
     searchByUserId: jest.fn(),
     findByBaseName: jest.fn(),
     reassignUserOwnership: jest.fn(),
+    delete: jest.fn(),
   });
 
   const makeProductType = (): ProductType =>

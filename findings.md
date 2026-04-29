@@ -379,6 +379,25 @@
   is not household-obvious enough. The next pass should prefer action language
   such as "Comprar ya", "Comprar esta semana", and "Comprar pronto" over
   abstract system states.
+- Replenishment is now calculated from active product types first, not only
+  active lots. This allows durable product types with zero active stock to
+  remain visible in `shoppingPlanItems` as `Comprar ya`.
+- Durability estimates now use each lot `purchaseDate` when present and fall
+  back to the product-type depletion rule anchor date when missing. The UI
+  exposes the purchase date so users can explain why an item is already
+  estimated as depleted.
+- Profile preferences remain household defaults, while product types now carry
+  per-type planning overrides for expiration warning days, depletion warning
+  threshold, shopping lead days, and planning enabled/disabled state.
+- Archive is the normal removal path. Product types and lots can be archived,
+  restored, and permanently deleted only through a guarded archived-state flow.
+- The richer pantry workspace should stay lazy-loaded. After Phase 20,
+  `/pantry` was moved behind `PantryModule`; the production initial bundle is
+  `457.00 kB` and the pantry chunk is `56.93 kB`.
+- Phase 20 verification on 2026-04-29 Central Time passed: backend tests
+  `30` suites / `95` tests, backend e2e `2` tests, frontend unit `31` tests,
+  Playwright e2e `5` tests, backend/frontend builds, Docker app profile,
+  production dependency audits with `total = 0`, and secret scan `count = 0`.
 
 ## Resources
 - `C:\Users\lince\Documents\GitHub\PantryList\.impeccable.md`

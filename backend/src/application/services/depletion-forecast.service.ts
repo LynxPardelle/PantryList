@@ -12,6 +12,11 @@ export interface DepletionForecast {
   estimatedDepletionAt: Date;
 }
 
+export interface DepletionForecastInput {
+  recordedAvailableQuantity: number;
+  startDate?: Date;
+}
+
 export function calculateDepletionForecast(
   depletionRule: DepletionRulePrimitives | undefined,
   recordedAvailableQuantity: number,
@@ -51,6 +56,82 @@ export function calculateDepletionForecast(
     depletionRule: cloneDepletionRule(depletionRule),
     recordedAvailableQuantity: roundQuantity(recordedAvailableQuantity),
     completedIntervals,
+    estimatedConsumedQuantity,
+    estimatedCurrentQuantity,
+    estimatedDepletionAt,
+  };
+}
+
+export function calculateGroupedDepletionForecast(
+  depletionRule: DepletionRulePrimitives | undefined,
+  inputs: DepletionForecastInput[],
+  referenceDate: Date = new Date(),
+): DepletionForecast | undefined {
+  if (!depletionRule?.enabled) {
+    return undefined;
+  }
+
+  if (inputs.length === 0) {
+    return {
+      depletionRule: cloneDepletionRule(depletionRule),
+      recordedAvailableQuantity: 0,
+      completedIntervals: 0,
+      estimatedConsumedQuantity: 0,
+      estimatedCurrentQuantity: 0,
+      estimatedDepletionAt: new Date(referenceDate),
+    };
+  }
+
+  const forecasts = inputs.map((input) =>
+    calculateDepletionForecast(
+      {
+        ...depletionRule,
+        anchorDate: input.startDate ?? depletionRule.anchorDate,
+      },
+      input.recordedAvailableQuantity,
+      referenceDate,
+    ),
+  );
+
+  const definedForecasts = forecasts.filter(
+    (forecast): forecast is DepletionForecast => Boolean(forecast),
+  );
+
+  const recordedAvailableQuantity = roundQuantity(
+    definedForecasts.reduce(
+      (total, forecast) => total + forecast.recordedAvailableQuantity,
+      0,
+    ),
+  );
+  const estimatedConsumedQuantity = roundQuantity(
+    definedForecasts.reduce(
+      (total, forecast) => total + forecast.estimatedConsumedQuantity,
+      0,
+    ),
+  );
+  const estimatedCurrentQuantity = roundQuantity(
+    definedForecasts.reduce(
+      (total, forecast) => total + forecast.estimatedCurrentQuantity,
+      0,
+    ),
+  );
+  const estimatedDepletionAt =
+    estimatedCurrentQuantity <= 0
+      ? new Date(referenceDate)
+      : new Date(
+          Math.max(
+            ...definedForecasts
+              .filter((forecast) => forecast.estimatedCurrentQuantity > 0)
+              .map((forecast) => forecast.estimatedDepletionAt.getTime()),
+          ),
+        );
+
+  return {
+    depletionRule: cloneDepletionRule(depletionRule),
+    recordedAvailableQuantity,
+    completedIntervals: Math.max(
+      ...definedForecasts.map((forecast) => forecast.completedIntervals),
+    ),
     estimatedConsumedQuantity,
     estimatedCurrentQuantity,
     estimatedDepletionAt,

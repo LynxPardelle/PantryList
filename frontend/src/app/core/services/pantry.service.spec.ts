@@ -38,7 +38,51 @@ describe('PantryService', () => {
     request.flush({
       userId: 'tester',
       generatedAt: '2026-04-24T12:00:00.000Z',
-      items: [],
+      preferences: {
+        expirationWarningDays: 7,
+        showExpiredEntryAlert: true,
+        depletionWarningThresholdRatio: 1,
+        shoppingPlanLeadDays: 3,
+        showGuidanceTips: true,
+      },
+      items: [
+        {
+          productTypeId: 'type-detergent',
+          baseName: 'Detergente',
+          category: 'cleaning',
+          defaultUnit: 'lt',
+          totalQuantity: 1,
+          lotCount: 1,
+          nextExpirationAt: null,
+          expiringSoonQuantity: 0,
+          hasDepletionRule: true,
+          depletionRule: {
+            enabled: true,
+            consumeAmount: 1,
+            unit: 'lt',
+            everyAmount: 1,
+            everyPeriod: 'month',
+            anchorDate: '2026-03-24T00:00:00.000Z',
+          },
+          effectivePlanningSettings: makeEffectivePlanningSettings(),
+          estimatedCurrentQuantity: 0,
+          estimatedConsumedQuantity: 1,
+          estimatedDepletionAt: '2026-04-24T00:00:00.000Z',
+          variants: ['Marca hogar'],
+          lots: [
+            {
+              lotId: 'lot-1',
+              variantName: 'Marca hogar',
+              quantity: 1,
+              unit: 'lt',
+              expiresAt: null,
+              purchaseDate: '2026-03-24T00:00:00.000Z',
+              expirationStatus: 'none',
+              updatedAt: '2026-04-24T00:00:00.000Z',
+            },
+          ],
+        },
+      ],
       expiringItems: [],
       depletingItems: [],
       shoppingPlanItems: [
@@ -54,6 +98,7 @@ describe('PantryService', () => {
           recommendedPurchaseAt: '2026-04-28T00:00:00.000Z',
           suggestedPurchaseQuantity: 1,
           urgency: 'upcoming',
+          effectivePlanningSettings: makeEffectivePlanningSettings(),
           depletionRule: {
             enabled: true,
             consumeAmount: 1,
@@ -66,4 +111,114 @@ describe('PantryService', () => {
       ],
     });
   });
+
+  it('normalizes product type planning and archive responses', () => {
+    service.searchProductTypes('detergente').subscribe((productTypes) => {
+      expect(productTypes[0].planningSettings).toEqual({
+        planningEnabled: true,
+        shoppingPlanLeadDaysOverride: 6,
+      });
+      expect(productTypes[0].archivedAt).toEqual(
+        new Date('2026-04-24T00:00:00.000Z'),
+      );
+    });
+
+    const request = httpMock.expectOne(
+      `${environment.apiUrl}/product-types?search=detergente`,
+    );
+    request.flush([
+      {
+        id: 'type-detergent',
+        userId: 'tester',
+        baseName: 'Detergente',
+        category: 'cleaning',
+        defaultUnit: 'lt',
+        planningSettings: {
+          planningEnabled: true,
+          shoppingPlanLeadDaysOverride: 6,
+        },
+        archivedAt: '2026-04-24T00:00:00.000Z',
+        createdAt: '2026-04-01T00:00:00.000Z',
+        updatedAt: '2026-04-24T00:00:00.000Z',
+      },
+    ]);
+  });
+
+  it('calls archive, restore, delete, and archived item endpoints', () => {
+    service.archiveProductType('type-1', { reason: 'No comprar mas' }).subscribe();
+    httpMock
+      .expectOne(`${environment.apiUrl}/product-types/type-1/archive`)
+      .flush(makeApiProductType());
+
+    service.restoreProductType('type-1').subscribe();
+    httpMock
+      .expectOne(`${environment.apiUrl}/product-types/type-1/restore`)
+      .flush(makeApiProductType());
+
+    service
+      .deleteInventoryLot('lot-1', { confirmationText: 'Lote lot-1' })
+      .subscribe();
+    const deleteRequest = httpMock.expectOne(
+      `${environment.apiUrl}/inventory-lots/lot-1`,
+    );
+    expect(deleteRequest.request.method).toBe('DELETE');
+    expect(deleteRequest.request.body).toEqual({
+      confirmationText: 'Lote lot-1',
+    });
+    deleteRequest.flush(null);
+
+    service.getArchivedPantryItems().subscribe((archivedItems) => {
+      expect(archivedItems.productTypes[0].id).toBe('type-1');
+      expect(archivedItems.inventoryLots[0].purchaseDate).toEqual(
+        new Date('2026-04-01T00:00:00.000Z'),
+      );
+    });
+    httpMock.expectOne(`${environment.apiUrl}/pantry/archived`).flush({
+      productTypes: [makeApiProductType()],
+      inventoryLots: [
+        {
+          id: 'lot-1',
+          userId: 'tester',
+          productTypeId: 'type-1',
+          variantName: 'Botella grande',
+          quantity: 1,
+          unit: 'lt',
+          expiresAt: null,
+          purchaseDate: '2026-04-01T00:00:00.000Z',
+          archivedAt: '2026-04-24T00:00:00.000Z',
+          expirationStatus: 'none',
+          createdAt: '2026-04-01T00:00:00.000Z',
+          updatedAt: '2026-04-24T00:00:00.000Z',
+        },
+      ],
+    });
+  });
 });
+
+function makeEffectivePlanningSettings() {
+  return {
+    planningEnabled: true,
+    expirationWarningDays: 7,
+    depletionWarningThresholdRatio: 1,
+    shoppingPlanLeadDays: 3,
+    expirationWarningDaysSource: 'profile',
+    depletionWarningThresholdRatioSource: 'profile',
+    shoppingPlanLeadDaysSource: 'profile',
+  };
+}
+
+function makeApiProductType() {
+  return {
+    id: 'type-1',
+    userId: 'tester',
+    baseName: 'Detergente',
+    category: 'cleaning',
+    defaultUnit: 'lt',
+    planningSettings: {
+      planningEnabled: true,
+    },
+    archivedAt: '2026-04-24T00:00:00.000Z',
+    createdAt: '2026-04-01T00:00:00.000Z',
+    updatedAt: '2026-04-24T00:00:00.000Z',
+  };
+}

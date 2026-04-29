@@ -17,16 +17,22 @@ posterior en Dokploy o AWS.
 - Panel visible de productos proximos a caducar
 - Panel visible de productos que se agotan pronto por durabilidad estimada
 - Plan de compras deterministico basado en agotamiento estimado
+- Durabilidad calculada desde la fecha de compra del lote cuando existe
+- Plan de compras que conserva tipos con durabilidad aunque el stock activo
+  llegue a cero
+- Overrides por tipo base para caducidad, agotamiento y dias de compra
+- Archivado/restauracion de tipos y lotes, con borrado permanente guardado
+  detras de confirmacion
 - Consumo explicito por lote, sin seleccion automatica
 - Backend NestJS 11 + Fastify + MongoDB/Mongoose
-- Frontend Angular 19 + NgRx + SSR
+- Frontend Angular 21 + NgRx + SSR
 - Flujo de migracion desde la coleccion legacy `products`
 
 ## Stack
 
 ### Frontend
 
-- Angular 19
+- Angular 21
 - NgRx
 - Bootstrap 5
 - SSR con Express
@@ -56,7 +62,10 @@ posterior en Dokploy o AWS.
   - calcula `estimatedCurrentQuantity`, `estimatedConsumedQuantity`,
     `estimatedDepletionAt` y `depletingItems` en lectura, sin mutar inventario
   - expone `shoppingPlanItems` como cronograma simple de reposicion: comprar
-    tres dias antes del agotamiento estimado, o hoy si ya esta vencido
+    antes del agotamiento estimado segun el default del perfil o el override
+    del tipo base
+  - se construye desde tipos activos, no solo lotes activos, para que un tipo
+    durable con cero stock siga apareciendo como compra sugerida
 - El flujo legacy `/api/products` sigue presente solo como compatibilidad de
   transicion; la ruta principal nueva vive en `/api/product-types`,
   `/api/inventory-lots` y `/api/pantry/overview`
@@ -246,11 +255,19 @@ despliegue esta en `docs/deployment/cognito.md`.
 - `GET /api/product-types?search=...`
 - `GET /api/product-types/:id`
 - `PATCH /api/product-types/:id/depletion-rule`
+- `PATCH /api/product-types/:id/planning-settings`
+- `POST /api/product-types/:id/archive`
+- `POST /api/product-types/:id/restore`
+- `DELETE /api/product-types/:id`
 - `POST /api/inventory-lots`
 - `GET /api/inventory-lots`
 - `GET /api/inventory-lots/expiring?days=7`
 - `POST /api/inventory-lots/:id/consume`
+- `POST /api/inventory-lots/:id/archive`
+- `POST /api/inventory-lots/:id/restore`
+- `DELETE /api/inventory-lots/:id`
 - `GET /api/pantry/overview`
+- `GET /api/pantry/archived`
 
 ## Migracion
 
@@ -345,6 +362,25 @@ Evidencia visual existente:
 - `C:\Users\lince\Documents\GitHub\Codex\Output\pantrylist-expiration-smoke.png`
 - `C:\Users\lince\Documents\GitHub\Codex\Output\pantrylist-smoke.png`
 - `C:\Users\lince\Documents\GitHub\Codex\Output\pantrylist-durability-smoke.png`
+
+## Verificacion 2026-04-29
+
+Verificacion de replenishment, reglas por tipo y archivado:
+
+- Backend: `npm test -- --runInBand` paso `30` suites y `95` tests
+- Backend: `npm run test:e2e` paso `2` tests
+- Backend: `npm run build` paso
+- Frontend: `npm run test:ci` paso `31` specs
+- Frontend: `npm run build` paso con bundle inicial `457.00 kB` y
+  `pantry-module` lazy de `56.93 kB`
+- Frontend: `$env:E2E_BASE_URL='http://localhost:48673'; npm run test:e2e`
+  paso `5` tests
+- Docker: `docker compose --env-file .env.docker.local --profile app up -d --build`
+  reconstruyo backend/frontend y dejo MongoDB, backend y frontend arriba
+- HTTP smoke: backend `http://localhost:39173/api/healthz` devolvio `200`;
+  frontend `http://localhost:48673/login` devolvio `200`
+- Seguridad: `npm audit --omit=dev --json` devolvio `total = 0` en backend
+  y frontend; `security-compliance` secret scan devolvio `count = 0`
 
 ## Seguridad
 

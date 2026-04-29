@@ -112,6 +112,20 @@
           </p>
         </fieldset>
 
+        <fieldset class="settings-group">
+          <legend>Ayuda visual</legend>
+
+          <label class="check-field">
+            <input type="checkbox" formControlName="showGuidanceTips" />
+            <span>Mostrar ayudas de PantryList</span>
+          </label>
+          <p class="helper-copy">
+            Estos mensajes explican como registrar lotes, interpretar compras
+            sugeridas y usar archivados. Puedes ocultarlos por visita desde la
+            despensa.
+          </p>
+        </fieldset>
+
         @if (preferencesForm.invalid && preferencesForm.touched) {
           <p class="field-error" role="alert">
             Los rangos permitidos son: caducidad 1-60, sensibilidad 0.25-4,

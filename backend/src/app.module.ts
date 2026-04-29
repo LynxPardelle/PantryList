@@ -20,10 +20,15 @@ import {
 } from './application/tokens';
 import { CognitoAuthTransactionService } from './application/services/cognito-auth-transaction.service';
 import { CognitoProfileSyncService } from './application/services/cognito-profile-sync.service';
+import { ArchiveInventoryLotUseCase } from './application/use-cases/archive-inventory-lot.use-case';
+import { ArchiveProductTypeUseCase } from './application/use-cases/archive-product-type.use-case';
 import { ConsumeInventoryLotUseCase } from './application/use-cases/consume-inventory-lot.use-case';
 import { CreateInventoryLotUseCase } from './application/use-cases/create-inventory-lot.use-case';
 import { CreateProductUseCase } from './application/use-cases/create-product.use-case';
 import { CreateProductTypeUseCase } from './application/use-cases/create-product-type.use-case';
+import { DeleteInventoryLotUseCase } from './application/use-cases/delete-inventory-lot.use-case';
+import { DeleteProductTypeUseCase } from './application/use-cases/delete-product-type.use-case';
+import { GetArchivedPantryItemsUseCase } from './application/use-cases/get-archived-pantry-items.use-case';
 import { GetExpiringLotsUseCase } from './application/use-cases/get-expiring-lots.use-case';
 import { GetCurrentUserUseCase } from './application/use-cases/get-current-user.use-case';
 import { GetProductByIdUseCase } from './application/use-cases/get-product-by-id.use-case';
@@ -32,7 +37,10 @@ import { GetProductsByUserUseCase } from './application/use-cases/get-products-b
 import { GetPantryOverviewUseCase } from './application/use-cases/get-pantry-overview.use-case';
 import { GetUserProfileUseCase } from './application/use-cases/get-user-profile.use-case';
 import { ListInventoryLotsUseCase } from './application/use-cases/list-inventory-lots.use-case';
+import { RestoreInventoryLotUseCase } from './application/use-cases/restore-inventory-lot.use-case';
+import { RestoreProductTypeUseCase } from './application/use-cases/restore-product-type.use-case';
 import { SearchProductTypesUseCase } from './application/use-cases/search-product-types.use-case';
+import { UpdateProductTypePlanningSettingsUseCase } from './application/use-cases/update-product-type-planning-settings.use-case';
 import { UpdateUserPreferencesUseCase } from './application/use-cases/update-user-preferences.use-case';
 import { UpdateProductTypeDepletionRuleUseCase } from './application/use-cases/update-product-type-depletion-rule.use-case';
 import { UpdateProductQuantityUseCase } from './application/use-cases/update-product-quantity.use-case';
@@ -241,11 +249,19 @@ const buildMongoUri = (configService: ConfigService): string => {
     GetProductsByUserUseCase,
     GetProductTypeByIdUseCase,
     GetPantryOverviewUseCase,
+    GetArchivedPantryItemsUseCase,
     GetUserProfileUseCase,
     GetExpiringLotsUseCase,
     ListInventoryLotsUseCase,
     SearchProductTypesUseCase,
     UpdateProductTypeDepletionRuleUseCase,
+    UpdateProductTypePlanningSettingsUseCase,
+    ArchiveProductTypeUseCase,
+    RestoreProductTypeUseCase,
+    DeleteProductTypeUseCase,
+    ArchiveInventoryLotUseCase,
+    RestoreInventoryLotUseCase,
+    DeleteInventoryLotUseCase,
     UpdateProductQuantityUseCase,
     UpdateUserPreferencesUseCase,
     MongoUserDao,

@@ -160,9 +160,9 @@ Phase 20
 - [x] Write draft design spec under `docs/superpowers/specs/`
 - [x] User review and approval of written design spec
 - [x] Create detailed implementation plan under `plan/`
-- [ ] Implement after explicit approval
-- [ ] Verify with backend tests, frontend tests, build, Docker runtime, E2E, audits, and browser QA
-- **Status:** in_progress
+- [x] Implement after explicit approval
+- [x] Verify with backend tests, frontend tests, build, Docker runtime, E2E, audits, and browser QA
+- **Status:** completed
 
 ## Key Questions
 1. Which AWS integration path best fits PantryList's current maturity: container-first, serverless-first, or hybrid?
@@ -195,6 +195,8 @@ Phase 20
 | Keep global profile preferences as defaults and add product-type overrides before considering lot-level overrides | The profile should define household defaults, while product types such as detergent, shampoo, apples, or tuna need different thresholds without overloading every individual lot |
 | Use archive as the normal removal flow and guarded delete only after archive | Users need to stop tracking products, lots, or types without accidentally losing history or hiding why an item disappeared from planning |
 | Build future shopping plans from active product types, not only active lots | Planned products must remain visible for restock decisions after the final lot is consumed or reaches zero |
+| Keep Pantry archive/planning mutations component-local for this slice | The existing pantry NgRx state only owns overview loading; direct service mutations plus overview reload keep the feature small and verifiable before adding a broader mutation state machine |
+| Lazy-load `/pantry` through `PantryModule` | The richer Pantry workspace pushed the initial Angular bundle above the `500kB` warning threshold; lazy-loading the route reduced the initial production bundle to `457.00 kB` while moving Pantry into a `56.93 kB` feature chunk |
 
 ## Errors Encountered
 | Error | Attempt | Resolution |
@@ -209,6 +211,8 @@ Phase 20
 | Playwright expected `20 Apr 2026` but Angular rendered `19 Apr 2026` for a UTC-midnight expiration value | 1 | Treated pantry calendar dates as date-only displays with `UTC` date-pipe formatting, then reran frontend tests, build, and E2E |
 | A product with one monthly-use liter purchased one month ago still showed one liter remaining and depletion one month ahead | 1 | Root cause found: the depletion forecast uses the product-type rule `anchorDate`, not the lot `purchaseDate`, so the purchase date does not currently drive consumption aging |
 | Consuming the final quantity deletes the lot and removes the product from the shopping plan | 1 | Root cause found: empty lots are deleted and `buildPantryOverview` only creates groups from existing inventory lots, so active product types with zero stock are absent from the planning read model |
+| Frontend production build exceeded the initial bundle warning budget at `513.26 kB` | 1 | Lazy-loaded `/pantry` with a dedicated `PantryModule`, reducing the initial bundle to `457.00 kB` and creating a `56.93 kB` pantry feature chunk |
+| First Docker HTTP smoke returned `ResponseEnded` / empty reply while watchers were still compiling | 1 | Checked container logs instead of repeating the same request immediately, waited for Nest/Angular watch compilation, then verified backend `200` and frontend `200` |
 
 ## Notes
 - Update phase status as progress changes.

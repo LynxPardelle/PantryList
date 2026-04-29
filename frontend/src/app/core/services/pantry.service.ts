@@ -5,6 +5,7 @@ import { map, switchMap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import {
   ApiInventoryLot,
+  ApiArchivedPantryItems,
   ApiDepletingProductGroup,
   ApiPantryLotSummary,
   ApiPantryOverview,
@@ -12,9 +13,12 @@ import {
   ApiProductType,
   ApiProductTypeDepletionRule,
   ApiShoppingPlanItem,
+  ArchivedPantryItems,
+  ArchivePantryItemRequest,
   ConsumeInventoryLotRequest,
   CreateInventoryLotRequest,
   CreateProductTypeRequest,
+  DeletePantryItemRequest,
   DepletingProductGroup,
   InventoryLot,
   PantryLotSummary,
@@ -22,6 +26,7 @@ import {
   PantryOverviewItem,
   ProductTypeDepletionRule,
   ProductTypeDepletionRuleRequest,
+  ProductTypePlanningSettingsRequest,
   ProductType,
   RegisterLotRequest,
   ShoppingPlanItem,
@@ -35,6 +40,7 @@ export class PantryService {
   private readonly productTypesUrl = `${this.apiUrl}/product-types`;
   private readonly inventoryLotsUrl = `${this.apiUrl}/inventory-lots`;
   private readonly pantryOverviewUrl = `${this.apiUrl}/pantry/overview`;
+  private readonly archivedPantryUrl = `${this.apiUrl}/pantry/archived`;
 
   constructor(private readonly http: HttpClient) {}
 
@@ -71,6 +77,42 @@ export class PantryService {
         defaultDepletionRule,
       })
       .pipe(map((productType) => this.normalizeProductType(productType)));
+  }
+
+  updateProductTypePlanningSettings(
+    productTypeId: string,
+    planningSettings: ProductTypePlanningSettingsRequest,
+  ): Observable<ProductType> {
+    return this.http
+      .patch<ApiProductType>(
+        `${this.productTypesUrl}/${productTypeId}/planning-settings`,
+        planningSettings,
+      )
+      .pipe(map((productType) => this.normalizeProductType(productType)));
+  }
+
+  archiveProductType(
+    productTypeId: string,
+    request: ArchivePantryItemRequest = {},
+  ): Observable<ProductType> {
+    return this.http
+      .post<ApiProductType>(`${this.productTypesUrl}/${productTypeId}/archive`, request)
+      .pipe(map((productType) => this.normalizeProductType(productType)));
+  }
+
+  restoreProductType(productTypeId: string): Observable<ProductType> {
+    return this.http
+      .post<ApiProductType>(`${this.productTypesUrl}/${productTypeId}/restore`, {})
+      .pipe(map((productType) => this.normalizeProductType(productType)));
+  }
+
+  deleteProductType(
+    productTypeId: string,
+    request: DeletePantryItemRequest,
+  ): Observable<void> {
+    return this.http.delete<void>(`${this.productTypesUrl}/${productTypeId}`, {
+      body: request,
+    });
   }
 
   createInventoryLot(request: CreateInventoryLotRequest): Observable<InventoryLot> {
@@ -139,12 +181,50 @@ export class PantryService {
       );
   }
 
+  archiveInventoryLot(
+    lotId: string,
+    request: ArchivePantryItemRequest = {},
+  ): Observable<InventoryLot> {
+    return this.http
+      .post<ApiInventoryLot>(`${this.inventoryLotsUrl}/${lotId}/archive`, request)
+      .pipe(map((inventoryLot) => this.normalizeInventoryLot(inventoryLot)));
+  }
+
+  restoreInventoryLot(lotId: string): Observable<InventoryLot> {
+    return this.http
+      .post<ApiInventoryLot>(`${this.inventoryLotsUrl}/${lotId}/restore`, {})
+      .pipe(map((inventoryLot) => this.normalizeInventoryLot(inventoryLot)));
+  }
+
+  deleteInventoryLot(
+    lotId: string,
+    request: DeletePantryItemRequest,
+  ): Observable<void> {
+    return this.http.delete<void>(`${this.inventoryLotsUrl}/${lotId}`, {
+      body: request,
+    });
+  }
+
+  getArchivedPantryItems(): Observable<ArchivedPantryItems> {
+    return this.http.get<ApiArchivedPantryItems>(this.archivedPantryUrl).pipe(
+      map((items) => ({
+        productTypes: items.productTypes.map((productType) =>
+          this.normalizeProductType(productType),
+        ),
+        inventoryLots: items.inventoryLots.map((inventoryLot) =>
+          this.normalizeInventoryLot(inventoryLot),
+        ),
+      })),
+    );
+  }
+
   private normalizeProductType(productType: ApiProductType): ProductType {
     return {
       ...productType,
       defaultDepletionRule: productType.defaultDepletionRule
         ? this.normalizeDepletionRule(productType.defaultDepletionRule)
         : undefined,
+      archivedAt: productType.archivedAt ? new Date(productType.archivedAt) : null,
       createdAt: new Date(productType.createdAt),
       updatedAt: new Date(productType.updatedAt),
     };
@@ -157,6 +237,7 @@ export class PantryService {
       purchaseDate: inventoryLot.purchaseDate
         ? new Date(inventoryLot.purchaseDate)
         : null,
+      archivedAt: inventoryLot.archivedAt ? new Date(inventoryLot.archivedAt) : null,
       createdAt: new Date(inventoryLot.createdAt),
       updatedAt: new Date(inventoryLot.updatedAt),
     };
@@ -166,6 +247,7 @@ export class PantryService {
     return {
       ...lot,
       expiresAt: lot.expiresAt ? new Date(lot.expiresAt) : null,
+      purchaseDate: lot.purchaseDate ? new Date(lot.purchaseDate) : null,
       updatedAt: new Date(lot.updatedAt),
     };
   }

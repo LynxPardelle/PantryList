@@ -53,6 +53,26 @@
     }
   }
 
+  @if ((showGuidanceTips$ | async) && !guidanceDismissed) {
+    <section class="guidance-card" data-testid="pantry-guidance-card">
+      <div>
+        <p class="panel-kicker">Ayuda para usar PantryList</p>
+        <h2>Registra compras reales y deja que las reglas sugieran qu&eacute; revisar.</h2>
+        <p>
+          Usa el tipo base para agrupar lo que sustituye una compra, la variante
+          para marca o presentaci&oacute;n, la fecha de compra para durabilidad y
+          la caducidad para decidir qu&eacute; usar primero.
+        </p>
+      </div>
+      <div class="guidance-actions">
+        <button class="secondary-button" type="button" (click)="dismissGuidance()">
+          Ocultar por ahora
+        </button>
+        <a class="ghost-button" routerLink="/profile">Configurar ayudas</a>
+      </div>
+    </section>
+  }
+
   @if (error$ | async; as error) {
     <section class="error-banner" role="alert" aria-live="assertive">
       <strong>La API respondi&oacute; con un error.</strong>
@@ -90,7 +110,7 @@
         <small>tipos con presi&oacute;n de consumo</small>
       </article>
       <article class="summary-card summary-card-depletion">
-        <span>Se agotan</span>
+        <span>Por acabarse</span>
         <strong>{{ summary.depletingTypes }}</strong>
         <small>tipos con durabilidad activa</small>
       </article>
@@ -188,7 +208,7 @@
           </label>
 
           <label class="field">
-            <span>Unidad can&oacute;nica</span>
+            <span>Unidad principal</span>
             <select formControlName="unit">
               @for (unit of unitOptions; track unit) {
                 <option [value]="unit">{{ unit }}</option>
@@ -265,7 +285,7 @@
               </label>
 
               <label class="field field-full">
-                <span>Contar desde</span>
+                <span>Empezar c&aacute;lculo desde</span>
                 <input type="date" formControlName="depletionAnchorDate" />
               </label>
             </div>
@@ -293,7 +313,7 @@
         <div class="panel-header">
           <div>
             <p class="panel-kicker">Prioridad</p>
-            <h2>Caducados y pr&oacute;ximos</h2>
+            <h2>Qu&eacute; revisar primero</h2>
           </div>
         </div>
 
@@ -386,7 +406,7 @@
         <div class="panel-header">
           <div>
             <p class="panel-kicker">Durabilidad</p>
-            <h2>Se agotan pronto</h2>
+            <h2>Por acabarse</h2>
           </div>
         </div>
 
@@ -401,7 +421,7 @@
                   </div>
 
                   <div class="depletion-meter">
-                    <span>Estimado actual</span>
+                    <span>Queda estimado</span>
                     <strong>{{ group.estimatedCurrentQuantity }} {{ group.defaultUnit }}</strong>
                     <small>Registrado: {{ group.totalQuantity }} {{ group.defaultUnit }}</small>
                   </div>
@@ -430,8 +450,8 @@
       <article class="panel shopping-plan-panel">
         <div class="panel-header">
           <div>
-            <p class="panel-kicker">Reposici&oacute;n</p>
-            <h2>Plan de compras</h2>
+            <p class="panel-kicker">Compras</p>
+            <h2>Compras sugeridas</h2>
           </div>
         </div>
 
@@ -461,7 +481,7 @@
                   </div>
 
                   <div class="shopping-plan-stock">
-                    <span>Estimado actual</span>
+                    <span>Queda estimado</span>
                     <strong>{{ item.estimatedCurrentQuantity }} {{ item.defaultUnit }}</strong>
                     <small>Registrado: {{ item.totalQuantity }} {{ item.defaultUnit }}</small>
                   </div>
@@ -480,7 +500,7 @@
       <article class="panel pantry-panel">
         <div class="panel-header">
           <div>
-            <p class="panel-kicker">Vista agrupada</p>
+            <p class="panel-kicker">Despensa por tipo</p>
             <h2>Despensa por tipo base</h2>
           </div>
         </div>
@@ -534,7 +554,7 @@
                       <span>{{ group.defaultUnit }}</span>
                       <small>
                         @if (group.hasDepletionRule) {
-                          Estimado actual de {{ group.totalQuantity }} registrado
+                          Queda estimado de {{ group.totalQuantity }} registrado
                         } @else if (getExpiredQuantity(group) > 0 && group.nextExpirationAt) {
                           Primero caduc&oacute; {{ group.nextExpirationAt | date:'dd MMM y':'UTC' }}
                         } @else if (group.nextExpirationAt) {
@@ -555,7 +575,7 @@
                     >
                       <section class="depletion-settings">
                         <div class="depletion-settings-copy">
-                          <p class="panel-kicker">Regla del tipo base</p>
+                          <p class="panel-kicker">Reglas de este tipo</p>
                           <h4>Durabilidad de {{ group.baseName }}</h4>
                           @if (group.depletionRule?.enabled) {
                             <p>
@@ -569,15 +589,25 @@
                           }
                         </div>
 
-                        @if (editingDepletionProductTypeId !== group.productTypeId) {
+                        <div class="section-actions">
+                          @if (editingDepletionProductTypeId !== group.productTypeId) {
+                            <button
+                              type="button"
+                              class="secondary-button"
+                              (click)="startEditingDepletionRule(group)"
+                            >
+                              {{ group.depletionRule?.enabled ? 'Editar durabilidad' : 'Configurar durabilidad' }}
+                            </button>
+                          }
                           <button
                             type="button"
-                            class="secondary-button"
-                            (click)="startEditingDepletionRule(group)"
+                            class="danger-button"
+                            [disabled]="mutationBusyKey !== null"
+                            (click)="archiveProductType(group)"
                           >
-                            {{ group.depletionRule?.enabled ? 'Editar durabilidad' : 'Configurar durabilidad' }}
+                            Archivar tipo
                           </button>
-                        }
+                        </div>
                       </section>
 
                       @if (editingDepletionProductTypeId === group.productTypeId) {
@@ -628,7 +658,7 @@
                               </label>
 
                               <label class="field field-full">
-                                <span>Contar desde</span>
+                                <span>Empezar c&aacute;lculo desde</span>
                                 <input type="date" formControlName="anchorDate" />
                               </label>
                             </div>
@@ -666,6 +696,116 @@
                         </form>
                       }
 
+                      <section class="planning-settings-card">
+                        <div class="planning-settings-copy">
+                          <p class="panel-kicker">Compras y alertas</p>
+                          <h4>Ajustes de {{ group.baseName }}</h4>
+                          <p>
+                            Compra:
+                            {{ group.effectivePlanningSettings.shoppingPlanLeadDays }} d&iacute;as antes
+                            ({{ getPlanningSourceLabel(group.effectivePlanningSettings, 'shoppingPlanLeadDays') }}).
+                            Caducidad:
+                            {{ group.effectivePlanningSettings.expirationWarningDays }} d&iacute;as
+                            ({{ getPlanningSourceLabel(group.effectivePlanningSettings, 'expirationWarningDays') }}).
+                            Agotamiento:
+                            {{ group.effectivePlanningSettings.depletionWarningThresholdRatio }} ciclos
+                            ({{ getPlanningSourceLabel(group.effectivePlanningSettings, 'depletionWarningThresholdRatio') }}).
+                          </p>
+                          @if (!group.effectivePlanningSettings.planningEnabled) {
+                            <p class="helper-copy">Las compras sugeridas estan pausadas para este tipo.</p>
+                          }
+                        </div>
+
+                        @if (editingPlanningProductTypeId !== group.productTypeId) {
+                          <button
+                            type="button"
+                            class="secondary-button"
+                            (click)="startEditingPlanningSettings(group)"
+                          >
+                            Ajustar compras y alertas
+                          </button>
+                        }
+                      </section>
+
+                      @if (editingPlanningProductTypeId === group.productTypeId) {
+                        <form
+                          class="planning-settings-editor"
+                          [formGroup]="planningSettingsForm"
+                          (ngSubmit)="savePlanningSettings(group)"
+                        >
+                          <label class="check-field field-full">
+                            <input type="checkbox" formControlName="planningEnabled" />
+                            <span>Incluir este tipo en compras sugeridas</span>
+                          </label>
+
+                          <label class="field">
+                            <span>D&iacute;as para marcar caducidad cercana</span>
+                            <input
+                              type="number"
+                              formControlName="expirationWarningDaysOverride"
+                              min="1"
+                              max="60"
+                              step="1"
+                              placeholder="Usar perfil"
+                            />
+                          </label>
+
+                          <label class="field">
+                            <span>Sensibilidad de agotamiento</span>
+                            <input
+                              type="number"
+                              formControlName="depletionWarningThresholdRatioOverride"
+                              min="0.25"
+                              max="4"
+                              step="0.25"
+                              placeholder="Usar perfil"
+                            />
+                          </label>
+
+                          <label class="field">
+                            <span>D&iacute;as antes para comprar</span>
+                            <input
+                              type="number"
+                              formControlName="shoppingPlanLeadDaysOverride"
+                              min="0"
+                              max="30"
+                              step="1"
+                              placeholder="Usar perfil"
+                            />
+                          </label>
+
+                          <p class="helper-copy field-full">
+                            Deja un campo vac&iacute;o para heredar el valor del perfil.
+                          </p>
+
+                          @if (planningSettingsError) {
+                            <p class="field-error field-full">{{ planningSettingsError }}</p>
+                          }
+
+                          <div class="depletion-editor-actions field-full">
+                            <button
+                              type="submit"
+                              class="primary-button"
+                              [disabled]="planningSettingsSavingProductTypeId === group.productTypeId"
+                            >
+                              {{
+                                planningSettingsSavingProductTypeId === group.productTypeId
+                                  ? 'Guardando...'
+                                  : 'Guardar ajustes'
+                              }}
+                            </button>
+                            <button
+                              type="button"
+                              class="secondary-button"
+                              [disabled]="planningSettingsSavingProductTypeId === group.productTypeId"
+                              (click)="cancelEditingPlanningSettings()"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </form>
+                      }
+
                       @for (lot of group.lots; track trackByLotId($index, lot)) {
                         <div class="lot-row" [attr.data-status]="lot.expirationStatus">
                           <div class="lot-copy">
@@ -685,6 +825,15 @@
                                 }
                               } @else {
                                 Sin fecha de caducidad
+                              }
+                            </small>
+                            <small>
+                              @if (lot.purchaseDate) {
+                                Comprado el {{ lot.purchaseDate | date:'dd MMM y':'UTC' }}
+                              } @else if (group.hasDepletionRule) {
+                                Sin fecha de compra; se usa el inicio del tipo.
+                              } @else {
+                                Sin fecha de compra
                               }
                             </small>
                           </div>
@@ -709,6 +858,14 @@
                             >
                               {{ consumeBusyLotId === lot.lotId ? 'Consumiendo...' : 'Consumir' }}
                             </button>
+                            <button
+                              type="button"
+                              class="danger-button"
+                              [disabled]="mutationBusyKey !== null"
+                              (click)="archiveLot(lot)"
+                            >
+                              Archivar lote
+                            </button>
                           </div>
 
                           @if (consumeErrors[lot.lotId]) {
@@ -727,6 +884,109 @@
               <p>Registra tu primer lote para empezar a ver agrupaciones, alertas de caducidad y consumo controlado.</p>
             </section>
           }
+        }
+      </article>
+
+      <article class="panel archived-panel">
+        <div class="panel-header panel-header-actions">
+          <div>
+            <p class="panel-kicker">Historial controlado</p>
+            <h2>Elementos archivados</h2>
+          </div>
+          <button class="secondary-button" type="button" (click)="toggleArchivedPanel()">
+            {{ archivedPanelOpen ? 'Ocultar archivados' : 'Ver archivados' }}
+          </button>
+        </div>
+
+        @if (archivedPanelOpen) {
+          @if (archivedLoading) {
+            <p class="loading-copy" aria-live="polite">Cargando elementos archivados...</p>
+          }
+
+          @if (archivedError) {
+            <p class="field-error" role="alert">{{ archivedError }}</p>
+          }
+
+          @if (archivedItems; as archived) {
+            @if (archived.productTypes.length === 0 && archived.inventoryLots.length === 0) {
+              <section class="empty-state compact-empty-state">
+                <h3>No hay elementos archivados.</h3>
+                <p>Cuando archives un tipo o lote, aparecer&aacute; aqu&iacute; para restaurarlo o eliminarlo con confirmaci&oacute;n.</p>
+              </section>
+            } @else {
+              <div class="archived-list">
+                @for (productType of archived.productTypes; track productType.id) {
+                  <article class="archived-row">
+                    <div>
+                      <p class="panel-kicker">Tipo archivado</p>
+                      <h3>{{ productType.baseName }}</h3>
+                      <small>
+                        Archivado
+                        @if (productType.archivedAt) {
+                          el {{ productType.archivedAt | date:'dd MMM y':'UTC' }}
+                        }
+                      </small>
+                    </div>
+                    <div class="archived-actions">
+                      <button
+                        type="button"
+                        class="secondary-button"
+                        [disabled]="mutationBusyKey !== null"
+                        (click)="restoreProductType(productType)"
+                      >
+                        Restaurar
+                      </button>
+                      <button
+                        type="button"
+                        class="danger-button"
+                        [disabled]="mutationBusyKey !== null"
+                        (click)="deleteArchivedProductType(productType)"
+                      >
+                        Eliminar definitivo
+                      </button>
+                    </div>
+                  </article>
+                }
+
+                @for (lot of archived.inventoryLots; track lot.id) {
+                  <article class="archived-row">
+                    <div>
+                      <p class="panel-kicker">Lote archivado</p>
+                      <h3>{{ getInventoryLotDisplayName(lot) }}</h3>
+                      <small>
+                        {{ formatQuantity(lot.quantity, lot.unit) }}
+                        @if (lot.archivedAt) {
+                          &middot; Archivado el {{ lot.archivedAt | date:'dd MMM y':'UTC' }}
+                        }
+                      </small>
+                    </div>
+                    <div class="archived-actions">
+                      <button
+                        type="button"
+                        class="secondary-button"
+                        [disabled]="mutationBusyKey !== null"
+                        (click)="restoreInventoryLot(lot)"
+                      >
+                        Restaurar
+                      </button>
+                      <button
+                        type="button"
+                        class="danger-button"
+                        [disabled]="mutationBusyKey !== null"
+                        (click)="deleteArchivedInventoryLot(lot)"
+                      >
+                        Eliminar definitivo
+                      </button>
+                    </div>
+                  </article>
+                }
+              </div>
+            }
+          }
+        } @else {
+          <p class="helper-copy">
+            Archivar es la forma segura de dejar de comprar o contar algo sin borrarlo de inmediato.
+          </p>
         }
       </article>
     </section>

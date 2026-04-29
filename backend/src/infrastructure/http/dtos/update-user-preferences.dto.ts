@@ -27,4 +27,9 @@ export class UpdateUserPreferencesDto {
   @Min(0)
   @Max(30)
   shoppingPlanLeadDays?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  showGuidanceTips?: boolean;
 }

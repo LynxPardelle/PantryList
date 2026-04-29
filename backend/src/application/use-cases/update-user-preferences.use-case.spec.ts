@@ -29,6 +29,7 @@ describe('UpdateUserPreferencesUseCase', () => {
       showExpiredEntryAlert: false,
       depletionWarningThresholdRatio: 1,
       shoppingPlanLeadDays: 6,
+      showGuidanceTips: true,
     });
   });
 });
