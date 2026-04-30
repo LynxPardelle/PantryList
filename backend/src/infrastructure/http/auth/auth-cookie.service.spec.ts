@@ -9,6 +9,7 @@ describe('AuthCookieService', () => {
         const values: Record<string, string> = {
           AUTH_COOKIE_SECURE: 'false',
           AUTH_COOKIE_SAME_SITE: 'lax',
+          AUTH_COOKIE_DOMAIN: 'pantrylist.lynxpardelle.com',
           COGNITO_AUTH_TRANSACTION_TTL_SECONDS: '900',
         };
 
@@ -83,5 +84,53 @@ describe('AuthCookieService', () => {
       codeVerifier: 'verifier-value',
       redirectTo: '/pantry',
     });
+  });
+
+  it('clears session cookies with and without the configured domain', () => {
+    const service = new AuthCookieService(makeConfigService());
+    const reply = makeReply();
+
+    service.clearSessionCookies(reply);
+
+    expect(reply.clearCookie).toHaveBeenCalledWith('pantrylist_access_token', {
+      path: '/',
+    });
+    expect(reply.clearCookie).toHaveBeenCalledWith('pantrylist_access_token', {
+      path: '/',
+      domain: 'pantrylist.lynxpardelle.com',
+    });
+    expect(reply.clearCookie).toHaveBeenCalledWith('pantrylist_refresh_token', {
+      path: '/api/auth',
+    });
+    expect(reply.clearCookie).toHaveBeenCalledWith('pantrylist_refresh_token', {
+      path: '/api/auth',
+      domain: 'pantrylist.lynxpardelle.com',
+    });
+    expect(reply.clearCookie).toHaveBeenCalledWith('XSRF-TOKEN', {
+      path: '/',
+    });
+    expect(reply.clearCookie).toHaveBeenCalledWith('XSRF-TOKEN', {
+      path: '/',
+      domain: 'pantrylist.lynxpardelle.com',
+    });
+  });
+
+  it('clears Cognito transaction cookies with and without the configured domain', () => {
+    const service = new AuthCookieService(makeConfigService());
+    const reply = makeReply();
+
+    service.clearCognitoAuthTransactionCookies(reply);
+
+    expect(reply.clearCookie).toHaveBeenCalledWith(
+      'pantrylist_cognito_state',
+      { path: '/api/auth/cognito' },
+    );
+    expect(reply.clearCookie).toHaveBeenCalledWith(
+      'pantrylist_cognito_state',
+      {
+        path: '/api/auth/cognito',
+        domain: 'pantrylist.lynxpardelle.com',
+      },
+    );
   });
 });

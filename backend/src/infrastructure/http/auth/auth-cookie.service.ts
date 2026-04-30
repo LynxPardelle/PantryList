@@ -58,18 +58,13 @@ export class AuthCookieService {
   }
 
   clearSessionCookies(reply: FastifyReply): void {
-    reply.clearCookie(this.accessCookieName, {
-      path: '/',
-      domain: this.getCookieDomain(),
-    });
-    reply.clearCookie(this.refreshCookieName, {
-      path: '/api/auth',
-      domain: this.getCookieDomain(),
-    });
-    reply.clearCookie(this.xsrfCookieName, {
-      path: '/',
-      domain: this.getCookieDomain(),
-    });
+    this.clearCookieAcrossDomainModes(reply, this.accessCookieName, '/');
+    this.clearCookieAcrossDomainModes(
+      reply,
+      this.refreshCookieName,
+      '/api/auth',
+    );
+    this.clearCookieAcrossDomainModes(reply, this.xsrfCookieName, '/');
   }
 
   setCognitoAuthTransactionCookies(
@@ -110,15 +105,26 @@ export class AuthCookieService {
   }
 
   clearCognitoAuthTransactionCookies(reply: FastifyReply): void {
-    const options = {
-      path: '/api/auth/cognito',
-      domain: this.getCookieDomain(),
-    };
-
-    reply.clearCookie(this.cognitoStateCookieName, options);
-    reply.clearCookie(this.cognitoNonceCookieName, options);
-    reply.clearCookie(this.cognitoCodeVerifierCookieName, options);
-    reply.clearCookie(this.cognitoRedirectToCookieName, options);
+    this.clearCookieAcrossDomainModes(
+      reply,
+      this.cognitoStateCookieName,
+      '/api/auth/cognito',
+    );
+    this.clearCookieAcrossDomainModes(
+      reply,
+      this.cognitoNonceCookieName,
+      '/api/auth/cognito',
+    );
+    this.clearCookieAcrossDomainModes(
+      reply,
+      this.cognitoCodeVerifierCookieName,
+      '/api/auth/cognito',
+    );
+    this.clearCookieAcrossDomainModes(
+      reply,
+      this.cognitoRedirectToCookieName,
+      '/api/auth/cognito',
+    );
   }
 
   createXsrfToken(): string {
@@ -192,6 +198,19 @@ export class AuthCookieService {
 
   private getCookieDomain(): string | undefined {
     return this.configService.get<string>('AUTH_COOKIE_DOMAIN') || undefined;
+  }
+
+  private clearCookieAcrossDomainModes(
+    reply: FastifyReply,
+    name: string,
+    path: string,
+  ): void {
+    reply.clearCookie(name, { path });
+
+    const domain = this.getCookieDomain();
+    if (domain) {
+      reply.clearCookie(name, { path, domain });
+    }
   }
 
   private getAccessCookieMaxAgeSeconds(): number {
