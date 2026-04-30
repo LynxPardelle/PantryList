@@ -81,7 +81,8 @@ export class AuthController {
       codeChallengeMethod: transaction.codeChallengeMethod,
       redirectUri: this.getRedirectUri(),
       scopes: this.getScopes(),
-      provider: normalizedProvider,
+      provider:
+        normalizedProvider === 'COGNITO' ? undefined : normalizedProvider,
     });
 
     reply.redirect(url, 302);

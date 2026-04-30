@@ -37,6 +37,7 @@ app.use('/api', express.json(), async (req, res, next) => {
     const requestInit: RequestInit = {
       method: req.method,
       headers,
+      redirect: 'manual',
     };
 
     if (
@@ -66,6 +67,16 @@ app.use('/api', express.json(), async (req, res, next) => {
     setCookieHeaders.forEach((cookie) => {
       res.append('set-cookie', cookie);
     });
+
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get('location');
+
+      if (location) {
+        res.setHeader('location', location);
+        res.end();
+        return;
+      }
+    }
 
     const payload = Buffer.from(await response.arrayBuffer());
     res.send(payload);

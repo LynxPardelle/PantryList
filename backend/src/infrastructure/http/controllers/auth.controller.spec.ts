@@ -164,6 +164,20 @@ describe('AuthController Cognito flow', () => {
     ]);
   });
 
+  it('starts native Cognito login without forcing an identity provider', () => {
+    const { controller, transactionService, authUrlBuilder } = makeController();
+    const reply = makeReply();
+    transactionService.normalizeProvider.mockReturnValue('COGNITO');
+
+    controller.startCognitoLogin('COGNITO', '/pantry', reply);
+
+    expect(authUrlBuilder.buildAuthorizeUrl.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({
+        provider: undefined,
+      }),
+    );
+  });
+
   it('lists the configured Cognito providers for the login screen', () => {
     const { controller } = makeController();
 
