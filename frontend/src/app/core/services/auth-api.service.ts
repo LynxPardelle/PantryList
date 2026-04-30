@@ -1,5 +1,9 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import {
+  HttpClient,
+  HttpErrorResponse,
+  HttpHeaders,
+} from '@angular/common/http';
 import { Observable, of, throwError } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
@@ -83,7 +87,14 @@ export class AuthApiService {
 
   refreshSession(): Observable<AuthUser> {
     return this.http
-      .post<ApiAuthUser>(`${this.authUrl}/refresh`, {}, { withCredentials: true })
+      .post<ApiAuthUser>(
+        `${this.authUrl}/refresh`,
+        {},
+        {
+          headers: this.getXsrfHeaders(),
+          withCredentials: true,
+        },
+      )
       .pipe(map((user) => this.normalizeUser(user)));
   }
 
@@ -91,7 +102,10 @@ export class AuthApiService {
     return this.http.post<{ logoutUrl: string }>(
       `${this.authUrl}/logout`,
       {},
-      { withCredentials: true },
+      {
+        headers: this.getXsrfHeaders(),
+        withCredentials: true,
+      },
     );
   }
 
@@ -114,14 +128,37 @@ export class AuthApiService {
   }
 
   private hasXsrfTokenCookie(): boolean {
+    return this.getXsrfTokenFromCookie() !== null;
+  }
+
+  private getXsrfHeaders(): HttpHeaders {
+    const xsrfToken = this.getXsrfTokenFromCookie();
+
+    return xsrfToken
+      ? new HttpHeaders({ 'x-xsrf-token': xsrfToken })
+      : new HttpHeaders();
+  }
+
+  private getXsrfTokenFromCookie(): string | null {
     if (typeof document === 'undefined') {
-      return false;
+      return null;
     }
 
-    return document.cookie
+    const encodedToken = document.cookie
       .split(';')
       .map((cookie) => cookie.trim())
-      .some((cookie) => cookie.startsWith('XSRF-TOKEN='));
+      .find((cookie) => cookie.startsWith('XSRF-TOKEN='))
+      ?.slice('XSRF-TOKEN='.length);
+
+    if (!encodedToken) {
+      return null;
+    }
+
+    try {
+      return decodeURIComponent(encodedToken);
+    } catch {
+      return encodedToken;
+    }
   }
 
   private normalizeUser(user: ApiAuthUser): AuthUser {

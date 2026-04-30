@@ -66,6 +66,7 @@ describe('AuthApiService', () => {
 
   it('logs out through the Cognito-backed backend endpoint', () => {
     let logoutUrl: string | undefined;
+    document.cookie = 'XSRF-TOKEN=logout-token; path=/';
 
     service.logout().subscribe((response) => {
       logoutUrl = response.logoutUrl;
@@ -74,11 +75,41 @@ describe('AuthApiService', () => {
     const request = httpMock.expectOne(`${environment.apiUrl}/auth/logout`);
     expect(request.request.method).toBe('POST');
     expect(request.request.withCredentials).toBeTrue();
+    expect(request.request.headers.get('x-xsrf-token')).toBe('logout-token');
     request.flush({ logoutUrl: 'https://cognito.example/logout' });
 
     expect(logoutUrl).toBe('https://cognito.example/logout');
   });
+
+  it('sends the XSRF token when refreshing the Cognito session', () => {
+    let refreshedUser: AuthUser | undefined;
+    document.cookie = 'XSRF-TOKEN=refresh-token; path=/';
+
+    service.refreshSession().subscribe((user) => {
+      refreshedUser = user;
+    });
+
+    const request = httpMock.expectOne(`${environment.apiUrl}/auth/refresh`);
+    expect(request.request.method).toBe('POST');
+    expect(request.request.withCredentials).toBeTrue();
+    expect(request.request.headers.get('x-xsrf-token')).toBe('refresh-token');
+
+    request.flush(makeApiUser());
+
+    expect(refreshedUser?.id).toBe('user-1');
+  });
 });
+
+function makeApiUser(): AuthUser {
+  return {
+    id: 'user-1',
+    email: 'user@pantrylist.local',
+    username: 'user',
+    status: 'active',
+    createdAt: new Date('2026-04-27T00:00:00.000Z'),
+    updatedAt: new Date('2026-04-27T00:00:00.000Z'),
+  };
+}
 
 function clearXsrfCookie(): void {
   document.cookie = 'XSRF-TOKEN=; Max-Age=0; path=/';
