@@ -2,7 +2,6 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ReactiveFormsModule } from '@angular/forms';
 import { RouterTestingModule } from '@angular/router/testing';
 import { of, throwError } from 'rxjs';
-import { AuthFacade } from '../../core/services/auth.facade';
 import { ProfileService } from '../../core/services/profile.service';
 import { ProfilePageComponent } from './profile-page.component';
 
@@ -50,12 +49,6 @@ describe('ProfilePageComponent', () => {
         {
           provide: ProfileService,
           useValue: profileService,
-        },
-        {
-          provide: AuthFacade,
-          useValue: {
-            logout: jasmine.createSpy('logout'),
-          },
         },
       ],
     }).compileComponents();

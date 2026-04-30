@@ -1,7 +1,9 @@
 <main class="profile-page" aria-labelledby="profile-title">
   <nav class="profile-nav" aria-label="Navegacion de perfil">
     <a class="ghost-button" routerLink="/pantry">Volver a despensa</a>
-    <button class="secondary-button" type="button" (click)="logout()">Cerrar sesi&oacute;n</button>
+    <form class="logout-form" method="post" action="/api/auth/logout/browser">
+      <button class="secondary-button" type="submit">Cerrar sesi&oacute;n</button>
+    </form>
   </nav>
 
   <section class="profile-hero">

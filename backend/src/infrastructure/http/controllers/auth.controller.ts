@@ -201,6 +201,14 @@ export class AuthController {
     return { logoutUrl: this.authUrlBuilder.buildLogoutUrl() };
   }
 
+  @Post('logout/browser')
+  @ApiOperation({ summary: 'Logout from a browser form and redirect' })
+  logoutFromBrowser(@Res() reply: FastifyReply): void {
+    this.ensureCognitoEnabled();
+    this.authCookieService.clearSessionCookies(reply);
+    reply.redirect(this.authUrlBuilder.buildLogoutUrl(), 302);
+  }
+
   private ensureCognitoEnabled(): void {
     if (this.configService.get<string>('COGNITO_ENABLED') !== 'true') {
       throw new ServiceUnavailableException(

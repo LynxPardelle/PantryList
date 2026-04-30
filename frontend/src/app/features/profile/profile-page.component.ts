@@ -11,7 +11,6 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { finalize } from 'rxjs/operators';
-import { AuthFacade } from '../../core/services/auth.facade';
 import { ProfileService } from '../../core/services/profile.service';
 import { UserProfile } from '../../shared/models/profile.model';
 
@@ -26,7 +25,6 @@ import { UserProfile } from '../../shared/models/profile.model';
 export class ProfilePageComponent implements OnInit {
   private readonly formBuilder = inject(FormBuilder);
   private readonly profileService = inject(ProfileService);
-  private readonly authFacade = inject(AuthFacade);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly changeDetector = inject(ChangeDetectorRef);
 
@@ -122,10 +120,6 @@ export class ProfilePageComponent implements OnInit {
           this.changeDetector.markForCheck();
         },
       });
-  }
-
-  logout(): void {
-    this.authFacade.logout();
   }
 
   private getErrorMessage(error: unknown): string {

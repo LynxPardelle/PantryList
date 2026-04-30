@@ -290,4 +290,20 @@ describe('AuthController Cognito flow', () => {
     ]);
     expect(response).toEqual({ logoutUrl: 'https://cognito.example/logout' });
   });
+
+  it('clears local cookies and redirects for browser logout forms', () => {
+    const { controller, authCookieService } = makeController();
+    const reply = makeReply();
+
+    controller.logoutFromBrowser(reply);
+
+    expect(authCookieService.ensureXsrfForRequest).not.toHaveBeenCalled();
+    expect(authCookieService.clearSessionCookies.mock.calls[0]).toEqual([
+      reply,
+    ]);
+    expect(reply.redirect.mock.calls[0]).toEqual([
+      'https://cognito.example/logout',
+      302,
+    ]);
+  });
 });

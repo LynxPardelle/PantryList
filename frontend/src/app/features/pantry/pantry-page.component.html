@@ -18,7 +18,9 @@
         Registra cada compra por lote y decide de cu&aacute;l consumir cuando haga falta.
       </p>
       <a class="ghost-button" routerLink="/profile">Perfil y preferencias</a>
-      <button class="secondary-button" type="button" (click)="logout()">Cerrar sesi&oacute;n</button>
+      <form class="logout-form" method="post" action="/api/auth/logout/browser">
+        <button class="secondary-button" type="submit">Cerrar sesi&oacute;n</button>
+      </form>
     </aside>
   </section>
 
