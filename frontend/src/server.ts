@@ -9,6 +9,7 @@ import {
   readPositiveInteger,
   readTrustProxyConfig,
 } from './server-rate-limit';
+import { applyStaticAssetCacheHeaders } from './server-static-cache';
 
 const serverDistFolder = dirname(fileURLToPath(import.meta.url));
 const browserDistFolder = resolve(serverDistFolder, '../browser');
@@ -113,7 +114,8 @@ app.get(
   '**',
   express.static(browserDistFolder, {
     maxAge: '1y',
-    index: 'index.html'
+    index: 'index.html',
+    setHeaders: applyStaticAssetCacheHeaders,
   }),
 );
 
