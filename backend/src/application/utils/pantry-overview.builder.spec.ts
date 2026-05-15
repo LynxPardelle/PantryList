@@ -156,6 +156,67 @@ describe('buildPantryOverview depletion forecasts', () => {
     ]);
   });
 
+  it('adds shopping metadata and estimated totals to the shopping plan', () => {
+    const detergent = makeProductType({
+      id: 'type-detergent-budget',
+      baseName: 'Detergente',
+      defaultDepletionRule: {
+        enabled: true,
+        consumeAmount: 2,
+        unit: QuantityUnit.LITER,
+        everyAmount: 1,
+        everyPeriod: 'week',
+        anchorDate: new Date('2026-04-17T00:00:00.000Z'),
+      },
+      shoppingMetadata: {
+        storageLocation: 'Limpieza',
+        shoppingLocation: 'Mayoreo',
+        preferredBrand: 'Marca hogar',
+        substituteBrand: 'Marca propia',
+        buyOnlyOnPromo: true,
+        shoppingNotes: 'Comprar solo si hay promo',
+        estimatedUnitPrice: 42.5,
+      },
+    });
+
+    const overview = buildPantryOverview(
+      userId,
+      [detergent],
+      [
+        makeInventoryLot({
+          id: 'lot-detergent-budget',
+          productTypeId: 'type-detergent-budget',
+          quantity: 3,
+          unit: QuantityUnit.LITER,
+        }),
+      ],
+      referenceDate,
+    );
+
+    expect((overview as any).shoppingPlanEstimatedTotal).toBe(85);
+    expect(overview.items[0]).toMatchObject({
+      shoppingMetadata: {
+        storageLocation: 'Limpieza',
+        shoppingLocation: 'Mayoreo',
+        preferredBrand: 'Marca hogar',
+        substituteBrand: 'Marca propia',
+        buyOnlyOnPromo: true,
+        shoppingNotes: 'Comprar solo si hay promo',
+        estimatedUnitPrice: 42.5,
+      },
+    });
+    expect(overview.shoppingPlanItems[0]).toMatchObject({
+      productTypeId: 'type-detergent-budget',
+      suggestedPurchaseQuantity: 2,
+      estimatedUnitPrice: 42.5,
+      estimatedLineTotal: 85,
+      shoppingMetadata: {
+        shoppingLocation: 'Mayoreo',
+        buyOnlyOnPromo: true,
+      },
+    });
+  });
+
   it('separates expired lots from today-critical lots and includes them in priority groups', () => {
     const tuna = makeProductType({
       id: 'type-tuna',
@@ -594,6 +655,15 @@ describe('buildPantryOverview depletion forecasts', () => {
       shoppingPlanLeadDaysOverride?: number;
     };
     archivedAt?: Date;
+    shoppingMetadata?: {
+      storageLocation?: string;
+      shoppingLocation?: string;
+      preferredBrand?: string;
+      substituteBrand?: string;
+      shoppingNotes?: string;
+      estimatedUnitPrice?: number;
+      buyOnlyOnPromo: boolean;
+    };
     defaultDepletionRule?: {
       enabled: boolean;
       consumeAmount: number;
@@ -611,10 +681,11 @@ describe('buildPantryOverview depletion forecasts', () => {
       defaultUnit: input.defaultDepletionRule?.unit ?? QuantityUnit.PIECE,
       defaultDepletionRule: input.defaultDepletionRule,
       planningSettings: input.planningSettings,
+      shoppingMetadata: input.shoppingMetadata,
       archivedAt: input.archivedAt,
       createdAt: new Date('2026-01-01T00:00:00.000Z'),
       updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-    });
+    } as any);
   }
 
   function makeInventoryLot(input: {

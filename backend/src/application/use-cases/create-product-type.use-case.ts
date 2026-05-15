@@ -1,5 +1,8 @@
 import { ConflictException, Inject, Injectable } from '@nestjs/common';
-import { ProductType } from '../../domain/entities/product-type.entity';
+import {
+  ProductType,
+  ProductTypeShoppingMetadataPatch,
+} from '../../domain/entities/product-type.entity';
 import { ProductTypeRepository } from '../../domain/repositories/product-type.repository';
 import { UserId } from '../../domain/value-objects/user-id.vo';
 import { PRODUCT_TYPE_REPOSITORY } from '../tokens';
@@ -16,6 +19,7 @@ export interface CreateProductTypeCommand {
   category: string;
   defaultUnit: string;
   defaultDepletionRule?: DepletionRuleInput;
+  shoppingMetadata?: ProductTypeShoppingMetadataPatch;
 }
 
 @Injectable()
@@ -43,6 +47,7 @@ export class CreateProductTypeUseCase {
       parseProductCategory(command.category),
       defaultUnit,
       parseDefaultDepletionRule(command.defaultDepletionRule, defaultUnit),
+      command.shoppingMetadata,
     );
 
     return this.productTypeRepository.save(productType);

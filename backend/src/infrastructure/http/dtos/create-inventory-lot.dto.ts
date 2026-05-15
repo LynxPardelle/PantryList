@@ -9,6 +9,7 @@ import {
   IsString,
   MaxLength,
 } from 'class-validator';
+import { QuantityUnit } from '../../../domain/enums';
 
 export class CreateInventoryLotDto {
   @ApiProperty()
@@ -27,9 +28,9 @@ export class CreateInventoryLotDto {
   @IsPositive()
   quantity: number;
 
-  @ApiProperty({ enum: ['lt', 'kg', 'g', 'piezas', 'ml'] })
+  @ApiProperty({ enum: Object.values(QuantityUnit) })
   @IsString()
-  @IsEnum(['lt', 'kg', 'g', 'piezas', 'ml'])
+  @IsEnum(QuantityUnit)
   unit: string;
 
   @ApiProperty({ required: false })

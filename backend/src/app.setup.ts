@@ -1,9 +1,11 @@
 import { ValidationPipe } from '@nestjs/common';
 import fastifyCookie from '@fastify/cookie';
 import fastifyHelmet from '@fastify/helmet';
+import fastifyRateLimit from '@fastify/rate-limit';
 import { ConfigService } from '@nestjs/config';
 import { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import type { FastifyRequest } from 'fastify';
 
 export async function configureApp(
   app: NestFastifyApplication,
@@ -14,12 +16,27 @@ export async function configureApp(
     configService.get<string>('CORS_ORIGIN') ?? 'http://localhost:4200',
   );
   const helmetEnabled = configService.get<string>('HELMET_ENABLED') !== 'false';
+  const rateLimitEnabled =
+    configService.get<string>('RATE_LIMIT_ENABLED') !== 'false';
+  const rateLimitTrustProxy =
+    configService.get<string>('RATE_LIMIT_TRUST_PROXY') === 'true';
   const swaggerEnabled =
     configService.get<string>('SWAGGER_ENABLED') === 'true';
 
   app.setGlobalPrefix(apiPrefix);
   app.enableCors({ origin: corsOrigin, credentials: true });
   await app.register(fastifyCookie);
+
+  if (rateLimitEnabled) {
+    await app.register(fastifyRateLimit, {
+      max: configService.get<number>('RATE_LIMIT_MAX') ?? 120,
+      timeWindow:
+        configService.get<number | string>('RATE_LIMIT_TIME_WINDOW') ??
+        '1 minute',
+      keyGenerator: createRateLimitKeyGenerator(rateLimitTrustProxy),
+    });
+  }
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -54,4 +71,32 @@ function parseCorsOrigins(corsOrigin: string): string[] {
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);
+}
+
+function createRateLimitKeyGenerator(
+  trustProxy: boolean,
+): (request: FastifyRequest) => string {
+  return (request) => {
+    if (trustProxy) {
+      const forwardedFor = getFirstForwardedFor(
+        request.headers['x-forwarded-for'],
+      );
+
+      if (forwardedFor) {
+        return forwardedFor;
+      }
+    }
+
+    return request.ip;
+  };
+}
+
+function getFirstForwardedFor(
+  value: string | string[] | undefined,
+): string | undefined {
+  const rawValue = Array.isArray(value) ? value[0] : value;
+  return rawValue
+    ?.split(',')
+    .map((part) => part.trim())
+    .find(Boolean);
 }

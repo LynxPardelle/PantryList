@@ -10,6 +10,16 @@ export enum QuantityUnit {
   GRAM = 'g',
   PIECE = 'piezas',
   MILLILITER = 'ml',
+  PACKAGE = 'paquete',
+  CAN = 'lata',
+  BAG = 'bolsa',
+  BOTTLE = 'botella',
+  BOX = 'caja',
+  DOZEN = 'docena',
+  BUNCH = 'manojo',
+  HALF_KILO = 'medio kilo',
+  QUARTER_KILO = 'cuarto kilo',
+  ROLL = 'rollo',
 }
 
 export enum ProductCategory {

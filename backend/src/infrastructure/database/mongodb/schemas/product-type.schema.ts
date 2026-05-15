@@ -48,6 +48,34 @@ export const ProductTypePlanningSettingsSchema = SchemaFactory.createForClass(
   ProductTypePlanningSettingsDocument,
 );
 
+@Schema({ _id: false, versionKey: false })
+export class ProductTypeShoppingMetadataDocument {
+  @Prop({ required: false, trim: true, maxlength: 80 })
+  storageLocation?: string;
+
+  @Prop({ required: false, trim: true, maxlength: 80 })
+  shoppingLocation?: string;
+
+  @Prop({ required: false, trim: true, maxlength: 80 })
+  preferredBrand?: string;
+
+  @Prop({ required: false, trim: true, maxlength: 80 })
+  substituteBrand?: string;
+
+  @Prop({ required: false, trim: true, maxlength: 160 })
+  shoppingNotes?: string;
+
+  @Prop({ required: false, min: 0.01, max: 1000000 })
+  estimatedUnitPrice?: number;
+
+  @Prop({ required: true, default: false })
+  buyOnlyOnPromo: boolean;
+}
+
+export const ProductTypeShoppingMetadataSchema = SchemaFactory.createForClass(
+  ProductTypeShoppingMetadataDocument,
+);
+
 @Schema({
   collection: 'product_types',
   timestamps: false,
@@ -77,6 +105,9 @@ export class ProductTypeDocument {
 
   @Prop({ type: ProductTypePlanningSettingsSchema, required: false })
   planningSettings?: ProductTypePlanningSettingsDocument;
+
+  @Prop({ type: ProductTypeShoppingMetadataSchema, required: false })
+  shoppingMetadata?: ProductTypeShoppingMetadataDocument;
 
   @Prop({ required: false, index: true })
   archivedAt?: Date;

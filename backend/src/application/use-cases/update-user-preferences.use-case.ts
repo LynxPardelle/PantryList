@@ -1,5 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { UserPreferences, UserPreferencesPatch } from '../../domain/value-objects';
+import {
+  UserPreferences,
+  UserPreferencesPatch,
+} from '../../domain/value-objects';
 import { UserId } from '../../domain/value-objects/user-id.vo';
 import { UserPreferencesDao } from '../ports/daos';
 import { USER_PREFERENCES_DAO } from '../tokens';

@@ -63,8 +63,12 @@ function makeController(): {
       {} as jest.Mocked<GetExpiringLotsUseCase>,
       {} as jest.Mocked<ConsumeInventoryLotUseCase>,
       archiveInventoryLotUseCase,
-      { execute: jest.fn() } as unknown as jest.Mocked<RestoreInventoryLotUseCase>,
-      { execute: jest.fn() } as unknown as jest.Mocked<DeleteInventoryLotUseCase>,
+      {
+        execute: jest.fn(),
+      } as unknown as jest.Mocked<RestoreInventoryLotUseCase>,
+      {
+        execute: jest.fn(),
+      } as unknown as jest.Mocked<DeleteInventoryLotUseCase>,
       authCookieService,
     ),
     authCookieService,

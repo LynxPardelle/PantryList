@@ -7,6 +7,7 @@ import { RestoreProductTypeUseCase } from '../../../application/use-cases/restor
 import { SearchProductTypesUseCase } from '../../../application/use-cases/search-product-types.use-case';
 import { UpdateProductTypeDepletionRuleUseCase } from '../../../application/use-cases/update-product-type-depletion-rule.use-case';
 import { UpdateProductTypePlanningSettingsUseCase } from '../../../application/use-cases/update-product-type-planning-settings.use-case';
+import { UpdateProductTypeShoppingMetadataUseCase } from '../../../application/use-cases/update-product-type-shopping-metadata.use-case';
 import { ProductType } from '../../../domain/entities/product-type.entity';
 import { ProductCategory, QuantityUnit } from '../../../domain/enums';
 import { AuthCookieService } from '../auth/auth-cookie.service';
@@ -34,16 +35,53 @@ describe('ProductTypesController archive and planning endpoints', () => {
     expect(authCookieService.ensureXsrfForRequest).toHaveBeenCalledWith(
       request,
     );
-    expect(updateProductTypePlanningSettingsUseCase.execute).toHaveBeenCalledWith(
-      {
-        productTypeId: 'type-1',
-        userId: 'user-1',
-        planningSettings: {
-          planningEnabled: false,
-          shoppingPlanLeadDaysOverride: 10,
-        },
+    expect(
+      updateProductTypePlanningSettingsUseCase.execute,
+    ).toHaveBeenCalledWith({
+      productTypeId: 'type-1',
+      userId: 'user-1',
+      planningSettings: {
+        planningEnabled: false,
+        shoppingPlanLeadDaysOverride: 10,
       },
+    });
+  });
+
+  it('requires XSRF and updates shopping metadata for the current user', async () => {
+    const {
+      controller,
+      authCookieService,
+      updateProductTypeShoppingMetadataUseCase,
+    } = makeController();
+    const request = { method: 'PATCH' } as FastifyRequest;
+
+    await controller.updateShoppingMetadata(
+      'type-1',
+      { userId: 'user-1' },
+      {
+        storageLocation: 'Despensa',
+        shoppingLocation: 'Mercado',
+        buyOnlyOnPromo: true,
+        estimatedUnitPrice: 36.5,
+      },
+      request,
     );
+
+    expect(authCookieService.ensureXsrfForRequest).toHaveBeenCalledWith(
+      request,
+    );
+    expect(
+      updateProductTypeShoppingMetadataUseCase.execute,
+    ).toHaveBeenCalledWith({
+      productTypeId: 'type-1',
+      userId: 'user-1',
+      shoppingMetadata: {
+        storageLocation: 'Despensa',
+        shoppingLocation: 'Mercado',
+        buyOnlyOnPromo: true,
+        estimatedUnitPrice: 36.5,
+      },
+    });
   });
 
   it('requires XSRF before permanently deleting an archived product type', async () => {
@@ -75,6 +113,7 @@ function makeController(): {
   controller: ProductTypesController;
   authCookieService: jest.Mocked<AuthCookieService>;
   updateProductTypePlanningSettingsUseCase: jest.Mocked<UpdateProductTypePlanningSettingsUseCase>;
+  updateProductTypeShoppingMetadataUseCase: jest.Mocked<UpdateProductTypeShoppingMetadataUseCase>;
   deleteProductTypeUseCase: jest.Mocked<DeleteProductTypeUseCase>;
 } {
   const productType = ProductType.fromPrimitives({
@@ -96,6 +135,9 @@ function makeController(): {
   const updateProductTypePlanningSettingsUseCase = {
     execute: jest.fn().mockResolvedValue(productType),
   } as unknown as jest.Mocked<UpdateProductTypePlanningSettingsUseCase>;
+  const updateProductTypeShoppingMetadataUseCase = {
+    execute: jest.fn().mockResolvedValue(productType),
+  } as unknown as jest.Mocked<UpdateProductTypeShoppingMetadataUseCase>;
   const archiveProductTypeUseCase = {
     execute: jest.fn().mockResolvedValue(productType),
   } as unknown as jest.Mocked<ArchiveProductTypeUseCase>;
@@ -116,6 +158,7 @@ function makeController(): {
       searchProductTypesUseCase,
       updateProductTypeDepletionRuleUseCase,
       updateProductTypePlanningSettingsUseCase,
+      updateProductTypeShoppingMetadataUseCase,
       archiveProductTypeUseCase,
       restoreProductTypeUseCase,
       deleteProductTypeUseCase,
@@ -123,6 +166,7 @@ function makeController(): {
     ),
     authCookieService,
     updateProductTypePlanningSettingsUseCase,
+    updateProductTypeShoppingMetadataUseCase,
     deleteProductTypeUseCase,
   };
 }

@@ -216,6 +216,7 @@ export class DynamoDbProductTypeRepository implements ProductTypeRepository {
           }
         : undefined,
       planningSettings: primitives.planningSettings,
+      shoppingMetadata: primitives.shoppingMetadata,
       archivedAt: primitives.archivedAt?.toISOString(),
       archivedReason: primitives.archivedReason,
       createdAt: primitives.createdAt.toISOString(),
@@ -237,6 +238,7 @@ export class DynamoDbProductTypeRepository implements ProductTypeRepository {
           }
         : undefined,
       planningSettings: item.planningSettings,
+      shoppingMetadata: item.shoppingMetadata,
       archivedAt: item.archivedAt ? new Date(item.archivedAt) : undefined,
       archivedReason: item.archivedReason,
       createdAt: new Date(item.createdAt),

@@ -121,16 +121,12 @@ describe('AuthCookieService', () => {
 
     service.clearCognitoAuthTransactionCookies(reply);
 
-    expect(reply.clearCookie).toHaveBeenCalledWith(
-      'pantrylist_cognito_state',
-      { path: '/api/auth/cognito' },
-    );
-    expect(reply.clearCookie).toHaveBeenCalledWith(
-      'pantrylist_cognito_state',
-      {
-        path: '/api/auth/cognito',
-        domain: 'pantrylist.lynxpardelle.com',
-      },
-    );
+    expect(reply.clearCookie).toHaveBeenCalledWith('pantrylist_cognito_state', {
+      path: '/api/auth/cognito',
+    });
+    expect(reply.clearCookie).toHaveBeenCalledWith('pantrylist_cognito_state', {
+      path: '/api/auth/cognito',
+      domain: 'pantrylist.lynxpardelle.com',
+    });
   });
 });

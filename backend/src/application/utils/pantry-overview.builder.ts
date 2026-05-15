@@ -37,7 +37,10 @@ export function buildPantryOverview(
 
   const groupedItems = new Map<
     string,
-    PantryOverviewItem & { lotEntities: InventoryLot[]; variantSet: Set<string> }
+    PantryOverviewItem & {
+      lotEntities: InventoryLot[];
+      variantSet: Set<string>;
+    }
   >();
 
   for (const productType of activeProductTypes) {
@@ -57,6 +60,7 @@ export function buildPantryOverview(
       expiringSoonQuantity: 0,
       hasDepletionRule: false,
       effectivePlanningSettings,
+      shoppingMetadata: productType.shoppingMetadata,
       variants: [],
       lots: [],
       lotEntities: [],
@@ -119,7 +123,6 @@ export function buildPantryOverview(
         (existingGroup.expiringSoonQuantity + inventoryLot.quantity).toFixed(2),
       );
     }
-
   }
 
   const items = Array.from(groupedItems.values())
@@ -193,6 +196,7 @@ export function buildPantryOverview(
       estimatedDepletionAt: item.estimatedDepletionAt ?? referenceDate,
       depletionRule: item.depletionRule!,
       effectivePlanningSettings: item.effectivePlanningSettings,
+      shoppingMetadata: item.shoppingMetadata,
     }))
     .sort(compareDepletingGroup);
 
@@ -227,7 +231,13 @@ export function buildPantryOverview(
         estimatedDepletionAt,
         recommendedPurchaseAt,
         suggestedPurchaseQuantity: item.depletionRule!.consumeAmount,
+        estimatedUnitPrice: item.shoppingMetadata.estimatedUnitPrice,
+        estimatedLineTotal: getEstimatedLineTotal(
+          item.shoppingMetadata.estimatedUnitPrice,
+          item.depletionRule!.consumeAmount,
+        ),
         effectivePlanningSettings: item.effectivePlanningSettings,
+        shoppingMetadata: item.shoppingMetadata,
         urgency: getShoppingPlanUrgency(
           item.estimatedCurrentQuantity ?? 0,
           estimatedDepletionAt,
@@ -239,6 +249,12 @@ export function buildPantryOverview(
     })
     .sort(compareShoppingPlanItem);
 
+  const shoppingPlanEstimatedTotal = Number(
+    shoppingPlanItems
+      .reduce((sum, item) => sum + (item.estimatedLineTotal ?? 0), 0)
+      .toFixed(2),
+  );
+
   return {
     userId,
     generatedAt: referenceDate,
@@ -247,7 +263,19 @@ export function buildPantryOverview(
     expiringItems,
     depletingItems,
     shoppingPlanItems,
+    shoppingPlanEstimatedTotal,
   };
+}
+
+function getEstimatedLineTotal(
+  estimatedUnitPrice: number | undefined,
+  suggestedPurchaseQuantity: number,
+): number | undefined {
+  if (estimatedUnitPrice === undefined) {
+    return undefined;
+  }
+
+  return Number((estimatedUnitPrice * suggestedPurchaseQuantity).toFixed(2));
 }
 
 function toLotSummary(

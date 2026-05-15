@@ -27,6 +27,7 @@ import {
   ProductTypeDepletionRule,
   ProductTypeDepletionRuleRequest,
   ProductTypePlanningSettingsRequest,
+  ProductTypeShoppingMetadataRequest,
   ProductType,
   RegisterLotRequest,
   ShoppingPlanItem,
@@ -87,6 +88,18 @@ export class PantryService {
       .patch<ApiProductType>(
         `${this.productTypesUrl}/${productTypeId}/planning-settings`,
         planningSettings,
+      )
+      .pipe(map((productType) => this.normalizeProductType(productType)));
+  }
+
+  updateProductTypeShoppingMetadata(
+    productTypeId: string,
+    shoppingMetadata: ProductTypeShoppingMetadataRequest,
+  ): Observable<ProductType> {
+    return this.http
+      .patch<ApiProductType>(
+        `${this.productTypesUrl}/${productTypeId}/shopping-metadata`,
+        shoppingMetadata,
       )
       .pipe(map((productType) => this.normalizeProductType(productType)));
   }
@@ -154,6 +167,7 @@ export class PantryService {
       category: request.newProductType.category,
       defaultUnit: request.newProductType.defaultUnit,
       defaultDepletionRule: request.newProductType.defaultDepletionRule,
+      shoppingMetadata: request.newProductType.shoppingMetadata,
     }).pipe(
       switchMap((productType) =>
         this.createInventoryLot({
@@ -271,6 +285,7 @@ export class PantryService {
       shoppingPlanItems: (overview.shoppingPlanItems ?? []).map((item) =>
         this.normalizeShoppingPlanItem(item),
       ),
+      shoppingPlanEstimatedTotal: overview.shoppingPlanEstimatedTotal ?? 0,
     };
   }
 

@@ -34,6 +34,29 @@ export class ProductTypePlanningSettingsResponseDto {
   shoppingPlanLeadDaysOverride?: number;
 }
 
+export class ProductTypeShoppingMetadataResponseDto {
+  @ApiProperty({ required: false })
+  storageLocation?: string;
+
+  @ApiProperty({ required: false })
+  shoppingLocation?: string;
+
+  @ApiProperty({ required: false })
+  preferredBrand?: string;
+
+  @ApiProperty({ required: false })
+  substituteBrand?: string;
+
+  @ApiProperty({ required: false })
+  shoppingNotes?: string;
+
+  @ApiProperty({ required: false })
+  estimatedUnitPrice?: number;
+
+  @ApiProperty()
+  buyOnlyOnPromo: boolean;
+}
+
 export class ProductTypeResponseDto {
   @ApiProperty()
   id: string;
@@ -55,6 +78,9 @@ export class ProductTypeResponseDto {
 
   @ApiProperty({ type: ProductTypePlanningSettingsResponseDto })
   planningSettings: ProductTypePlanningSettingsResponseDto;
+
+  @ApiProperty({ type: ProductTypeShoppingMetadataResponseDto })
+  shoppingMetadata: ProductTypeShoppingMetadataResponseDto;
 
   @ApiProperty({ required: false })
   archivedAt?: Date;

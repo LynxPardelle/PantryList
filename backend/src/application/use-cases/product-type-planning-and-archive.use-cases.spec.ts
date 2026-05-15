@@ -11,17 +11,16 @@ import { RestoreProductTypeUseCase } from './restore-product-type.use-case';
 import { UpdateProductTypePlanningSettingsUseCase } from './update-product-type-planning-settings.use-case';
 
 describe('product type planning settings and archive use cases', () => {
-  const makeProductTypeRepository =
-    (): jest.Mocked<ProductTypeRepository> => ({
-      save: jest.fn((productType) => Promise.resolve(productType)),
-      findById: jest.fn(),
-      findByUserId: jest.fn(),
-      findArchivedByUserId: jest.fn(),
-      searchByUserId: jest.fn(),
-      findByBaseName: jest.fn(),
-      reassignUserOwnership: jest.fn(),
-      delete: jest.fn(),
-    });
+  const makeProductTypeRepository = (): jest.Mocked<ProductTypeRepository> => ({
+    save: jest.fn((productType) => Promise.resolve(productType)),
+    findById: jest.fn(),
+    findByUserId: jest.fn(),
+    findArchivedByUserId: jest.fn(),
+    searchByUserId: jest.fn(),
+    findByBaseName: jest.fn(),
+    reassignUserOwnership: jest.fn(),
+    delete: jest.fn(),
+  });
 
   const makeInventoryLotRepository =
     (): jest.Mocked<InventoryLotRepository> => ({

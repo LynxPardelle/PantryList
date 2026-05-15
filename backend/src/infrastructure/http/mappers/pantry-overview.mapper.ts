@@ -31,6 +31,7 @@ export class PantryOverviewMapper {
         hasDepletionRule: item.hasDepletionRule,
         depletionRule: item.depletionRule,
         effectivePlanningSettings: item.effectivePlanningSettings,
+        shoppingMetadata: item.shoppingMetadata,
         estimatedCurrentQuantity: item.estimatedCurrentQuantity,
         estimatedConsumedQuantity: item.estimatedConsumedQuantity,
         estimatedDepletionAt: item.estimatedDepletionAt,
@@ -46,6 +47,7 @@ export class PantryOverviewMapper {
       shoppingPlanItems: overview.shoppingPlanItems.map((item) =>
         this.toShoppingPlanItemResponse(item),
       ),
+      shoppingPlanEstimatedTotal: overview.shoppingPlanEstimatedTotal,
     };
   }
 
@@ -77,6 +79,7 @@ export class PantryOverviewMapper {
       estimatedDepletionAt: item.estimatedDepletionAt,
       depletionRule: item.depletionRule,
       effectivePlanningSettings: item.effectivePlanningSettings,
+      shoppingMetadata: item.shoppingMetadata,
     };
   }
 
@@ -94,9 +97,12 @@ export class PantryOverviewMapper {
       estimatedDepletionAt: item.estimatedDepletionAt,
       recommendedPurchaseAt: item.recommendedPurchaseAt,
       suggestedPurchaseQuantity: item.suggestedPurchaseQuantity,
+      estimatedUnitPrice: item.estimatedUnitPrice,
+      estimatedLineTotal: item.estimatedLineTotal,
       urgency: item.urgency,
       depletionRule: item.depletionRule,
       effectivePlanningSettings: item.effectivePlanningSettings,
+      shoppingMetadata: item.shoppingMetadata,
     };
   }
 

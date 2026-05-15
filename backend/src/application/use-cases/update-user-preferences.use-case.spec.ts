@@ -12,16 +12,17 @@ describe('UpdateUserPreferencesUseCase', () => {
     });
     const preferencesDao = {
       findByUserId: jest.fn().mockResolvedValue(current),
-      save: jest.fn().mockImplementation(async (_userId, preferences) => preferences),
+      save: jest
+        .fn()
+        .mockImplementation(async (_userId, preferences) => preferences),
     } as unknown as jest.Mocked<UserPreferencesDao>;
 
-    const updated = await new UpdateUserPreferencesUseCase(preferencesDao).execute(
-      'user-1',
-      {
-        showExpiredEntryAlert: false,
-        shoppingPlanLeadDays: 6,
-      },
-    );
+    const updated = await new UpdateUserPreferencesUseCase(
+      preferencesDao,
+    ).execute('user-1', {
+      showExpiredEntryAlert: false,
+      shoppingPlanLeadDays: 6,
+    });
 
     expect(preferencesDao.save.mock.calls[0]?.[0].toString()).toBe('user-1');
     expect(updated.toPrimitives()).toEqual({

@@ -1,6 +1,21 @@
 import { UserPreferences } from './profile.model';
 
-export type ProductUnit = 'lt' | 'kg' | 'g' | 'piezas' | 'ml';
+export type ProductUnit =
+  | 'lt'
+  | 'kg'
+  | 'g'
+  | 'piezas'
+  | 'ml'
+  | 'paquete'
+  | 'lata'
+  | 'bolsa'
+  | 'botella'
+  | 'caja'
+  | 'docena'
+  | 'manojo'
+  | 'medio kilo'
+  | 'cuarto kilo'
+  | 'rollo';
 export type ProductCategory = 'food' | 'cleaning' | 'hygiene' | 'other';
 export type ExpirationStatus = 'expired' | 'critical' | 'soon' | 'stable' | 'none';
 export type ProductTypeSelectionMode = 'existing' | 'new';
@@ -8,7 +23,44 @@ export type DepletionPeriod = 'day' | 'week' | 'month';
 export type ShoppingPlanUrgency = 'depleted' | 'critical' | 'upcoming';
 export type PlanningSettingSource = 'profile' | 'productType';
 
-export const PRODUCT_UNITS: ProductUnit[] = ['lt', 'kg', 'g', 'piezas', 'ml'];
+export const PRODUCT_UNITS: ProductUnit[] = [
+  'piezas',
+  'paquete',
+  'lata',
+  'bolsa',
+  'botella',
+  'caja',
+  'docena',
+  'kg',
+  'g',
+  'lt',
+  'ml',
+  'manojo',
+  'medio kilo',
+  'cuarto kilo',
+  'rollo',
+];
+export const STORAGE_LOCATION_OPTIONS = [
+  'Despensa',
+  'Refrigerador',
+  'Nevera',
+  'Congelador',
+  'Freezer',
+  'Baño',
+  'Limpieza',
+  'Botiquin',
+  'Mascotas',
+  'Bodega',
+];
+export const SHOPPING_LOCATION_OPTIONS = [
+  'Supermercado',
+  'Mercado',
+  'Tiendita',
+  'Abarrotes',
+  'Mayoreo',
+  'Farmacia',
+  'Otro',
+];
 export const PRODUCT_CATEGORIES: ProductCategory[] = [
   'food',
   'cleaning',
@@ -42,6 +94,19 @@ export interface ProductTypePlanningSettings {
   shoppingPlanLeadDaysOverride?: number;
 }
 
+export interface ProductTypeShoppingMetadata {
+  storageLocation?: string;
+  shoppingLocation?: string;
+  preferredBrand?: string;
+  substituteBrand?: string;
+  shoppingNotes?: string;
+  estimatedUnitPrice?: number;
+  buyOnlyOnPromo: boolean;
+}
+
+export type ProductTypeShoppingMetadataRequest =
+  Partial<ProductTypeShoppingMetadata>;
+
 export interface ProductTypeEffectivePlanningSettings {
   planningEnabled: boolean;
   expirationWarningDays: number;
@@ -60,6 +125,7 @@ export interface ProductType {
   defaultUnit: ProductUnit;
   defaultDepletionRule?: ProductTypeDepletionRule;
   planningSettings: ProductTypePlanningSettings;
+  shoppingMetadata?: ProductTypeShoppingMetadata;
   archivedAt: Date | null;
   archivedReason?: string;
   createdAt: Date;
@@ -105,6 +171,7 @@ export interface PantryOverviewItem {
   hasDepletionRule: boolean;
   depletionRule?: ProductTypeDepletionRule;
   effectivePlanningSettings: ProductTypeEffectivePlanningSettings;
+  shoppingMetadata?: ProductTypeShoppingMetadata;
   estimatedCurrentQuantity?: number;
   estimatedConsumedQuantity?: number;
   estimatedDepletionAt?: Date;
@@ -133,6 +200,7 @@ export interface DepletingProductGroup {
   estimatedDepletionAt: Date;
   depletionRule: ProductTypeDepletionRule;
   effectivePlanningSettings: ProductTypeEffectivePlanningSettings;
+  shoppingMetadata?: ProductTypeShoppingMetadata;
 }
 
 export interface ShoppingPlanItem {
@@ -146,9 +214,12 @@ export interface ShoppingPlanItem {
   estimatedDepletionAt: Date;
   recommendedPurchaseAt: Date;
   suggestedPurchaseQuantity: number;
+  estimatedUnitPrice?: number;
+  estimatedLineTotal?: number;
   urgency: ShoppingPlanUrgency;
   depletionRule: ProductTypeDepletionRule;
   effectivePlanningSettings: ProductTypeEffectivePlanningSettings;
+  shoppingMetadata?: ProductTypeShoppingMetadata;
 }
 
 export interface PantryOverview {
@@ -159,6 +230,7 @@ export interface PantryOverview {
   expiringItems: ExpiringProductGroup[];
   depletingItems: DepletingProductGroup[];
   shoppingPlanItems: ShoppingPlanItem[];
+  shoppingPlanEstimatedTotal: number;
 }
 
 export interface CreateProductTypeRequest {
@@ -166,6 +238,7 @@ export interface CreateProductTypeRequest {
   category: ProductCategory;
   defaultUnit: ProductUnit;
   defaultDepletionRule?: ProductTypeDepletionRuleRequest;
+  shoppingMetadata?: ProductTypeShoppingMetadataRequest;
 }
 
 export interface CreateInventoryLotRequest {
@@ -209,6 +282,7 @@ export interface RegisterLotRequest {
     category: ProductCategory;
     defaultUnit: ProductUnit;
     defaultDepletionRule?: ProductTypeDepletionRuleRequest;
+    shoppingMetadata?: ProductTypeShoppingMetadataRequest;
   };
   defaultDepletionRule?: ProductTypeDepletionRuleRequest;
   variantName?: string;
@@ -226,6 +300,7 @@ export interface ApiProductType {
   defaultUnit: ProductUnit;
   defaultDepletionRule?: ApiProductTypeDepletionRule;
   planningSettings: ProductTypePlanningSettings;
+  shoppingMetadata?: ProductTypeShoppingMetadata;
   archivedAt?: string | null;
   archivedReason?: string;
   createdAt: string;
@@ -264,6 +339,7 @@ export interface ApiPantryOverviewItem {
   hasDepletionRule: boolean;
   depletionRule?: ApiProductTypeDepletionRule;
   effectivePlanningSettings: ProductTypeEffectivePlanningSettings;
+  shoppingMetadata?: ProductTypeShoppingMetadata;
   estimatedCurrentQuantity?: number;
   estimatedConsumedQuantity?: number;
   estimatedDepletionAt?: string | null;
@@ -292,6 +368,7 @@ export interface ApiDepletingProductGroup {
   estimatedDepletionAt: string;
   depletionRule: ApiProductTypeDepletionRule;
   effectivePlanningSettings: ProductTypeEffectivePlanningSettings;
+  shoppingMetadata?: ProductTypeShoppingMetadata;
 }
 
 export interface ApiShoppingPlanItem {
@@ -305,9 +382,12 @@ export interface ApiShoppingPlanItem {
   estimatedDepletionAt: string;
   recommendedPurchaseAt: string;
   suggestedPurchaseQuantity: number;
+  estimatedUnitPrice?: number;
+  estimatedLineTotal?: number;
   urgency: ShoppingPlanUrgency;
   depletionRule: ApiProductTypeDepletionRule;
   effectivePlanningSettings: ProductTypeEffectivePlanningSettings;
+  shoppingMetadata?: ProductTypeShoppingMetadata;
 }
 
 export interface ApiPantryOverview {
@@ -318,6 +398,7 @@ export interface ApiPantryOverview {
   expiringItems: ApiExpiringProductGroup[];
   depletingItems: ApiDepletingProductGroup[];
   shoppingPlanItems: ApiShoppingPlanItem[];
+  shoppingPlanEstimatedTotal?: number;
 }
 
 export interface ApiInventoryLot {

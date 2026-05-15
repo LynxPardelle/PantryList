@@ -26,6 +26,17 @@ describe('PantryService', () => {
   it('normalizes shopping plan dates from pantry overview responses', () => {
     service.getPantryOverview().subscribe((overview) => {
       expect(overview.shoppingPlanItems).toHaveSize(1);
+      expect((overview as any).shoppingPlanEstimatedTotal).toBe(42.5);
+      expect((overview.items[0] as any).shoppingMetadata).toEqual({
+        storageLocation: 'Limpieza',
+        shoppingLocation: 'Mayoreo',
+        preferredBrand: 'Marca hogar',
+        substituteBrand: 'Marca propia',
+        buyOnlyOnPromo: true,
+        shoppingNotes: 'Comprar solo si hay promo',
+        estimatedUnitPrice: 42.5,
+      });
+      expect((overview.shoppingPlanItems[0] as any).estimatedLineTotal).toBe(42.5);
       expect(overview.shoppingPlanItems[0].recommendedPurchaseAt).toEqual(
         new Date('2026-04-28T00:00:00.000Z'),
       );
@@ -65,6 +76,15 @@ describe('PantryService', () => {
             anchorDate: '2026-03-24T00:00:00.000Z',
           },
           effectivePlanningSettings: makeEffectivePlanningSettings(),
+          shoppingMetadata: {
+            storageLocation: 'Limpieza',
+            shoppingLocation: 'Mayoreo',
+            preferredBrand: 'Marca hogar',
+            substituteBrand: 'Marca propia',
+            buyOnlyOnPromo: true,
+            shoppingNotes: 'Comprar solo si hay promo',
+            estimatedUnitPrice: 42.5,
+          },
           estimatedCurrentQuantity: 0,
           estimatedConsumedQuantity: 1,
           estimatedDepletionAt: '2026-04-24T00:00:00.000Z',
@@ -97,6 +117,17 @@ describe('PantryService', () => {
           estimatedDepletionAt: '2026-05-01T00:00:00.000Z',
           recommendedPurchaseAt: '2026-04-28T00:00:00.000Z',
           suggestedPurchaseQuantity: 1,
+          estimatedUnitPrice: 42.5,
+          estimatedLineTotal: 42.5,
+          shoppingMetadata: {
+            storageLocation: 'Limpieza',
+            shoppingLocation: 'Mayoreo',
+            preferredBrand: 'Marca hogar',
+            substituteBrand: 'Marca propia',
+            buyOnlyOnPromo: true,
+            shoppingNotes: 'Comprar solo si hay promo',
+            estimatedUnitPrice: 42.5,
+          },
           urgency: 'upcoming',
           effectivePlanningSettings: makeEffectivePlanningSettings(),
           depletionRule: {
@@ -109,6 +140,74 @@ describe('PantryService', () => {
           },
         },
       ],
+      shoppingPlanEstimatedTotal: 42.5,
+    });
+  });
+
+  it('sends shopping metadata when registering a new product type', () => {
+    service
+      .registerLot({
+        selectionMode: 'new',
+        newProductType: {
+          baseName: 'Frijol negro',
+          category: 'food',
+          defaultUnit: 'kg',
+          shoppingMetadata: {
+            storageLocation: 'Despensa',
+            shoppingLocation: 'Mercado',
+            preferredBrand: 'Marca local',
+            substituteBrand: 'Marca propia',
+            buyOnlyOnPromo: true,
+            shoppingNotes: 'Comprar bolsa grande si esta en promo',
+            estimatedUnitPrice: 36.5,
+          },
+        },
+        quantity: 2,
+        unit: 'kg',
+      } as any)
+      .subscribe();
+
+    const productTypeRequest = httpMock.expectOne(
+      `${environment.apiUrl}/product-types`,
+    );
+    expect(productTypeRequest.request.body.shoppingMetadata).toEqual({
+      storageLocation: 'Despensa',
+      shoppingLocation: 'Mercado',
+      preferredBrand: 'Marca local',
+      substituteBrand: 'Marca propia',
+      buyOnlyOnPromo: true,
+      shoppingNotes: 'Comprar bolsa grande si esta en promo',
+      estimatedUnitPrice: 36.5,
+    });
+    productTypeRequest.flush({
+      ...makeApiProductType(),
+      id: 'type-frijol',
+      baseName: 'Frijol negro',
+      category: 'food',
+      defaultUnit: 'kg',
+      shoppingMetadata: {
+        storageLocation: 'Despensa',
+        shoppingLocation: 'Mercado',
+        preferredBrand: 'Marca local',
+        substituteBrand: 'Marca propia',
+        buyOnlyOnPromo: true,
+        shoppingNotes: 'Comprar bolsa grande si esta en promo',
+        estimatedUnitPrice: 36.5,
+      },
+    });
+
+    httpMock.expectOne(`${environment.apiUrl}/inventory-lots`).flush({
+      id: 'lot-1',
+      userId: 'tester',
+      productTypeId: 'type-frijol',
+      quantity: 2,
+      unit: 'kg',
+      expiresAt: null,
+      purchaseDate: null,
+      archivedAt: null,
+      expirationStatus: 'none',
+      createdAt: '2026-04-01T00:00:00.000Z',
+      updatedAt: '2026-04-01T00:00:00.000Z',
     });
   });
 

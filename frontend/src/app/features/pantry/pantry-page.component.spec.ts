@@ -7,8 +7,15 @@ import { Store } from '@ngrx/store';
 import { AuthFacade } from '../../core/services/auth.facade';
 import { PantryPageComponent } from './pantry-page.component';
 import { PantryService } from '../../core/services/pantry.service';
-import { PantryOverviewItem, ProductType } from '../../shared/models/pantry.model';
-import { selectExpiredEntryAlert } from '../../store/pantry/pantry.selectors';
+import {
+  PantryOverviewItem,
+  ProductType,
+  ShoppingPlanItem,
+} from '../../shared/models/pantry.model';
+import {
+  selectExpiredEntryAlert,
+  selectShoppingPlanItems,
+} from '../../store/pantry/pantry.selectors';
 
 describe('PantryPageComponent', () => {
   let fixture: ComponentFixture<PantryPageComponent>;
@@ -24,6 +31,7 @@ describe('PantryPageComponent', () => {
       'consumeInventoryLot',
       'updateProductTypeDepletionRule',
       'updateProductTypePlanningSettings',
+      'updateProductTypeShoppingMetadata',
       'archiveProductType',
       'restoreProductType',
       'deleteProductType',
@@ -37,6 +45,7 @@ describe('PantryPageComponent', () => {
     pantryService.consumeInventoryLot.and.returnValue(of(null));
     pantryService.updateProductTypeDepletionRule.and.returnValue(of({} as any));
     pantryService.updateProductTypePlanningSettings.and.returnValue(of({} as any));
+    pantryService.updateProductTypeShoppingMetadata.and.returnValue(of({} as any));
     pantryService.archiveProductType.and.returnValue(of({} as any));
     pantryService.restoreProductType.and.returnValue(of({} as any));
     pantryService.deleteProductType.and.returnValue(of(undefined));
@@ -165,6 +174,41 @@ describe('PantryPageComponent', () => {
             everyAmount: 1,
             everyPeriod: 'month',
             anchorDate: '2026-04-24',
+          },
+        }),
+      }),
+    );
+  });
+
+  it('includes LatAm shopping metadata when registering a new product type', () => {
+    component.setSelectionMode('new');
+    component.lotForm.patchValue({
+      newBaseName: 'Frijol negro',
+      category: 'food',
+      unit: 'kg',
+      quantity: 2,
+      storageLocation: 'Despensa',
+      shoppingLocation: 'Mercado',
+      preferredBrand: 'Marca local',
+      substituteBrand: 'Marca propia',
+      buyOnlyOnPromo: true,
+      shoppingNotes: 'Comprar bolsa grande si esta en promo',
+      estimatedUnitPrice: 36.5,
+    } as any);
+
+    component.submitLot();
+
+    expect(pantryService.registerLot).toHaveBeenCalledWith(
+      jasmine.objectContaining({
+        newProductType: jasmine.objectContaining({
+          shoppingMetadata: {
+            storageLocation: 'Despensa',
+            shoppingLocation: 'Mercado',
+            preferredBrand: 'Marca local',
+            substituteBrand: 'Marca propia',
+            buyOnlyOnPromo: true,
+            shoppingNotes: 'Comprar bolsa grande si esta en promo',
+            estimatedUnitPrice: 36.5,
           },
         }),
       }),
@@ -306,6 +350,113 @@ describe('PantryPageComponent', () => {
     expect(component.shoppingPlanUrgencyLabels.upcoming).toBe('Comprar pronto');
   });
 
+  it('builds a WhatsApp-friendly shopping export with budget and LatAm metadata', () => {
+    const exportText = component.buildShoppingPlanExportText([
+      {
+        productTypeId: 'type-detergent',
+        baseName: 'Detergente',
+        category: 'cleaning',
+        defaultUnit: 'lt',
+        totalQuantity: 3,
+        estimatedCurrentQuantity: 1,
+        estimatedConsumedQuantity: 2,
+        estimatedDepletionAt: new Date('2026-05-01T00:00:00.000Z'),
+        recommendedPurchaseAt: new Date('2026-04-28T00:00:00.000Z'),
+        suggestedPurchaseQuantity: 1,
+        urgency: 'critical',
+        estimatedUnitPrice: 42.5,
+        estimatedLineTotal: 42.5,
+        shoppingMetadata: {
+          storageLocation: 'Limpieza',
+          shoppingLocation: 'Mayoreo',
+          preferredBrand: 'Marca hogar',
+          substituteBrand: 'Marca propia',
+          buyOnlyOnPromo: true,
+          shoppingNotes: 'Comprar solo si hay promo',
+          estimatedUnitPrice: 42.5,
+        },
+        effectivePlanningSettings: makePantryGroup().effectivePlanningSettings,
+        depletionRule: {
+          enabled: true,
+          consumeAmount: 1,
+          unit: 'lt',
+          everyAmount: 1,
+          everyPeriod: 'week',
+          anchorDate: new Date('2026-04-17T00:00:00.000Z'),
+        },
+      } as ShoppingPlanItem,
+    ]);
+
+    expect(exportText).toContain('Lista de compras PantryList');
+    expect(exportText).toContain('Total estimado: 42.50 moneda local');
+    expect(exportText).toContain('- Detergente: 1 lt');
+    expect(exportText).toContain('Comprar en: Mayoreo');
+    expect(exportText).toContain('Marca: Marca hogar');
+    expect(exportText).toContain('Solo promo');
+    expect(exportText).toContain('Nota: Comprar solo si hay promo');
+  });
+
+  it('marks shopping totals as partial when any suggested item has no price estimate', () => {
+    const exportText = component.buildShoppingPlanExportText([
+      makeShoppingPlanItem({
+        baseName: 'Detergente',
+        estimatedUnitPrice: 42.5,
+        estimatedLineTotal: 42.5,
+      }),
+      makeShoppingPlanItem({
+        productTypeId: 'type-rice',
+        baseName: 'Arroz',
+        defaultUnit: 'kg',
+        estimatedUnitPrice: undefined,
+        estimatedLineTotal: undefined,
+      }),
+    ]);
+
+    expect(component.getShoppingPlanTotalLabel([
+      makeShoppingPlanItem({ estimatedLineTotal: 42.5 }),
+      makeShoppingPlanItem({
+        productTypeId: 'type-rice',
+        estimatedLineTotal: undefined,
+      }),
+    ])).toBe('Total parcial estimado');
+    expect(exportText).toContain('Total parcial estimado: 42.50 moneda local');
+  });
+
+  it('does not call an unpriced shopping plan a partial total', () => {
+    expect(
+      component.getShoppingPlanTotalSummary([
+        makeShoppingPlanItem({
+          estimatedUnitPrice: undefined,
+          estimatedLineTotal: undefined,
+        }),
+      ]),
+    ).toBe('Sin precios estimados');
+  });
+
+  it('renders an accessible name for the manual shopping export textarea', async () => {
+    store.select.and.callFake((selector) => {
+      if (selector === selectShoppingPlanItems) {
+        return of([makeShoppingPlanItem()]);
+      }
+
+      return of(null);
+    });
+    fixture = TestBed.createComponent(PantryPageComponent);
+    component = fixture.componentInstance;
+    component.shoppingExportText = 'Lista generada';
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const textarea = compiled.querySelector<HTMLTextAreaElement>(
+      '.shopping-export-text',
+    );
+
+    expect(textarea?.getAttribute('aria-label')).toBe(
+      'Lista de compras generada',
+    );
+  });
+
   it('saves product type planning overrides and reloads the pantry overview', () => {
     const group = makePantryGroup();
     component.startEditingPlanningSettings(group);
@@ -375,6 +526,40 @@ function makePantryGroup(
     },
     variants: [],
     lots: [],
+    ...overrides,
+  };
+}
+
+function makeShoppingPlanItem(
+  overrides: Partial<ShoppingPlanItem> = {},
+): ShoppingPlanItem {
+  return {
+    productTypeId: 'type-detergent',
+    baseName: 'Detergente',
+    category: 'cleaning',
+    defaultUnit: 'lt',
+    totalQuantity: 3,
+    estimatedCurrentQuantity: 1,
+    estimatedConsumedQuantity: 2,
+    estimatedDepletionAt: new Date('2026-05-01T00:00:00.000Z'),
+    recommendedPurchaseAt: new Date('2026-04-28T00:00:00.000Z'),
+    suggestedPurchaseQuantity: 1,
+    estimatedUnitPrice: 42.5,
+    estimatedLineTotal: 42.5,
+    effectivePlanningSettings: makePantryGroup().effectivePlanningSettings,
+    shoppingMetadata: {
+      buyOnlyOnPromo: false,
+      estimatedUnitPrice: 42.5,
+    },
+    urgency: 'critical',
+    depletionRule: {
+      enabled: true,
+      consumeAmount: 1,
+      unit: 'lt',
+      everyAmount: 1,
+      everyPeriod: 'week',
+      anchorDate: new Date('2026-04-17T00:00:00.000Z'),
+    },
     ...overrides,
   };
 }
