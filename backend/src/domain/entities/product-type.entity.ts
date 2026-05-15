@@ -10,6 +10,7 @@ export interface ProductTypePrimitives {
   defaultUnit: QuantityUnit;
   defaultDepletionRule?: DepletionRulePrimitives;
   planningSettings?: ProductTypePlanningSettingsPrimitives;
+  shoppingMetadata?: ProductTypeShoppingMetadataPrimitives;
   archivedAt?: Date;
   archivedReason?: string;
   createdAt: Date;
@@ -37,6 +38,19 @@ export interface ProductTypePlanningSettingsPrimitives {
 export type ProductTypePlanningSettingsPatch =
   Partial<ProductTypePlanningSettingsPrimitives>;
 
+export interface ProductTypeShoppingMetadataPrimitives {
+  storageLocation?: string;
+  shoppingLocation?: string;
+  preferredBrand?: string;
+  substituteBrand?: string;
+  shoppingNotes?: string;
+  estimatedUnitPrice?: number;
+  buyOnlyOnPromo: boolean;
+}
+
+export type ProductTypeShoppingMetadataPatch =
+  Partial<ProductTypeShoppingMetadataPrimitives>;
+
 export class ProductType {
   private constructor(
     private readonly _id: ProductTypeId,
@@ -46,6 +60,7 @@ export class ProductType {
     private _defaultUnit: QuantityUnit,
     private _defaultDepletionRule: DepletionRulePrimitives | undefined,
     private _planningSettings: ProductTypePlanningSettingsPrimitives,
+    private _shoppingMetadata: ProductTypeShoppingMetadataPrimitives,
     private _archivedAt: Date | undefined,
     private _archivedReason: string | undefined,
     private readonly _createdAt: Date = new Date(),
@@ -58,6 +73,7 @@ export class ProductType {
     category: ProductCategory,
     defaultUnit: QuantityUnit,
     defaultDepletionRule?: DepletionRulePrimitives,
+    shoppingMetadata?: ProductTypeShoppingMetadataPatch,
   ): ProductType {
     const normalizedBaseName = baseName.trim();
 
@@ -73,6 +89,7 @@ export class ProductType {
       defaultUnit,
       normalizeDefaultDepletionRule(defaultDepletionRule, defaultUnit),
       normalizePlanningSettings(undefined, defaultDepletionRule),
+      normalizeShoppingMetadata(shoppingMetadata),
       undefined,
       undefined,
     );
@@ -95,6 +112,7 @@ export class ProductType {
         primitives.planningSettings,
         defaultDepletionRule,
       ),
+      normalizeShoppingMetadata(primitives.shoppingMetadata),
       primitives.archivedAt ? new Date(primitives.archivedAt) : undefined,
       normalizeOptionalText(primitives.archivedReason),
       primitives.createdAt,
@@ -128,6 +146,10 @@ export class ProductType {
 
   get planningSettings(): ProductTypePlanningSettingsPrimitives {
     return clonePlanningSettings(this._planningSettings);
+  }
+
+  get shoppingMetadata(): ProductTypeShoppingMetadataPrimitives {
+    return cloneShoppingMetadata(this._shoppingMetadata);
   }
 
   get archivedAt(): Date | undefined {
@@ -171,6 +193,14 @@ export class ProductType {
     this._updatedAt = new Date();
   }
 
+  updateShoppingMetadata(input: ProductTypeShoppingMetadataPatch): void {
+    this._shoppingMetadata = normalizeShoppingMetadata({
+      ...this._shoppingMetadata,
+      ...input,
+    });
+    this._updatedAt = new Date();
+  }
+
   archive(reason?: string): void {
     this._archivedAt = new Date();
     this._archivedReason = normalizeOptionalText(reason);
@@ -208,6 +238,7 @@ export class ProductType {
         this._defaultDepletionRule,
       ),
       planningSettings: clonePlanningSettings(this._planningSettings),
+      shoppingMetadata: cloneShoppingMetadata(this._shoppingMetadata),
       archivedAt: this._archivedAt ? new Date(this._archivedAt) : undefined,
       archivedReason: this._archivedReason,
       createdAt: this._createdAt,
@@ -306,6 +337,66 @@ function clonePlanningSettings(
   return { ...settings };
 }
 
+function normalizeShoppingMetadata(
+  metadata: ProductTypeShoppingMetadataPatch | undefined,
+): ProductTypeShoppingMetadataPrimitives {
+  const buyOnlyOnPromo = metadata?.buyOnlyOnPromo ?? false;
+
+  if (typeof buyOnlyOnPromo !== 'boolean') {
+    throw new Error('Buy-only-on-promo must be a boolean');
+  }
+
+  const normalized: ProductTypeShoppingMetadataPrimitives = {
+    buyOnlyOnPromo,
+  };
+
+  normalized.storageLocation = normalizeLimitedOptionalText(
+    metadata?.storageLocation,
+    80,
+    'Storage location must be 80 characters or fewer',
+  );
+  normalized.shoppingLocation = normalizeLimitedOptionalText(
+    metadata?.shoppingLocation,
+    80,
+    'Shopping location must be 80 characters or fewer',
+  );
+  normalized.preferredBrand = normalizeLimitedOptionalText(
+    metadata?.preferredBrand,
+    80,
+    'Preferred brand must be 80 characters or fewer',
+  );
+  normalized.substituteBrand = normalizeLimitedOptionalText(
+    metadata?.substituteBrand,
+    80,
+    'Substitute brand must be 80 characters or fewer',
+  );
+  normalized.shoppingNotes = normalizeLimitedOptionalText(
+    metadata?.shoppingNotes,
+    160,
+    'Shopping notes must be 160 characters or fewer',
+  );
+
+  if (metadata?.estimatedUnitPrice !== undefined) {
+    assertNumberBetween(
+      metadata.estimatedUnitPrice,
+      0.01,
+      1_000_000,
+      'Estimated unit price must be between 0.01 and 1000000',
+    );
+    normalized.estimatedUnitPrice = Number(
+      metadata.estimatedUnitPrice.toFixed(2),
+    );
+  }
+
+  return normalized;
+}
+
+function cloneShoppingMetadata(
+  metadata: ProductTypeShoppingMetadataPrimitives,
+): ProductTypeShoppingMetadataPrimitives {
+  return { ...metadata };
+}
+
 function assertNumberBetween(
   value: number,
   min: number,
@@ -320,6 +411,20 @@ function assertNumberBetween(
 function normalizeOptionalText(value?: string): string | undefined {
   const normalized = value?.trim();
   return normalized ? normalized : undefined;
+}
+
+function normalizeLimitedOptionalText(
+  value: string | undefined,
+  maxLength: number,
+  message: string,
+): string | undefined {
+  const normalized = normalizeOptionalText(value);
+
+  if (normalized && normalized.length > maxLength) {
+    throw new Error(message);
+  }
+
+  return normalized;
 }
 
 function cloneDefaultDepletionRule(

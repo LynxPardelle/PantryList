@@ -92,6 +92,29 @@ export class ProductTypeEffectivePlanningSettingsResponseDto {
   shoppingPlanLeadDaysSource: string;
 }
 
+export class ProductTypeShoppingMetadataResponseDto {
+  @ApiProperty({ required: false })
+  storageLocation?: string;
+
+  @ApiProperty({ required: false })
+  shoppingLocation?: string;
+
+  @ApiProperty({ required: false })
+  preferredBrand?: string;
+
+  @ApiProperty({ required: false })
+  substituteBrand?: string;
+
+  @ApiProperty({ required: false })
+  shoppingNotes?: string;
+
+  @ApiProperty({ required: false })
+  estimatedUnitPrice?: number;
+
+  @ApiProperty()
+  buyOnlyOnPromo: boolean;
+}
+
 export class DepletingProductGroupResponseDto {
   @ApiProperty()
   productTypeId: string;
@@ -122,6 +145,9 @@ export class DepletingProductGroupResponseDto {
 
   @ApiProperty({ type: ProductTypeEffectivePlanningSettingsResponseDto })
   effectivePlanningSettings: ProductTypeEffectivePlanningSettingsResponseDto;
+
+  @ApiProperty({ type: ProductTypeShoppingMetadataResponseDto })
+  shoppingMetadata: ProductTypeShoppingMetadataResponseDto;
 }
 
 export class ShoppingPlanItemResponseDto {
@@ -155,6 +181,12 @@ export class ShoppingPlanItemResponseDto {
   @ApiProperty()
   suggestedPurchaseQuantity: number;
 
+  @ApiProperty({ required: false })
+  estimatedUnitPrice?: number;
+
+  @ApiProperty({ required: false })
+  estimatedLineTotal?: number;
+
   @ApiProperty()
   urgency: string;
 
@@ -163,6 +195,9 @@ export class ShoppingPlanItemResponseDto {
 
   @ApiProperty({ type: ProductTypeEffectivePlanningSettingsResponseDto })
   effectivePlanningSettings: ProductTypeEffectivePlanningSettingsResponseDto;
+
+  @ApiProperty({ type: ProductTypeShoppingMetadataResponseDto })
+  shoppingMetadata: ProductTypeShoppingMetadataResponseDto;
 }
 
 export class PantryOverviewItemResponseDto {
@@ -198,6 +233,9 @@ export class PantryOverviewItemResponseDto {
 
   @ApiProperty({ type: ProductTypeEffectivePlanningSettingsResponseDto })
   effectivePlanningSettings: ProductTypeEffectivePlanningSettingsResponseDto;
+
+  @ApiProperty({ type: ProductTypeShoppingMetadataResponseDto })
+  shoppingMetadata: ProductTypeShoppingMetadataResponseDto;
 
   @ApiProperty({ required: false })
   estimatedCurrentQuantity?: number;
@@ -242,4 +280,7 @@ export class PantryOverviewResponseDto {
 
   @ApiProperty({ type: [ShoppingPlanItemResponseDto] })
   shoppingPlanItems: ShoppingPlanItemResponseDto[];
+
+  @ApiProperty()
+  shoppingPlanEstimatedTotal: number;
 }

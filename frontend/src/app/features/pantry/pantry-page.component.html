@@ -217,6 +217,56 @@
               }
             </select>
           </label>
+
+          <label class="field">
+            <span>Se guarda en</span>
+            <input
+              type="text"
+              formControlName="storageLocation"
+              list="storage-location-options"
+              placeholder="Despensa, nevera, limpieza"
+            />
+          </label>
+
+          <label class="field">
+            <span>Se compra en</span>
+            <input
+              type="text"
+              formControlName="shoppingLocation"
+              list="shopping-location-options"
+              placeholder="Mercado, tiendita, mayoreo"
+            />
+          </label>
+
+          <label class="field">
+            <span>Marca preferida</span>
+            <input type="text" formControlName="preferredBrand" placeholder="Marca local" />
+          </label>
+
+          <label class="field">
+            <span>Sustituto</span>
+            <input type="text" formControlName="substituteBrand" placeholder="Marca propia" />
+          </label>
+
+          <label class="field">
+            <span>Precio estimado</span>
+            <input type="number" formControlName="estimatedUnitPrice" min="0.01" step="0.01" />
+          </label>
+
+          <label class="check-field">
+            <input type="checkbox" formControlName="buyOnlyOnPromo" />
+            <span>Comprar solo en promo</span>
+          </label>
+
+          <label class="field field-full">
+            <span>Notas de compra</span>
+            <input
+              type="text"
+              formControlName="shoppingNotes"
+              placeholder="Comprar bolsa grande si hay promo"
+            />
+          </label>
+
         }
 
         <label class="field field-full">
@@ -308,6 +358,18 @@
           {{ submittingLot ? 'Registrando lote...' : 'Registrar lote' }}
         </button>
       </form>
+
+      <datalist id="storage-location-options">
+        @for (location of storageLocationOptions; track location) {
+          <option [value]="location"></option>
+        }
+      </datalist>
+
+      <datalist id="shopping-location-options">
+        @for (location of shoppingLocationOptions; track location) {
+          <option [value]="location"></option>
+        }
+      </datalist>
     </article>
 
     <section class="workspace-column">
@@ -459,6 +521,26 @@
 
         @if (shoppingPlanItems$ | async; as shoppingPlanItems) {
           @if (shoppingPlanItems.length > 0) {
+            <div class="shopping-plan-tools">
+              <strong>{{ getShoppingPlanTotalSummary(shoppingPlanItems) }}</strong>
+              <button type="button" class="secondary-button" (click)="copyShoppingPlan(shoppingPlanItems)">
+                Copiar lista
+              </button>
+            </div>
+
+            @if (shoppingExportStatus) {
+              <p class="helper-copy" aria-live="polite">{{ shoppingExportStatus }}</p>
+            }
+
+            @if (shoppingExportText) {
+              <textarea
+                class="shopping-export-text"
+                aria-label="Lista de compras generada"
+                [value]="shoppingExportText"
+                readonly
+              ></textarea>
+            }
+
             <div class="shopping-plan-stack">
               @for (item of shoppingPlanItems; track trackByProductTypeId($index, item)) {
                 <article class="shopping-plan-row" [attr.data-urgency]="item.urgency">
@@ -480,12 +562,31 @@
                       {{ item.defaultUnit }} antes de agotarse el
                       {{ item.estimatedDepletionAt | date:'dd MMM y':'UTC' }}.
                     </p>
+                    @if (item.shoppingMetadata?.shoppingLocation || item.shoppingMetadata?.preferredBrand || item.shoppingMetadata?.buyOnlyOnPromo) {
+                      <p>
+                        @if (item.shoppingMetadata?.shoppingLocation) {
+                          Comprar en {{ item.shoppingMetadata?.shoppingLocation }}.
+                        }
+                        @if (item.shoppingMetadata?.preferredBrand) {
+                          Marca {{ item.shoppingMetadata?.preferredBrand }}.
+                        }
+                        @if (item.shoppingMetadata?.buyOnlyOnPromo) {
+                          Solo promo.
+                        }
+                      </p>
+                    }
+                    @if (item.shoppingMetadata?.shoppingNotes) {
+                      <p>{{ item.shoppingMetadata?.shoppingNotes }}</p>
+                    }
                   </div>
 
                   <div class="shopping-plan-stock">
                     <span>Queda estimado</span>
                     <strong>{{ item.estimatedCurrentQuantity }} {{ item.defaultUnit }}</strong>
                     <small>Registrado: {{ item.totalQuantity }} {{ item.defaultUnit }}</small>
+                    @if (item.estimatedLineTotal !== undefined) {
+                      <small>Aprox: {{ formatShoppingPrice(item.estimatedLineTotal) }}</small>
+                    }
                   </div>
                 </article>
               }
@@ -691,6 +792,129 @@
                               class="secondary-button"
                               [disabled]="depletionRuleSavingProductTypeId === group.productTypeId"
                               (click)="cancelEditingDepletionRule()"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </form>
+                      }
+
+                      <section class="planning-settings-card">
+                        <div class="planning-settings-copy">
+                          <p class="panel-kicker">Compra local</p>
+                          <h4>Datos de compra de {{ group.baseName }}</h4>
+                          <p>
+                            Guarda:
+                            {{ group.shoppingMetadata?.storageLocation || 'Sin lugar' }}.
+                            Compra:
+                            {{ group.shoppingMetadata?.shoppingLocation || 'Sin lugar' }}.
+                            Precio:
+                            {{ formatShoppingPrice(group.shoppingMetadata?.estimatedUnitPrice) }}.
+                          </p>
+                          @if (group.shoppingMetadata?.preferredBrand || group.shoppingMetadata?.substituteBrand || group.shoppingMetadata?.buyOnlyOnPromo) {
+                            <p>
+                              @if (group.shoppingMetadata?.preferredBrand) {
+                                Marca {{ group.shoppingMetadata?.preferredBrand }}.
+                              }
+                              @if (group.shoppingMetadata?.substituteBrand) {
+                                Sustituto {{ group.shoppingMetadata?.substituteBrand }}.
+                              }
+                              @if (group.shoppingMetadata?.buyOnlyOnPromo) {
+                                Solo promo.
+                              }
+                            </p>
+                          }
+                          @if (group.shoppingMetadata?.shoppingNotes) {
+                            <p>{{ group.shoppingMetadata?.shoppingNotes }}</p>
+                          }
+                        </div>
+
+                        @if (editingShoppingMetadataProductTypeId !== group.productTypeId) {
+                          <button
+                            type="button"
+                            class="secondary-button"
+                            (click)="startEditingShoppingMetadata(group)"
+                          >
+                            Ajustar datos de compra
+                          </button>
+                        }
+                      </section>
+
+                      @if (editingShoppingMetadataProductTypeId === group.productTypeId) {
+                        <form
+                          class="planning-settings-editor shopping-metadata-editor"
+                          [formGroup]="shoppingMetadataForm"
+                          (ngSubmit)="saveShoppingMetadata(group)"
+                        >
+                          <label class="field">
+                            <span>Se guarda en</span>
+                            <input
+                              type="text"
+                              formControlName="storageLocation"
+                              list="storage-location-options"
+                            />
+                          </label>
+
+                          <label class="field">
+                            <span>Se compra en</span>
+                            <input
+                              type="text"
+                              formControlName="shoppingLocation"
+                              list="shopping-location-options"
+                            />
+                          </label>
+
+                          <label class="field">
+                            <span>Marca preferida</span>
+                            <input type="text" formControlName="preferredBrand" />
+                          </label>
+
+                          <label class="field">
+                            <span>Sustituto</span>
+                            <input type="text" formControlName="substituteBrand" />
+                          </label>
+
+                          <label class="field">
+                            <span>Precio estimado</span>
+                            <input
+                              type="number"
+                              formControlName="estimatedUnitPrice"
+                              min="0.01"
+                              step="0.01"
+                            />
+                          </label>
+
+                          <label class="check-field">
+                            <input type="checkbox" formControlName="buyOnlyOnPromo" />
+                            <span>Comprar solo en promo</span>
+                          </label>
+
+                          <label class="field field-full">
+                            <span>Notas de compra</span>
+                            <input type="text" formControlName="shoppingNotes" />
+                          </label>
+
+                          @if (shoppingMetadataError) {
+                            <p class="field-error field-full">{{ shoppingMetadataError }}</p>
+                          }
+
+                          <div class="depletion-editor-actions field-full">
+                            <button
+                              type="submit"
+                              class="primary-button"
+                              [disabled]="shoppingMetadataSavingProductTypeId === group.productTypeId"
+                            >
+                              {{
+                                shoppingMetadataSavingProductTypeId === group.productTypeId
+                                  ? 'Guardando...'
+                                  : 'Guardar datos'
+                              }}
+                            </button>
+                            <button
+                              type="button"
+                              class="secondary-button"
+                              [disabled]="shoppingMetadataSavingProductTypeId === group.productTypeId"
+                              (click)="cancelEditingShoppingMetadata()"
                             >
                               Cancelar
                             </button>

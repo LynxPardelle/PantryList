@@ -67,4 +67,36 @@ describe('CreateProductTypeUseCase', () => {
       'Depletion rule unit must match product type default unit',
     );
   });
+
+  it('persists shopping metadata when creating a LatAm product type', async () => {
+    const repository = makeRepository();
+    repository.findByBaseName.mockResolvedValue(null);
+    const useCase = new CreateProductTypeUseCase(repository);
+
+    const productType = await useCase.execute({
+      userId: 'rule-user',
+      baseName: 'Frijol negro',
+      category: 'food',
+      defaultUnit: 'kg',
+      shoppingMetadata: {
+        storageLocation: 'Despensa',
+        shoppingLocation: 'Mercado',
+        preferredBrand: 'Marca local',
+        substituteBrand: 'Marca propia',
+        buyOnlyOnPromo: true,
+        shoppingNotes: 'Comprar bolsa grande si esta en promo',
+        estimatedUnitPrice: 36.5,
+      },
+    } as any);
+
+    expect((productType.toPrimitives() as any).shoppingMetadata).toEqual({
+      storageLocation: 'Despensa',
+      shoppingLocation: 'Mercado',
+      preferredBrand: 'Marca local',
+      substituteBrand: 'Marca propia',
+      buyOnlyOnPromo: true,
+      shoppingNotes: 'Comprar bolsa grande si esta en promo',
+      estimatedUnitPrice: 36.5,
+    });
+  });
 });

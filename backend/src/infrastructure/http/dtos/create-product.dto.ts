@@ -7,6 +7,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
+import { QuantityUnit } from '../../../domain/enums';
 
 class UsageRateDto {
   @ApiProperty({ description: 'Amount of usage', example: 2 })
@@ -35,10 +36,10 @@ export class CreateProductDto {
 
   @ApiProperty({
     description: 'Unit of measurement',
-    enum: ['lt', 'kg', 'g', 'piezas', 'ml'],
+    enum: Object.values(QuantityUnit),
   })
   @IsString()
-  @IsEnum(['lt', 'kg', 'g', 'piezas', 'ml'])
+  @IsEnum(QuantityUnit)
   unit: string;
 
   @ApiProperty({ description: 'Usage rate information' })

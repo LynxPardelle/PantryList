@@ -42,6 +42,10 @@ export class ConsumeInventoryLotUseCase {
       );
     }
 
+    if (quantity > inventoryLot.quantity) {
+      throw new BadRequestException('Consume quantity exceeds lot quantity');
+    }
+
     inventoryLot.consume(quantity);
 
     if (inventoryLot.isEmpty()) {

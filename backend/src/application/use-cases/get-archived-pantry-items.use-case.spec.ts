@@ -7,17 +7,16 @@ import { UserId } from '../../domain/value-objects/user-id.vo';
 import { GetArchivedPantryItemsUseCase } from './get-archived-pantry-items.use-case';
 
 describe('GetArchivedPantryItemsUseCase', () => {
-  const makeProductTypeRepository =
-    (): jest.Mocked<ProductTypeRepository> => ({
-      save: jest.fn(),
-      findById: jest.fn(),
-      findByUserId: jest.fn(),
-      findArchivedByUserId: jest.fn(),
-      searchByUserId: jest.fn(),
-      findByBaseName: jest.fn(),
-      reassignUserOwnership: jest.fn(),
-      delete: jest.fn(),
-    });
+  const makeProductTypeRepository = (): jest.Mocked<ProductTypeRepository> => ({
+    save: jest.fn(),
+    findById: jest.fn(),
+    findByUserId: jest.fn(),
+    findArchivedByUserId: jest.fn(),
+    searchByUserId: jest.fn(),
+    findByBaseName: jest.fn(),
+    reassignUserOwnership: jest.fn(),
+    delete: jest.fn(),
+  });
 
   const makeInventoryLotRepository =
     (): jest.Mocked<InventoryLotRepository> => ({

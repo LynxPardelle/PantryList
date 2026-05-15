@@ -20,6 +20,7 @@ import { RestoreProductTypeUseCase } from '../../../application/use-cases/restor
 import { SearchProductTypesUseCase } from '../../../application/use-cases/search-product-types.use-case';
 import { UpdateProductTypeDepletionRuleUseCase } from '../../../application/use-cases/update-product-type-depletion-rule.use-case';
 import { UpdateProductTypePlanningSettingsUseCase } from '../../../application/use-cases/update-product-type-planning-settings.use-case';
+import { UpdateProductTypeShoppingMetadataUseCase } from '../../../application/use-cases/update-product-type-shopping-metadata.use-case';
 import { AuthCookieService } from '../auth/auth-cookie.service';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { AccessTokenGuard } from '../auth/access-token.guard';
@@ -32,6 +33,7 @@ import {
 import { DeletePantryItemDto } from '../dtos/delete-pantry-item.dto';
 import { ProductTypeResponseDto } from '../dtos/product-type-response.dto';
 import { UpdateProductTypePlanningSettingsDto } from '../dtos/update-product-type-planning-settings.dto';
+import { UpdateProductTypeShoppingMetadataDto } from '../dtos/update-product-type-shopping-metadata.dto';
 import { ProductTypeMapper } from '../mappers/product-type.mapper';
 
 @Controller('product-types')
@@ -44,6 +46,7 @@ export class ProductTypesController {
     private readonly searchProductTypesUseCase: SearchProductTypesUseCase,
     private readonly updateProductTypeDepletionRuleUseCase: UpdateProductTypeDepletionRuleUseCase,
     private readonly updateProductTypePlanningSettingsUseCase: UpdateProductTypePlanningSettingsUseCase,
+    private readonly updateProductTypeShoppingMetadataUseCase: UpdateProductTypeShoppingMetadataUseCase,
     private readonly archiveProductTypeUseCase: ArchiveProductTypeUseCase,
     private readonly restoreProductTypeUseCase: RestoreProductTypeUseCase,
     private readonly deleteProductTypeUseCase: DeleteProductTypeUseCase,
@@ -62,6 +65,7 @@ export class ProductTypesController {
       category: createProductTypeDto.category,
       defaultUnit: createProductTypeDto.defaultUnit,
       defaultDepletionRule: createProductTypeDto.defaultDepletionRule,
+      shoppingMetadata: createProductTypeDto.shoppingMetadata,
     });
 
     return ProductTypeMapper.toResponse(productType);
@@ -102,12 +106,35 @@ export class ProductTypesController {
     @Param('id') id: string,
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() dto: UpdateProductTypeDepletionRuleDto,
+    @Req() request: FastifyRequest,
   ): Promise<ProductTypeResponseDto> {
+    this.authCookieService.ensureXsrfForRequest(request);
+
     const productType =
       await this.updateProductTypeDepletionRuleUseCase.execute({
         productTypeId: id,
         userId: currentUser.userId,
         defaultDepletionRule: dto.defaultDepletionRule,
+      });
+
+    return ProductTypeMapper.toResponse(productType);
+  }
+
+  @Patch(':id/shopping-metadata')
+  @ApiOperation({ summary: 'Actualizar datos de compra de un tipo base' })
+  async updateShoppingMetadata(
+    @Param('id') id: string,
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Body() dto: UpdateProductTypeShoppingMetadataDto,
+    @Req() request: FastifyRequest,
+  ): Promise<ProductTypeResponseDto> {
+    this.authCookieService.ensureXsrfForRequest(request);
+
+    const productType =
+      await this.updateProductTypeShoppingMetadataUseCase.execute({
+        productTypeId: id,
+        userId: currentUser.userId,
+        shoppingMetadata: dto,
       });
 
     return ProductTypeMapper.toResponse(productType);

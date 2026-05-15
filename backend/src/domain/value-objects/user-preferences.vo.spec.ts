@@ -35,14 +35,14 @@ describe('UserPreferences', () => {
   });
 
   it('rejects invalid preference boundaries', () => {
-    expect(() =>
-      UserPreferences.resolve({ expirationWarningDays: 0 }),
-    ).toThrow('Expiration warning days must be between 1 and 60');
+    expect(() => UserPreferences.resolve({ expirationWarningDays: 0 })).toThrow(
+      'Expiration warning days must be between 1 and 60',
+    );
     expect(() =>
       UserPreferences.resolve({ depletionWarningThresholdRatio: 4.5 }),
     ).toThrow('Depletion warning threshold ratio must be between 0.25 and 4');
-    expect(() =>
-      UserPreferences.resolve({ shoppingPlanLeadDays: 31 }),
-    ).toThrow('Shopping plan lead days must be between 0 and 30');
+    expect(() => UserPreferences.resolve({ shoppingPlanLeadDays: 31 })).toThrow(
+      'Shopping plan lead days must be between 0 and 30',
+    );
   });
 });

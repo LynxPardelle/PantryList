@@ -229,12 +229,8 @@ describe('AuthController Cognito flow', () => {
   });
 
   it('clears transaction cookies and redirects to login when callback state is invalid', async () => {
-    const {
-      controller,
-      authCookieService,
-      transactionService,
-      tokenClient,
-    } = makeController();
+    const { controller, authCookieService, transactionService, tokenClient } =
+      makeController();
     const reply = makeReply();
     transactionService.assertStateMatches.mockImplementation(() => {
       throw new UnauthorizedException('Invalid Cognito auth state');
@@ -247,9 +243,9 @@ describe('AuthController Cognito flow', () => {
       reply,
     );
 
-    expect(authCookieService.clearCognitoAuthTransactionCookies).toHaveBeenCalledWith(
-      reply,
-    );
+    expect(
+      authCookieService.clearCognitoAuthTransactionCookies,
+    ).toHaveBeenCalledWith(reply);
     expect(tokenClient.exchangeCode).not.toHaveBeenCalled();
     expect(reply.redirect.mock.calls[0]).toEqual([
       '/login?authError=cognito_state',

@@ -12,6 +12,10 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
+import { QuantityUnit } from '../../../domain/enums';
+import { ProductTypeShoppingMetadataDto } from './product-type-shopping-metadata.dto';
+
+const quantityUnitValues = Object.values(QuantityUnit);
 
 export class ProductTypeDepletionRuleDto {
   @ApiProperty()
@@ -23,9 +27,9 @@ export class ProductTypeDepletionRuleDto {
   @Min(0.01)
   consumeAmount: number;
 
-  @ApiProperty({ enum: ['lt', 'kg', 'g', 'piezas', 'ml'] })
+  @ApiProperty({ enum: quantityUnitValues })
   @IsString()
-  @IsEnum(['lt', 'kg', 'g', 'piezas', 'ml'])
+  @IsEnum(QuantityUnit)
   unit: string;
 
   @ApiProperty({ example: 1 })
@@ -55,9 +59,9 @@ export class CreateProductTypeDto {
   @IsEnum(['food', 'cleaning', 'hygiene', 'other'])
   category: string;
 
-  @ApiProperty({ enum: ['lt', 'kg', 'g', 'piezas', 'ml'] })
+  @ApiProperty({ enum: quantityUnitValues })
   @IsString()
-  @IsEnum(['lt', 'kg', 'g', 'piezas', 'ml'])
+  @IsEnum(QuantityUnit)
   defaultUnit: string;
 
   @ApiProperty({ required: false, type: ProductTypeDepletionRuleDto })
@@ -65,6 +69,12 @@ export class CreateProductTypeDto {
   @ValidateNested()
   @Type(() => ProductTypeDepletionRuleDto)
   defaultDepletionRule?: ProductTypeDepletionRuleDto;
+
+  @ApiProperty({ required: false, type: ProductTypeShoppingMetadataDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ProductTypeShoppingMetadataDto)
+  shoppingMetadata?: ProductTypeShoppingMetadataDto;
 }
 
 export class UpdateProductTypeDepletionRuleDto {

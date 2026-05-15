@@ -4,14 +4,34 @@ import express from 'express';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import AppServerModule from './main.server';
+import {
+  createRateLimit,
+  readPositiveInteger,
+  readTrustProxyConfig,
+} from './server-rate-limit';
 
 const serverDistFolder = dirname(fileURLToPath(import.meta.url));
 const browserDistFolder = resolve(serverDistFolder, '../browser');
 const indexHtml = join(serverDistFolder, 'index.server.html');
 const backendUrl = process.env['BACKEND_URL'] ?? 'http://localhost:3000';
+const apiRateLimitWindowMs = readPositiveInteger(
+  process.env['API_RATE_LIMIT_WINDOW_MS'],
+  60_000,
+);
+const apiRateLimitMax = readPositiveInteger(
+  process.env['API_RATE_LIMIT_MAX'],
+  120,
+);
+const trustProxy = readTrustProxyConfig(
+  process.env['TRUST_PROXY'] ?? process.env['API_TRUST_PROXY'],
+);
 
 const app = express();
 const commonEngine = new CommonEngine();
+
+app.set('trust proxy', trustProxy);
+app.disable('x-powered-by');
+app.use(applySecurityHeaders);
 
 app.get('/healthz', (_req, res) => {
   res.status(200).json({
@@ -20,7 +40,8 @@ app.get('/healthz', (_req, res) => {
   });
 });
 
-app.use('/api', express.json(), async (req, res, next) => {
+app.use('/api', createRateLimit(apiRateLimitWindowMs, apiRateLimitMax));
+app.use('/api', express.json({ limit: '1mb' }), async (req, res, next) => {
   try {
     const targetPath = req.originalUrl || '/api';
     const targetUrl = new URL(targetPath, backendUrl);
@@ -126,6 +147,21 @@ if (isMainModule(import.meta.url)) {
 }
 
 export default app;
+
+function applySecurityHeaders(
+  _req: express.Request,
+  res: express.Response,
+  next: express.NextFunction,
+): void {
+  res.setHeader('x-content-type-options', 'nosniff');
+  res.setHeader('x-frame-options', 'SAMEORIGIN');
+  res.setHeader('referrer-policy', 'strict-origin-when-cross-origin');
+  res.setHeader(
+    'permissions-policy',
+    'camera=(), microphone=(), geolocation=()',
+  );
+  next();
+}
 
 function getSetCookieHeaders(headers: Headers): string[] {
   const headersWithSetCookie = headers as Headers & {

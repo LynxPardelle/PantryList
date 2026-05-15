@@ -9,10 +9,7 @@ import { InventoryLotRepository } from '../../domain/repositories/inventory-lot.
 import { ProductTypeRepository } from '../../domain/repositories/product-type.repository';
 import { ProductTypeId } from '../../domain/value-objects/product-type-id.vo';
 import { UserId } from '../../domain/value-objects/user-id.vo';
-import {
-  INVENTORY_LOT_REPOSITORY,
-  PRODUCT_TYPE_REPOSITORY,
-} from '../tokens';
+import { INVENTORY_LOT_REPOSITORY, PRODUCT_TYPE_REPOSITORY } from '../tokens';
 
 export interface DeleteProductTypeCommand {
   productTypeId: string;

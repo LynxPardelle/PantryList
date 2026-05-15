@@ -33,7 +33,10 @@ export class RestoreInventoryLotUseCase {
       InventoryLotId.fromString(lotId),
     );
 
-    if (!lot || lot.userId.toString() !== UserId.fromString(userId).toString()) {
+    if (
+      !lot ||
+      lot.userId.toString() !== UserId.fromString(userId).toString()
+    ) {
       throw new NotFoundException('Inventory lot not found');
     }
 

@@ -1,4 +1,7 @@
-import { DepletionRulePrimitives } from '../../domain/entities/product-type.entity';
+import {
+  DepletionRulePrimitives,
+  ProductTypeShoppingMetadataPrimitives,
+} from '../../domain/entities/product-type.entity';
 import { UserPreferencesPrimitives } from '../../domain/value-objects/user-preferences.vo';
 import {
   ExpirationStatus,
@@ -38,6 +41,7 @@ export interface DepletingProductGroup {
   estimatedDepletionAt: Date;
   depletionRule: DepletionRulePrimitives;
   effectivePlanningSettings: ProductTypeEffectivePlanningSettings;
+  shoppingMetadata: ProductTypeShoppingMetadataPrimitives;
 }
 
 export type ShoppingPlanUrgency = 'depleted' | 'critical' | 'upcoming';
@@ -53,9 +57,12 @@ export interface ShoppingPlanItem {
   estimatedDepletionAt: Date;
   recommendedPurchaseAt: Date;
   suggestedPurchaseQuantity: number;
+  estimatedUnitPrice?: number;
+  estimatedLineTotal?: number;
   urgency: ShoppingPlanUrgency;
   depletionRule: DepletionRulePrimitives;
   effectivePlanningSettings: ProductTypeEffectivePlanningSettings;
+  shoppingMetadata: ProductTypeShoppingMetadataPrimitives;
 }
 
 export type PlanningSettingSource = 'profile' | 'productType';
@@ -82,6 +89,7 @@ export interface PantryOverviewItem {
   hasDepletionRule: boolean;
   depletionRule?: DepletionRulePrimitives;
   effectivePlanningSettings: ProductTypeEffectivePlanningSettings;
+  shoppingMetadata: ProductTypeShoppingMetadataPrimitives;
   estimatedCurrentQuantity?: number;
   estimatedConsumedQuantity?: number;
   estimatedDepletionAt?: Date;
@@ -97,4 +105,5 @@ export interface PantryOverview {
   expiringItems: ExpiringProductGroup[];
   depletingItems: DepletingProductGroup[];
   shoppingPlanItems: ShoppingPlanItem[];
+  shoppingPlanEstimatedTotal: number;
 }

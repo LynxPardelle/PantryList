@@ -6,7 +6,24 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: read
+  security-events: write
+
 jobs:
+  secret-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Scan repository secrets
+      uses: gitleaks/gitleaks-action@v2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   test-frontend:
     runs-on: ubuntu-latest
     defaults:
@@ -19,12 +36,15 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '20'
+        node-version: '22'
         cache: 'npm'
         cache-dependency-path: frontend/package-lock.json
     
     - name: Install dependencies
       run: npm ci
+
+    - name: Audit runtime dependencies
+      run: npm audit --omit=dev --audit-level=moderate
 
     - name: Run tests
       run: npm run test:ci
@@ -44,15 +64,18 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '20'
+        node-version: '22'
         cache: 'npm'
         cache-dependency-path: backend/package-lock.json
     
     - name: Install dependencies
       run: npm ci
+
+    - name: Audit dependencies
+      run: npm audit --audit-level=moderate
     
     - name: Run linting
-      run: npm run lint
+      run: npm run lint:check
     
     - name: Run tests
       run: npm run test
@@ -63,8 +86,61 @@ jobs:
     - name: Build application
       run: npm run build
 
+  test-infra:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./infra/cognito
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+        cache: 'npm'
+        cache-dependency-path: infra/cognito/package-lock.json
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Audit dependencies
+      run: npm audit --audit-level=moderate
+
+    - name: Build infrastructure
+      run: npm run build
+
+  container-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Build backend image
+      run: docker build -t pantrylist-backend:scan ./backend
+
+    - name: Scan backend image
+      uses: aquasecurity/trivy-action@0.28.0
+      with:
+        image-ref: pantrylist-backend:scan
+        severity: HIGH,CRITICAL
+        ignore-unfixed: true
+        exit-code: '1'
+
+    - name: Build frontend image
+      run: docker build -t pantrylist-frontend:scan ./frontend
+
+    - name: Scan frontend image
+      uses: aquasecurity/trivy-action@0.28.0
+      with:
+        image-ref: pantrylist-frontend:scan
+        severity: HIGH,CRITICAL
+        ignore-unfixed: true
+        exit-code: '1'
+
   deploy:
-    needs: [test-frontend, test-backend]
+    needs: [secret-scan, test-frontend, test-backend, test-infra, container-scan]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     

@@ -70,6 +70,7 @@ export class MongoProductTypeRepository implements ProductTypeRepository {
             defaultUnit: primitives.defaultUnit,
             defaultDepletionRule: primitives.defaultDepletionRule,
             planningSettings: primitives.planningSettings,
+            shoppingMetadata: primitives.shoppingMetadata,
             ...archiveSet,
             updatedAt: primitives.updatedAt,
             normalizedBaseName,
@@ -197,6 +198,7 @@ export class MongoProductTypeRepository implements ProductTypeRepository {
           }
         : undefined,
       planningSettings: productType.planningSettings,
+      shoppingMetadata: productType.shoppingMetadata,
       archivedAt: productType.archivedAt
         ? new Date(productType.archivedAt)
         : undefined,

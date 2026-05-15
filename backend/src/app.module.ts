@@ -41,6 +41,7 @@ import { RestoreInventoryLotUseCase } from './application/use-cases/restore-inve
 import { RestoreProductTypeUseCase } from './application/use-cases/restore-product-type.use-case';
 import { SearchProductTypesUseCase } from './application/use-cases/search-product-types.use-case';
 import { UpdateProductTypePlanningSettingsUseCase } from './application/use-cases/update-product-type-planning-settings.use-case';
+import { UpdateProductTypeShoppingMetadataUseCase } from './application/use-cases/update-product-type-shopping-metadata.use-case';
 import { UpdateUserPreferencesUseCase } from './application/use-cases/update-user-preferences.use-case';
 import { UpdateProductTypeDepletionRuleUseCase } from './application/use-cases/update-product-type-depletion-rule.use-case';
 import { UpdateProductQuantityUseCase } from './application/use-cases/update-product-quantity.use-case';
@@ -214,6 +215,14 @@ const inventoryLotRepositoryProvider = useDynamoDb
         API_PREFIX: Joi.string().default('api'),
         CORS_ORIGIN: Joi.string().default('http://localhost:4200'),
         HELMET_ENABLED: Joi.string().valid('true', 'false').default('true'),
+        RATE_LIMIT_ENABLED: Joi.string().valid('true', 'false').default('true'),
+        RATE_LIMIT_MAX: Joi.number().integer().positive().default(120),
+        RATE_LIMIT_TIME_WINDOW: Joi.alternatives()
+          .try(Joi.string().min(1), Joi.number().integer().positive())
+          .default('1 minute'),
+        RATE_LIMIT_TRUST_PROXY: Joi.string()
+          .valid('true', 'false')
+          .default('false'),
         AUTH_ACCESS_COOKIE_TTL_SECONDS: Joi.number()
           .integer()
           .positive()
@@ -326,6 +335,7 @@ const inventoryLotRepositoryProvider = useDynamoDb
     SearchProductTypesUseCase,
     UpdateProductTypeDepletionRuleUseCase,
     UpdateProductTypePlanningSettingsUseCase,
+    UpdateProductTypeShoppingMetadataUseCase,
     ArchiveProductTypeUseCase,
     RestoreProductTypeUseCase,
     DeleteProductTypeUseCase,

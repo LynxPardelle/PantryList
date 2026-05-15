@@ -13,6 +13,7 @@ export class ProductTypeMapper {
       defaultUnit: primitives.defaultUnit,
       defaultDepletionRule: primitives.defaultDepletionRule,
       planningSettings: productType.planningSettings,
+      shoppingMetadata: productType.shoppingMetadata,
       archivedAt: primitives.archivedAt,
       archivedReason: primitives.archivedReason,
       createdAt: primitives.createdAt,

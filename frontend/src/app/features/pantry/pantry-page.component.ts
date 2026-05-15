@@ -31,15 +31,20 @@ import {
   InventoryLot,
   PRODUCT_CATEGORIES,
   PRODUCT_UNITS,
+  SHOPPING_LOCATION_OPTIONS,
+  STORAGE_LOCATION_OPTIONS,
   ProductCategory,
   ProductTypeEffectivePlanningSettings,
   PantryLotSummary,
   PantryOverviewItem,
   ProductTypeDepletionRuleRequest,
   ProductTypePlanningSettingsRequest,
+  ProductTypeShoppingMetadata,
+  ProductTypeShoppingMetadataRequest,
   ProductType,
   ProductTypeSelectionMode,
   ProductUnit,
+  ShoppingPlanItem,
   ShoppingPlanUrgency,
 } from '../../shared/models/pantry.model';
 import * as PantryActions from '../../store/pantry/pantry.actions';
@@ -86,6 +91,8 @@ export class PantryPageComponent implements OnInit {
   readonly selectionModeOptions: ProductTypeSelectionMode[] = ['existing', 'new'];
   readonly categoryOptions = PRODUCT_CATEGORIES;
   readonly unitOptions = PRODUCT_UNITS;
+  readonly storageLocationOptions = STORAGE_LOCATION_OPTIONS;
+  readonly shoppingLocationOptions = SHOPPING_LOCATION_OPTIONS;
   readonly depletionPeriodOptions = DEPLETION_PERIODS;
 
   readonly categoryLabels: Record<ProductCategory, string> = {
@@ -122,6 +129,16 @@ export class PantryPageComponent implements OnInit {
     newBaseName: ['', [Validators.maxLength(80)]],
     category: ['food' as ProductCategory, Validators.required],
     unit: ['piezas' as ProductUnit, Validators.required],
+    storageLocation: ['', [Validators.maxLength(80)]],
+    shoppingLocation: ['', [Validators.maxLength(80)]],
+    preferredBrand: ['', [Validators.maxLength(80)]],
+    substituteBrand: ['', [Validators.maxLength(80)]],
+    buyOnlyOnPromo: [false],
+    shoppingNotes: ['', [Validators.maxLength(160)]],
+    estimatedUnitPrice: [
+      null as number | null,
+      [Validators.min(0.01), Validators.max(1000000)],
+    ],
     variantName: ['', [Validators.maxLength(80)]],
     quantity: [1, [Validators.required, Validators.min(0.1)]],
     expiresAt: [''],
@@ -154,6 +171,19 @@ export class PantryPageComponent implements OnInit {
     shoppingPlanLeadDaysOverride: [
       null as number | null,
       [Validators.min(0), Validators.max(30)],
+    ],
+  });
+
+  readonly shoppingMetadataForm = this.formBuilder.nonNullable.group({
+    storageLocation: ['', [Validators.maxLength(80)]],
+    shoppingLocation: ['', [Validators.maxLength(80)]],
+    preferredBrand: ['', [Validators.maxLength(80)]],
+    substituteBrand: ['', [Validators.maxLength(80)]],
+    buyOnlyOnPromo: [false],
+    shoppingNotes: ['', [Validators.maxLength(160)]],
+    estimatedUnitPrice: [
+      null as number | null,
+      [Validators.min(0.01), Validators.max(1000000)],
     ],
   });
 
@@ -202,6 +232,11 @@ export class PantryPageComponent implements OnInit {
   editingPlanningProductTypeId: string | null = null;
   planningSettingsSavingProductTypeId: string | null = null;
   planningSettingsError: string | null = null;
+  editingShoppingMetadataProductTypeId: string | null = null;
+  shoppingMetadataSavingProductTypeId: string | null = null;
+  shoppingMetadataError: string | null = null;
+  shoppingExportStatus: string | null = null;
+  shoppingExportText: string | null = null;
   readonly consumeErrors: Record<string, string> = {};
   private readonly expandedProductTypeIds = new Set<string>();
 
@@ -366,6 +401,61 @@ export class PantryPageComponent implements OnInit {
       });
   }
 
+  startEditingShoppingMetadata(group: PantryOverviewItem): void {
+    const metadata = this.resolveShoppingMetadata(group.shoppingMetadata);
+    this.editingShoppingMetadataProductTypeId = group.productTypeId;
+    this.shoppingMetadataError = null;
+    this.shoppingMetadataForm.reset({
+      storageLocation: metadata.storageLocation ?? '',
+      shoppingLocation: metadata.shoppingLocation ?? '',
+      preferredBrand: metadata.preferredBrand ?? '',
+      substituteBrand: metadata.substituteBrand ?? '',
+      buyOnlyOnPromo: metadata.buyOnlyOnPromo,
+      shoppingNotes: metadata.shoppingNotes ?? '',
+      estimatedUnitPrice: metadata.estimatedUnitPrice ?? null,
+    });
+  }
+
+  cancelEditingShoppingMetadata(): void {
+    this.editingShoppingMetadataProductTypeId = null;
+    this.shoppingMetadataError = null;
+  }
+
+  saveShoppingMetadata(group: PantryOverviewItem): void {
+    if (this.shoppingMetadataForm.invalid) {
+      this.shoppingMetadataForm.markAllAsTouched();
+      this.shoppingMetadataError = 'Revisa los datos de compra antes de guardar.';
+      return;
+    }
+
+    this.shoppingMetadataSavingProductTypeId = group.productTypeId;
+    this.shoppingMetadataError = null;
+
+    this.pantryService
+      .updateProductTypeShoppingMetadata(
+        group.productTypeId,
+        this.buildShoppingMetadataRequest(
+          this.shoppingMetadataForm.getRawValue(),
+        ),
+      )
+      .pipe(
+        finalize(() => {
+          this.shoppingMetadataSavingProductTypeId = null;
+          this.changeDetector.markForCheck();
+        }),
+      )
+      .subscribe({
+        next: () => {
+          this.editingShoppingMetadataProductTypeId = null;
+          this.loadOverview();
+        },
+        error: (error) => {
+          this.shoppingMetadataError = this.getErrorMessage(error);
+          this.changeDetector.markForCheck();
+        },
+      });
+  }
+
   saveDepletionRule(group: PantryOverviewItem): void {
     const rule = this.buildEditedDepletionRule(group.defaultUnit);
 
@@ -440,6 +530,7 @@ export class PantryPageComponent implements OnInit {
                 category: rawValue.category,
                 defaultUnit: rawValue.unit,
                 defaultDepletionRule,
+                shoppingMetadata: this.buildShoppingMetadataRequest(rawValue),
               }
             : undefined,
         defaultDepletionRule:
@@ -664,6 +755,108 @@ export class PantryPageComponent implements OnInit {
     return displayUnit ? `${quantity} ${displayUnit}` : `${quantity}`;
   }
 
+  formatShoppingPrice(value: number | undefined): string {
+    return value === undefined
+      ? 'Sin estimado'
+      : `${value.toFixed(2)} moneda local`;
+  }
+
+  getShoppingPlanEstimatedTotal(items: ShoppingPlanItem[]): number {
+    return Number(
+      items.reduce((sum, item) => sum + (item.estimatedLineTotal ?? 0), 0).toFixed(2),
+    );
+  }
+
+  getShoppingPlanTotalLabel(items: ShoppingPlanItem[]): string {
+    if (!this.hasShoppingPriceEstimate(items)) {
+      return 'Sin precios estimados';
+    }
+
+    return this.hasMissingShoppingPrices(items)
+      ? 'Total parcial estimado'
+      : 'Total estimado';
+  }
+
+  getShoppingPlanTotalSummary(items: ShoppingPlanItem[]): string {
+    if (!this.hasShoppingPriceEstimate(items)) {
+      return this.getShoppingPlanTotalLabel(items);
+    }
+
+    const totalValue = this.formatShoppingPrice(
+      this.getShoppingPlanEstimatedTotal(items),
+    );
+
+    return `${this.getShoppingPlanTotalLabel(items)}: ${totalValue}`;
+  }
+
+  buildShoppingPlanExportText(items: ShoppingPlanItem[]): string {
+    if (items.length === 0) {
+      return 'Lista de compras PantryList\nSin compras sugeridas.';
+    }
+
+    const lines = [
+      'Lista de compras PantryList',
+      this.getShoppingPlanTotalSummary(items),
+      '',
+    ];
+
+    for (const item of items) {
+      const metadata = this.resolveShoppingMetadata(item.shoppingMetadata);
+      lines.push(
+        `- ${item.baseName}: ${this.formatQuantity(
+          item.suggestedPurchaseQuantity,
+          item.defaultUnit,
+        )}`,
+      );
+
+      if (item.estimatedLineTotal !== undefined) {
+        lines.push(`  Aprox: ${this.formatShoppingPrice(item.estimatedLineTotal)}`);
+      }
+
+      if (metadata.shoppingLocation) {
+        lines.push(`  Comprar en: ${metadata.shoppingLocation}`);
+      }
+
+      if (metadata.preferredBrand) {
+        lines.push(`  Marca: ${metadata.preferredBrand}`);
+      }
+
+      if (metadata.substituteBrand) {
+        lines.push(`  Sustituto: ${metadata.substituteBrand}`);
+      }
+
+      if (metadata.buyOnlyOnPromo) {
+        lines.push('  Solo promo');
+      }
+
+      if (metadata.shoppingNotes) {
+        lines.push(`  Nota: ${metadata.shoppingNotes}`);
+      }
+    }
+
+    return lines.join('\n');
+  }
+
+  async copyShoppingPlan(items: ShoppingPlanItem[]): Promise<void> {
+    const exportText = this.buildShoppingPlanExportText(items);
+    this.shoppingExportText = exportText;
+
+    if (!isPlatformBrowser(this.platformId) || !navigator.clipboard?.writeText) {
+      this.shoppingExportStatus = 'Lista generada para copiar manualmente.';
+      this.changeDetector.markForCheck();
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(exportText);
+      this.shoppingExportStatus = 'Lista copiada para WhatsApp.';
+    } catch {
+      this.shoppingExportStatus = 'No se pudo copiar; lista generada manualmente.';
+    } finally {
+      this.changeDetector.markForCheck();
+    }
+  }
+
   getPlanningSourceLabel(
     settings: ProductTypeEffectivePlanningSettings,
     key:
@@ -692,6 +885,13 @@ export class PantryPageComponent implements OnInit {
       newBaseName: '',
       category: 'food',
       unit: 'piezas',
+      storageLocation: '',
+      shoppingLocation: '',
+      preferredBrand: '',
+      substituteBrand: '',
+      buyOnlyOnPromo: false,
+      shoppingNotes: '',
+      estimatedUnitPrice: null,
       variantName: '',
       quantity: 1,
       expiresAt: '',
@@ -723,6 +923,32 @@ export class PantryPageComponent implements OnInit {
         rawValue.shoppingPlanLeadDaysOverride,
       ),
     };
+  }
+
+  private buildShoppingMetadataRequest(rawValue: {
+    storageLocation?: string;
+    shoppingLocation?: string;
+    preferredBrand?: string;
+    substituteBrand?: string;
+    buyOnlyOnPromo?: boolean;
+    shoppingNotes?: string;
+    estimatedUnitPrice?: number | string | null;
+  }): ProductTypeShoppingMetadataRequest {
+    const estimatedUnitPrice = this.toOptionalNumber(rawValue.estimatedUnitPrice);
+    const metadata: ProductTypeShoppingMetadataRequest = {
+      storageLocation: this.toOptionalText(rawValue.storageLocation),
+      shoppingLocation: this.toOptionalText(rawValue.shoppingLocation),
+      preferredBrand: this.toOptionalText(rawValue.preferredBrand),
+      substituteBrand: this.toOptionalText(rawValue.substituteBrand),
+      buyOnlyOnPromo: rawValue.buyOnlyOnPromo ?? false,
+      shoppingNotes: this.toOptionalText(rawValue.shoppingNotes),
+    };
+
+    if (estimatedUnitPrice !== undefined) {
+      metadata.estimatedUnitPrice = Number(estimatedUnitPrice.toFixed(2));
+    }
+
+    return metadata;
   }
 
   private buildDefaultDepletionRule(
@@ -899,6 +1125,28 @@ export class PantryPageComponent implements OnInit {
 
     const numericValue = Number(value);
     return Number.isFinite(numericValue) ? numericValue : undefined;
+  }
+
+  private toOptionalText(value: string | undefined): string | undefined {
+    const normalized = value?.trim();
+    return normalized ? normalized : undefined;
+  }
+
+  private resolveShoppingMetadata(
+    metadata: ProductTypeShoppingMetadata | undefined,
+  ): ProductTypeShoppingMetadata {
+    return {
+      buyOnlyOnPromo: false,
+      ...metadata,
+    };
+  }
+
+  private hasShoppingPriceEstimate(items: ShoppingPlanItem[]): boolean {
+    return items.some((item) => item.estimatedLineTotal !== undefined);
+  }
+
+  private hasMissingShoppingPrices(items: ShoppingPlanItem[]): boolean {
+    return items.some((item) => item.estimatedLineTotal === undefined);
   }
 
   private sumLotsByStatus(

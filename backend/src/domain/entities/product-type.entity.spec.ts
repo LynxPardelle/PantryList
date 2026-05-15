@@ -53,6 +53,37 @@ describe('ProductType planning settings and archive state', () => {
     });
   });
 
+  it('preserves shopping metadata for LatAm shopping workflows', () => {
+    const productType = ProductType.fromPrimitives({
+      id: 'type-1',
+      userId: 'user-1',
+      baseName: 'Frijol negro',
+      category: ProductCategory.FOOD,
+      defaultUnit: QuantityUnit.KILOGRAM,
+      shoppingMetadata: {
+        storageLocation: 'Despensa',
+        shoppingLocation: 'Mercado',
+        preferredBrand: 'Marca local',
+        substituteBrand: 'Marca propia',
+        buyOnlyOnPromo: true,
+        shoppingNotes: 'Comprar bolsa grande si esta en promo',
+        estimatedUnitPrice: 36.5,
+      },
+      createdAt: new Date('2026-04-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-04-01T00:00:00.000Z'),
+    } as any);
+
+    expect((productType.toPrimitives() as any).shoppingMetadata).toEqual({
+      storageLocation: 'Despensa',
+      shoppingLocation: 'Mercado',
+      preferredBrand: 'Marca local',
+      substituteBrand: 'Marca propia',
+      buyOnlyOnPromo: true,
+      shoppingNotes: 'Comprar bolsa grande si esta en promo',
+      estimatedUnitPrice: 36.5,
+    });
+  });
+
   it('rejects invalid planning override boundaries', () => {
     const productType = ProductType.fromPrimitives({
       id: 'type-1',

@@ -3,10 +3,7 @@ import { InventoryLotRepository } from '../../domain/repositories/inventory-lot.
 import { ProductTypeRepository } from '../../domain/repositories/product-type.repository';
 import { UserId } from '../../domain/value-objects/user-id.vo';
 import { ArchivedPantryItems } from '../read-models/archived-pantry-items.read-model';
-import {
-  INVENTORY_LOT_REPOSITORY,
-  PRODUCT_TYPE_REPOSITORY,
-} from '../tokens';
+import { INVENTORY_LOT_REPOSITORY, PRODUCT_TYPE_REPOSITORY } from '../tokens';
 
 @Injectable()
 export class GetArchivedPantryItemsUseCase {
