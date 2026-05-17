@@ -20,19 +20,21 @@ export class ProductService {
 
   getProducts(): Observable<Product[]> {
     return this.http
-      .get<ApiProduct[]>(this.baseUrl)
+      .get<ApiProduct[]>(this.baseUrl, { withCredentials: true })
       .pipe(map((products) => products.map((product) => this.normalizeProduct(product))));
   }
 
   createProduct(product: CreateProductRequest): Observable<Product> {
     return this.http
-      .post<ApiProduct>(this.baseUrl, product)
+      .post<ApiProduct>(this.baseUrl, product, { withCredentials: true })
       .pipe(map((createdProduct) => this.normalizeProduct(createdProduct)));
   }
 
   updateProductQuantity(productId: string, quantity: UpdateQuantityRequest): Observable<Product> {
     return this.http
-      .put<ApiProduct>(`${this.baseUrl}/${productId}/quantity`, quantity)
+      .put<ApiProduct>(`${this.baseUrl}/${productId}/quantity`, quantity, {
+        withCredentials: true,
+      })
       .pipe(map((product) => this.normalizeProduct(product)));
   }
 

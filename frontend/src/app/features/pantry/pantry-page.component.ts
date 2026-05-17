@@ -12,7 +12,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormBuilder, Validators } from '@angular/forms';
 import { Store } from '@ngrx/store';
-import { BehaviorSubject, Observable, of } from 'rxjs';
+import { BehaviorSubject, Observable, TimeoutError, of } from 'rxjs';
 import {
   catchError,
   debounceTime,
@@ -20,6 +20,7 @@ import {
   finalize,
   startWith,
   switchMap,
+  timeout,
 } from 'rxjs/operators';
 import { AuthFacade } from '../../core/services/auth.facade';
 import { PantryService } from '../../core/services/pantry.service';
@@ -75,6 +76,7 @@ export class PantryPageComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly changeDetector = inject(ChangeDetectorRef);
+  private readonly lotRegistrationTimeoutMs = 15000;
 
   readonly username$ = this.authFacade.currentUsername$;
   readonly loading$ = this.store.select(selectPantryLoading);
@@ -504,7 +506,6 @@ export class PantryPageComponent implements OnInit {
       return;
     }
 
-    this.submittingLot = true;
     this.registerError = null;
     const lotUnit =
       selectionMode === 'existing'
@@ -516,6 +517,7 @@ export class PantryPageComponent implements OnInit {
       return;
     }
 
+    this.submittingLot = true;
     this.pantryService
       .registerLot({
         selectionMode,
@@ -542,6 +544,7 @@ export class PantryPageComponent implements OnInit {
         purchaseDate: rawValue.purchaseDate || undefined,
       })
       .pipe(
+        timeout({ first: this.lotRegistrationTimeoutMs }),
         finalize(() => {
           this.submittingLot = false;
         }),
@@ -1053,6 +1056,10 @@ export class PantryPageComponent implements OnInit {
   }
 
   private getErrorMessage(error: unknown): string {
+    if (error instanceof TimeoutError) {
+      return 'La solicitud tardo demasiado. Revisa tu conexion e intenta de nuevo.';
+    }
+
     if (error instanceof HttpErrorResponse) {
       const apiMessage =
         typeof error.error?.message === 'string' ? error.error.message : null;

@@ -46,6 +46,7 @@ describe('PantryService', () => {
     });
 
     const request = httpMock.expectOne(`${environment.apiUrl}/pantry/overview`);
+    expect(request.request.withCredentials).toBeTrue();
     request.flush({
       userId: 'tester',
       generatedAt: '2026-04-24T12:00:00.000Z',
@@ -170,6 +171,7 @@ describe('PantryService', () => {
     const productTypeRequest = httpMock.expectOne(
       `${environment.apiUrl}/product-types`,
     );
+    expect(productTypeRequest.request.withCredentials).toBeTrue();
     expect(productTypeRequest.request.body.shoppingMetadata).toEqual({
       storageLocation: 'Despensa',
       shoppingLocation: 'Mercado',
@@ -196,7 +198,9 @@ describe('PantryService', () => {
       },
     });
 
-    httpMock.expectOne(`${environment.apiUrl}/inventory-lots`).flush({
+    const inventoryLotRequest = httpMock.expectOne(`${environment.apiUrl}/inventory-lots`);
+    expect(inventoryLotRequest.request.withCredentials).toBeTrue();
+    inventoryLotRequest.flush({
       id: 'lot-1',
       userId: 'tester',
       productTypeId: 'type-frijol',
@@ -225,6 +229,7 @@ describe('PantryService', () => {
     const request = httpMock.expectOne(
       `${environment.apiUrl}/product-types?search=detergente`,
     );
+    expect(request.request.withCredentials).toBeTrue();
     request.flush([
       {
         id: 'type-detergent',
@@ -245,14 +250,18 @@ describe('PantryService', () => {
 
   it('calls archive, restore, delete, and archived item endpoints', () => {
     service.archiveProductType('type-1', { reason: 'No comprar mas' }).subscribe();
-    httpMock
-      .expectOne(`${environment.apiUrl}/product-types/type-1/archive`)
-      .flush(makeApiProductType());
+    const archiveProductTypeRequest = httpMock.expectOne(
+      `${environment.apiUrl}/product-types/type-1/archive`,
+    );
+    expect(archiveProductTypeRequest.request.withCredentials).toBeTrue();
+    archiveProductTypeRequest.flush(makeApiProductType());
 
     service.restoreProductType('type-1').subscribe();
-    httpMock
-      .expectOne(`${environment.apiUrl}/product-types/type-1/restore`)
-      .flush(makeApiProductType());
+    const restoreProductTypeRequest = httpMock.expectOne(
+      `${environment.apiUrl}/product-types/type-1/restore`,
+    );
+    expect(restoreProductTypeRequest.request.withCredentials).toBeTrue();
+    restoreProductTypeRequest.flush(makeApiProductType());
 
     service
       .deleteInventoryLot('lot-1', { confirmationText: 'Lote lot-1' })
@@ -261,6 +270,7 @@ describe('PantryService', () => {
       `${environment.apiUrl}/inventory-lots/lot-1`,
     );
     expect(deleteRequest.request.method).toBe('DELETE');
+    expect(deleteRequest.request.withCredentials).toBeTrue();
     expect(deleteRequest.request.body).toEqual({
       confirmationText: 'Lote lot-1',
     });
@@ -272,7 +282,9 @@ describe('PantryService', () => {
         new Date('2026-04-01T00:00:00.000Z'),
       );
     });
-    httpMock.expectOne(`${environment.apiUrl}/pantry/archived`).flush({
+    const archivedItemsRequest = httpMock.expectOne(`${environment.apiUrl}/pantry/archived`);
+    expect(archivedItemsRequest.request.withCredentials).toBeTrue();
+    archivedItemsRequest.flush({
       productTypes: [makeApiProductType()],
       inventoryLots: [
         {

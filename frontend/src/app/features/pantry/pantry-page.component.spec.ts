@@ -1,8 +1,8 @@
 import { HttpClientTestingModule } from '@angular/common/http/testing';
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { ReactiveFormsModule } from '@angular/forms';
 import { RouterTestingModule } from '@angular/router/testing';
-import { of, Subject } from 'rxjs';
+import { NEVER, of, Subject } from 'rxjs';
 import { Store } from '@ngrx/store';
 import { AuthFacade } from '../../core/services/auth.facade';
 import { PantryPageComponent } from './pantry-page.component';
@@ -214,6 +214,28 @@ describe('PantryPageComponent', () => {
       }),
     );
   });
+
+  it('releases the register button when lot registration times out', fakeAsync(() => {
+    pantryService.registerLot.and.returnValue(NEVER);
+    component.setSelectionMode('new');
+    component.lotForm.patchValue({
+      newBaseName: 'QA Codex arroz',
+      category: 'food',
+      unit: 'piezas',
+      quantity: 1,
+    } as any);
+
+    component.submitLot();
+
+    expect(component.submittingLot).toBeTrue();
+
+    tick(15001);
+
+    expect(component.submittingLot).toBeFalse();
+    expect(component.registerError).toBe(
+      'La solicitud tardo demasiado. Revisa tu conexion e intenta de nuevo.',
+    );
+  }));
 
   it('opens a product type depletion rule editor with the current rule values', () => {
     const group = makePantryGroup({

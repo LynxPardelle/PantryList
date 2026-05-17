@@ -31,6 +31,7 @@ describe('ProfileService', () => {
 
     const request = http.expectOne('/api/profile');
     expect(request.request.method).toBe('GET');
+    expect(request.request.withCredentials).toBeTrue();
     request.flush({
       id: 'user-1',
       email: 'chef@example.com',
@@ -60,6 +61,7 @@ describe('ProfileService', () => {
 
     const request = http.expectOne('/api/profile/preferences');
     expect(request.request.method).toBe('PATCH');
+    expect(request.request.withCredentials).toBeTrue();
     expect(request.request.body).toEqual({
       showExpiredEntryAlert: false,
     });

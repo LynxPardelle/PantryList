@@ -20,7 +20,7 @@ export class ProfileService {
 
   getProfile(): Observable<UserProfile> {
     return this.http
-      .get<ApiUserProfile>(this.profileUrl)
+      .get<ApiUserProfile>(this.profileUrl, { withCredentials: true })
       .pipe(map((profile) => this.normalizeProfile(profile)));
   }
 
@@ -30,6 +30,7 @@ export class ProfileService {
     return this.http.patch<UserPreferences>(
       `${this.profileUrl}/preferences`,
       preferences,
+      { withCredentials: true },
     );
   }
 

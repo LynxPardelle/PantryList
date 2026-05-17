@@ -47,7 +47,7 @@ export class PantryService {
 
   getPantryOverview(): Observable<PantryOverview> {
     return this.http
-      .get<ApiPantryOverview>(this.pantryOverviewUrl)
+      .get<ApiPantryOverview>(this.pantryOverviewUrl, { withCredentials: true })
       .pipe(map((overview) => this.normalizePantryOverview(overview)));
   }
 
@@ -55,6 +55,7 @@ export class PantryService {
     return this.http
       .get<ApiProductType[]>(this.productTypesUrl, {
         params: { search },
+        withCredentials: true,
       })
       .pipe(
         map((productTypes) =>
@@ -65,7 +66,9 @@ export class PantryService {
 
   createProductType(request: CreateProductTypeRequest): Observable<ProductType> {
     return this.http
-      .post<ApiProductType>(this.productTypesUrl, request)
+      .post<ApiProductType>(this.productTypesUrl, request, {
+        withCredentials: true,
+      })
       .pipe(map((productType) => this.normalizeProductType(productType)));
   }
 
@@ -76,6 +79,8 @@ export class PantryService {
     return this.http
       .patch<ApiProductType>(`${this.productTypesUrl}/${productTypeId}/depletion-rule`, {
         defaultDepletionRule,
+      }, {
+        withCredentials: true,
       })
       .pipe(map((productType) => this.normalizeProductType(productType)));
   }
@@ -88,6 +93,7 @@ export class PantryService {
       .patch<ApiProductType>(
         `${this.productTypesUrl}/${productTypeId}/planning-settings`,
         planningSettings,
+        { withCredentials: true },
       )
       .pipe(map((productType) => this.normalizeProductType(productType)));
   }
@@ -100,6 +106,7 @@ export class PantryService {
       .patch<ApiProductType>(
         `${this.productTypesUrl}/${productTypeId}/shopping-metadata`,
         shoppingMetadata,
+        { withCredentials: true },
       )
       .pipe(map((productType) => this.normalizeProductType(productType)));
   }
@@ -109,13 +116,17 @@ export class PantryService {
     request: ArchivePantryItemRequest = {},
   ): Observable<ProductType> {
     return this.http
-      .post<ApiProductType>(`${this.productTypesUrl}/${productTypeId}/archive`, request)
+      .post<ApiProductType>(`${this.productTypesUrl}/${productTypeId}/archive`, request, {
+        withCredentials: true,
+      })
       .pipe(map((productType) => this.normalizeProductType(productType)));
   }
 
   restoreProductType(productTypeId: string): Observable<ProductType> {
     return this.http
-      .post<ApiProductType>(`${this.productTypesUrl}/${productTypeId}/restore`, {})
+      .post<ApiProductType>(`${this.productTypesUrl}/${productTypeId}/restore`, {}, {
+        withCredentials: true,
+      })
       .pipe(map((productType) => this.normalizeProductType(productType)));
   }
 
@@ -125,12 +136,15 @@ export class PantryService {
   ): Observable<void> {
     return this.http.delete<void>(`${this.productTypesUrl}/${productTypeId}`, {
       body: request,
+      withCredentials: true,
     });
   }
 
   createInventoryLot(request: CreateInventoryLotRequest): Observable<InventoryLot> {
     return this.http
-      .post<ApiInventoryLot>(this.inventoryLotsUrl, request)
+      .post<ApiInventoryLot>(this.inventoryLotsUrl, request, {
+        withCredentials: true,
+      })
       .pipe(map((inventoryLot) => this.normalizeInventoryLot(inventoryLot)));
   }
 
@@ -187,7 +201,9 @@ export class PantryService {
     request: ConsumeInventoryLotRequest,
   ): Observable<InventoryLot | null> {
     return this.http
-      .post<ApiInventoryLot | null>(`${this.inventoryLotsUrl}/${lotId}/consume`, request)
+      .post<ApiInventoryLot | null>(`${this.inventoryLotsUrl}/${lotId}/consume`, request, {
+        withCredentials: true,
+      })
       .pipe(
         map((inventoryLot) =>
           inventoryLot ? this.normalizeInventoryLot(inventoryLot) : null,
@@ -200,13 +216,17 @@ export class PantryService {
     request: ArchivePantryItemRequest = {},
   ): Observable<InventoryLot> {
     return this.http
-      .post<ApiInventoryLot>(`${this.inventoryLotsUrl}/${lotId}/archive`, request)
+      .post<ApiInventoryLot>(`${this.inventoryLotsUrl}/${lotId}/archive`, request, {
+        withCredentials: true,
+      })
       .pipe(map((inventoryLot) => this.normalizeInventoryLot(inventoryLot)));
   }
 
   restoreInventoryLot(lotId: string): Observable<InventoryLot> {
     return this.http
-      .post<ApiInventoryLot>(`${this.inventoryLotsUrl}/${lotId}/restore`, {})
+      .post<ApiInventoryLot>(`${this.inventoryLotsUrl}/${lotId}/restore`, {}, {
+        withCredentials: true,
+      })
       .pipe(map((inventoryLot) => this.normalizeInventoryLot(inventoryLot)));
   }
 
@@ -216,11 +236,14 @@ export class PantryService {
   ): Observable<void> {
     return this.http.delete<void>(`${this.inventoryLotsUrl}/${lotId}`, {
       body: request,
+      withCredentials: true,
     });
   }
 
   getArchivedPantryItems(): Observable<ArchivedPantryItems> {
-    return this.http.get<ApiArchivedPantryItems>(this.archivedPantryUrl).pipe(
+    return this.http.get<ApiArchivedPantryItems>(this.archivedPantryUrl, {
+      withCredentials: true,
+    }).pipe(
       map((items) => ({
         productTypes: items.productTypes.map((productType) =>
           this.normalizeProductType(productType),
