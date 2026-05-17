@@ -280,7 +280,29 @@ Feature idea:
 - Consider digest pinning for production builds.
 - Add a base-image update cadence.
 
-### 14. Privacy Controls And Data Lifecycle
+### 14. GitHub Actions Node Runtime Migration
+
+Priority: P2
+
+Why it matters:
+
+- CI/CD should keep working when GitHub changes the default JavaScript action runtime.
+- The production deploy path depends on the `production-smoke` workflow after Dokploy auto deploy.
+
+Evidence:
+
+- On 2026-05-17, GitHub Actions run `26000863367` completed successfully but emitted a warning that Node.js 20 actions are deprecated.
+- The warning said GitHub Actions will force JavaScript actions to Node.js 24 by default starting 2026-06-02.
+- The warning said Node.js 20 will be removed from the runner on 2026-09-16.
+- Affected actions in the warning included `actions/checkout@v4` and `gitleaks/gitleaks-action@v2`.
+
+Feature idea:
+
+- Upgrade affected workflow actions to versions that support Node.js 24.
+- Consider setting `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` in CI to test the migration before GitHub changes the default.
+- Keep `production-smoke` green after the action runtime migration.
+
+### 15. Privacy Controls And Data Lifecycle
 
 Priority: P1
 
