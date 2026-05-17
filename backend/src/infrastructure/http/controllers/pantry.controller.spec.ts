@@ -66,6 +66,14 @@ function makeOverview() {
     depletingItems: [],
     shoppingPlanItems: [],
     shoppingPlanEstimatedTotal: 0,
+    stapleItems: [],
+    valueInsights: {
+      stapleCount: 0,
+      stapleAttentionCount: 0,
+      estimatedShoppingTotal: 0,
+      estimatedExpiringValue: 0,
+      estimatedStapleRestockTotal: 0,
+    },
   };
 }
 
@@ -84,6 +92,7 @@ function makeArchivedItems() {
           planningEnabled: true,
         },
         shoppingMetadata: {
+          householdStaple: false,
           buyOnlyOnPromo: false,
         },
         archivedAt: timestamp,

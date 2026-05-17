@@ -121,6 +121,11 @@
         <strong>{{ summary.shoppingPlanTypes }}</strong>
         <small>reposiciones calculadas</small>
       </article>
+      <article class="summary-card summary-card-staples">
+        <span>B&aacute;sicos</span>
+        <strong>{{ summary.stapleAttentionTypes }}</strong>
+        <small>de {{ summary.stapleTypes }} marcados</small>
+      </article>
       <article class="summary-card summary-card-critical">
         <span>Cr&iacute;ticos</span>
         <strong>{{ summary.criticalLots }}</strong>
@@ -256,6 +261,11 @@
           <label class="check-field">
             <input type="checkbox" formControlName="buyOnlyOnPromo" />
             <span>Comprar solo en promo</span>
+          </label>
+
+          <label class="check-field">
+            <input type="checkbox" formControlName="householdStaple" />
+            <span>Es b&aacute;sico del hogar</span>
           </label>
 
           <label class="field field-full">
@@ -506,6 +516,74 @@
             <section class="empty-state compact-empty-state">
               <h3>No hay productos con agotamiento cercano.</h3>
               <p>Solo aparecer&aacute;n aqu&iacute; los tipos con durabilidad activa y una estimaci&oacute;n baja.</p>
+            </section>
+          }
+        }
+      </article>
+
+      <article class="panel staples-panel">
+        <div class="panel-header">
+          <div>
+            <p class="panel-kicker">Hogar</p>
+            <h2>B&aacute;sicos del hogar</h2>
+          </div>
+        </div>
+
+        @if (stapleItems$ | async; as stapleItems) {
+          <div class="shopping-plan-tools">
+            <strong>{{ getStapleAttentionSummary(stapleItems) }}</strong>
+            <span>{{ getStapleRestockSummary(stapleItems) }}</span>
+          </div>
+
+          @if (valueInsights$ | async; as valueInsights) {
+            <div class="value-insight-strip" aria-label="Resumen de valor estimado">
+              <span>Compra: {{ formatShoppingPrice(valueInsights.estimatedShoppingTotal) }}</span>
+              <span>Por caducar: {{ formatShoppingPrice(valueInsights.estimatedExpiringValue) }}</span>
+              <span>B&aacute;sicos: {{ formatShoppingPrice(valueInsights.estimatedStapleRestockTotal) }}</span>
+            </div>
+          }
+
+          @if (stapleItems.length > 0) {
+            <div class="staple-stack">
+              @for (item of stapleItems; track trackByProductTypeId($index, item)) {
+                <article class="staple-row" [attr.data-status]="item.status">
+                  <div class="staple-copy">
+                    <div class="group-tags">
+                      <span class="category-pill">{{ categoryLabels[item.category] }}</span>
+                      <span class="staple-status-pill" [attr.data-status]="item.status">
+                        {{ stapleStatusLabels[item.status] }}
+                      </span>
+                    </div>
+                    <h3>{{ item.baseName }}</h3>
+                    <p>
+                      Disponible:
+                      {{ formatQuantity(item.estimatedCurrentQuantity ?? item.totalQuantity, item.defaultUnit) }}.
+                      Sugerido:
+                      {{ formatQuantity(item.suggestedPurchaseQuantity, item.defaultUnit) }}.
+                    </p>
+                    @if (item.shoppingMetadata?.shoppingLocation || item.shoppingMetadata?.preferredBrand) {
+                      <p>
+                        @if (item.shoppingMetadata?.shoppingLocation) {
+                          Comprar en {{ item.shoppingMetadata?.shoppingLocation }}.
+                        }
+                        @if (item.shoppingMetadata?.preferredBrand) {
+                          Marca {{ item.shoppingMetadata?.preferredBrand }}.
+                        }
+                      </p>
+                    }
+                  </div>
+
+                  <div class="staple-value">
+                    <span>Reposici&oacute;n</span>
+                    <strong>{{ formatShoppingPrice(item.estimatedRestockTotal) }}</strong>
+                  </div>
+                </article>
+              }
+            </div>
+          } @else {
+            <section class="empty-state compact-empty-state">
+              <h3>No hay b&aacute;sicos marcados.</h3>
+              <p>Marca los productos de uso fijo para ver faltantes y reposici&oacute;n estimada.</p>
             </section>
           }
         }
@@ -824,6 +902,9 @@
                               }
                             </p>
                           }
+                          @if (group.shoppingMetadata?.householdStaple) {
+                            <p>B&aacute;sico del hogar.</p>
+                          }
                           @if (group.shoppingMetadata?.shoppingNotes) {
                             <p>{{ group.shoppingMetadata?.shoppingNotes }}</p>
                           }
@@ -887,6 +968,11 @@
                           <label class="check-field">
                             <input type="checkbox" formControlName="buyOnlyOnPromo" />
                             <span>Comprar solo en promo</span>
+                          </label>
+
+                          <label class="check-field">
+                            <input type="checkbox" formControlName="householdStaple" />
+                            <span>Es b&aacute;sico del hogar</span>
                           </label>
 
                           <label class="field field-full">

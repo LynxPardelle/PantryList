@@ -3,6 +3,7 @@ import {
   ExpiringProductGroup,
   PantryLotSummary,
   PantryOverview,
+  PantryStapleItem,
   ShoppingPlanItem,
 } from '../../../application/read-models/pantry-overview.read-model';
 import {
@@ -10,6 +11,7 @@ import {
   ExpiringProductGroupResponseDto,
   PantryLotSummaryResponseDto,
   PantryOverviewResponseDto,
+  PantryStapleItemResponseDto,
   ShoppingPlanItemResponseDto,
 } from '../dtos/pantry-overview-response.dto';
 
@@ -48,6 +50,10 @@ export class PantryOverviewMapper {
         this.toShoppingPlanItemResponse(item),
       ),
       shoppingPlanEstimatedTotal: overview.shoppingPlanEstimatedTotal,
+      stapleItems: overview.stapleItems.map((item) =>
+        this.toStapleItemResponse(item),
+      ),
+      valueInsights: overview.valueInsights,
     };
   }
 
@@ -102,6 +108,24 @@ export class PantryOverviewMapper {
       urgency: item.urgency,
       depletionRule: item.depletionRule,
       effectivePlanningSettings: item.effectivePlanningSettings,
+      shoppingMetadata: item.shoppingMetadata,
+    };
+  }
+
+  static toStapleItemResponse(
+    item: PantryStapleItem,
+  ): PantryStapleItemResponseDto {
+    return {
+      productTypeId: item.productTypeId,
+      baseName: item.baseName,
+      category: item.category,
+      defaultUnit: item.defaultUnit,
+      totalQuantity: item.totalQuantity,
+      estimatedCurrentQuantity: item.estimatedCurrentQuantity,
+      suggestedPurchaseQuantity: item.suggestedPurchaseQuantity,
+      estimatedUnitPrice: item.estimatedUnitPrice,
+      estimatedRestockTotal: item.estimatedRestockTotal,
+      status: item.status,
       shoppingMetadata: item.shoppingMetadata,
     };
   }

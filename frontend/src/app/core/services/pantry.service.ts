@@ -11,6 +11,7 @@ import {
   ApiPantryLotSummary,
   ApiPantryOverview,
   ApiPantryOverviewItem,
+  ApiPantryStapleItem,
   ApiProductType,
   ApiProductTypeDepletionRule,
   ApiShoppingPlanItem,
@@ -25,9 +26,11 @@ import {
   PantryLotSummary,
   PantryOverview,
   PantryOverviewItem,
+  PantryStapleItem,
   ProductTypeDepletionRule,
   ProductTypeDepletionRuleRequest,
   ProductTypePlanningSettingsRequest,
+  ProductTypeShoppingMetadata,
   ProductTypeShoppingMetadataRequest,
   ProductType,
   RegisterLotRequest,
@@ -269,6 +272,9 @@ export class PantryService {
       defaultDepletionRule: productType.defaultDepletionRule
         ? this.normalizeDepletionRule(productType.defaultDepletionRule)
         : undefined,
+      shoppingMetadata: productType.shoppingMetadata
+        ? this.normalizeShoppingMetadata(productType.shoppingMetadata)
+        : undefined,
       archivedAt: productType.archivedAt ? new Date(productType.archivedAt) : null,
       createdAt: new Date(productType.createdAt),
       updatedAt: new Date(productType.updatedAt),
@@ -317,6 +323,16 @@ export class PantryService {
         this.normalizeShoppingPlanItem(item),
       ),
       shoppingPlanEstimatedTotal: overview.shoppingPlanEstimatedTotal ?? 0,
+      stapleItems: (overview.stapleItems ?? []).map((item) =>
+        this.normalizeStapleItem(item),
+      ),
+      valueInsights: overview.valueInsights ?? {
+        stapleCount: 0,
+        stapleAttentionCount: 0,
+        estimatedShoppingTotal: overview.shoppingPlanEstimatedTotal ?? 0,
+        estimatedExpiringValue: 0,
+        estimatedStapleRestockTotal: 0,
+      },
     };
   }
 
@@ -330,6 +346,9 @@ export class PantryService {
       estimatedDepletionAt: item.estimatedDepletionAt
         ? new Date(item.estimatedDepletionAt)
         : undefined,
+      shoppingMetadata: item.shoppingMetadata
+        ? this.normalizeShoppingMetadata(item.shoppingMetadata)
+        : undefined,
       lots: item.lots.map((lot) => this.normalizeLotSummary(lot)),
     };
   }
@@ -341,6 +360,9 @@ export class PantryService {
       ...item,
       estimatedDepletionAt: new Date(item.estimatedDepletionAt),
       depletionRule: this.normalizeDepletionRule(item.depletionRule),
+      shoppingMetadata: item.shoppingMetadata
+        ? this.normalizeShoppingMetadata(item.shoppingMetadata)
+        : undefined,
     };
   }
 
@@ -350,6 +372,18 @@ export class PantryService {
       estimatedDepletionAt: new Date(item.estimatedDepletionAt),
       recommendedPurchaseAt: new Date(item.recommendedPurchaseAt),
       depletionRule: this.normalizeDepletionRule(item.depletionRule),
+      shoppingMetadata: item.shoppingMetadata
+        ? this.normalizeShoppingMetadata(item.shoppingMetadata)
+        : undefined,
+    };
+  }
+
+  private normalizeStapleItem(item: ApiPantryStapleItem): PantryStapleItem {
+    return {
+      ...item,
+      shoppingMetadata: item.shoppingMetadata
+        ? this.normalizeShoppingMetadata(item.shoppingMetadata)
+        : undefined,
     };
   }
 
@@ -359,6 +393,16 @@ export class PantryService {
     return {
       ...rule,
       anchorDate: new Date(rule.anchorDate),
+    };
+  }
+
+  private normalizeShoppingMetadata(
+    metadata: Partial<ProductTypeShoppingMetadata>,
+  ): ProductTypeShoppingMetadata {
+    return {
+      ...metadata,
+      householdStaple: metadata.householdStaple ?? false,
+      buyOnlyOnPromo: metadata.buyOnlyOnPromo ?? false,
     };
   }
 }

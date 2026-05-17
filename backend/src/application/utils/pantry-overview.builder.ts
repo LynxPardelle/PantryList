@@ -9,6 +9,8 @@ import { calculateGroupedDepletionForecast } from '../services/depletion-forecas
 import {
   DepletingProductGroup,
   ExpiringProductGroup,
+  PantryStapleItem,
+  PantryStapleStatus,
   PantryLotSummary,
   PantryOverview,
   PantryOverviewItem,
@@ -254,6 +256,49 @@ export function buildPantryOverview(
       .reduce((sum, item) => sum + (item.estimatedLineTotal ?? 0), 0)
       .toFixed(2),
   );
+  const stapleItems = items
+    .filter((item) => item.shoppingMetadata.householdStaple)
+    .map<PantryStapleItem>((item) => {
+      const suggestedPurchaseQuantity = item.depletionRule?.consumeAmount ?? 1;
+      const status = getStapleStatus(item);
+
+      return {
+        productTypeId: item.productTypeId,
+        baseName: item.baseName,
+        category: item.category,
+        defaultUnit: item.defaultUnit,
+        totalQuantity: item.totalQuantity,
+        estimatedCurrentQuantity: item.estimatedCurrentQuantity,
+        suggestedPurchaseQuantity,
+        estimatedUnitPrice: item.shoppingMetadata.estimatedUnitPrice,
+        estimatedRestockTotal:
+          status === 'available'
+            ? undefined
+            : getEstimatedLineTotal(
+                item.shoppingMetadata.estimatedUnitPrice,
+                suggestedPurchaseQuantity,
+              ),
+        status,
+        shoppingMetadata: item.shoppingMetadata,
+      };
+    })
+    .sort(compareStapleItem);
+  const estimatedExpiringValue = Number(
+    items
+      .reduce(
+        (sum, item) =>
+          sum +
+          item.expiringSoonQuantity *
+            (item.shoppingMetadata.estimatedUnitPrice ?? 0),
+        0,
+      )
+      .toFixed(2),
+  );
+  const estimatedStapleRestockTotal = Number(
+    stapleItems
+      .reduce((sum, item) => sum + (item.estimatedRestockTotal ?? 0), 0)
+      .toFixed(2),
+  );
 
   return {
     userId,
@@ -264,6 +309,16 @@ export function buildPantryOverview(
     depletingItems,
     shoppingPlanItems,
     shoppingPlanEstimatedTotal,
+    stapleItems,
+    valueInsights: {
+      stapleCount: stapleItems.length,
+      stapleAttentionCount: stapleItems.filter(
+        (item) => item.status !== 'available',
+      ).length,
+      estimatedShoppingTotal: shoppingPlanEstimatedTotal,
+      estimatedExpiringValue,
+      estimatedStapleRestockTotal,
+    },
   };
 }
 
@@ -368,6 +423,60 @@ function compareShoppingPlanItem(
   }
 
   return compareText(left.baseName, right.baseName);
+}
+
+function getStapleStatus(item: PantryOverviewItem): PantryStapleStatus {
+  const estimatedCurrentQuantity =
+    item.estimatedCurrentQuantity ?? item.totalQuantity;
+
+  if (estimatedCurrentQuantity <= 0 || item.totalQuantity <= 0) {
+    return 'missing';
+  }
+
+  if (
+    item.expiringSoonQuantity > 0 ||
+    (item.depletionRule &&
+      estimatedCurrentQuantity <=
+        item.depletionRule.consumeAmount *
+          item.effectivePlanningSettings.depletionWarningThresholdRatio)
+  ) {
+    return 'low';
+  }
+
+  return 'available';
+}
+
+function compareStapleItem(
+  left: PantryStapleItem,
+  right: PantryStapleItem,
+): number {
+  const statusDifference =
+    getStapleStatusRank(left.status) - getStapleStatusRank(right.status);
+
+  if (statusDifference !== 0) {
+    return statusDifference;
+  }
+
+  const locationDifference = compareText(
+    left.shoppingMetadata.shoppingLocation ?? '',
+    right.shoppingMetadata.shoppingLocation ?? '',
+  );
+
+  if (locationDifference !== 0) {
+    return locationDifference;
+  }
+
+  return compareText(left.baseName, right.baseName);
+}
+
+function getStapleStatusRank(status: PantryStapleStatus): number {
+  const ranks: Record<PantryStapleStatus, number> = {
+    missing: 0,
+    low: 1,
+    available: 2,
+  };
+
+  return ranks[status];
 }
 
 function compareLotSummary(

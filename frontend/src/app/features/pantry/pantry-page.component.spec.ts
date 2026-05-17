@@ -10,6 +10,7 @@ import { PantryService } from '../../core/services/pantry.service';
 import {
   InventoryLot,
   PantryOverviewItem,
+  PantryStapleItem,
   ProductType,
   ShoppingPlanItem,
 } from '../../shared/models/pantry.model';
@@ -192,6 +193,7 @@ describe('PantryPageComponent', () => {
       shoppingLocation: 'Mercado',
       preferredBrand: 'Marca local',
       substituteBrand: 'Marca propia',
+      householdStaple: true,
       buyOnlyOnPromo: true,
       shoppingNotes: 'Comprar bolsa grande si esta en promo',
       estimatedUnitPrice: 36.5,
@@ -207,6 +209,7 @@ describe('PantryPageComponent', () => {
             shoppingLocation: 'Mercado',
             preferredBrand: 'Marca local',
             substituteBrand: 'Marca propia',
+            householdStaple: true,
             buyOnlyOnPromo: true,
             shoppingNotes: 'Comprar bolsa grande si esta en promo',
             estimatedUnitPrice: 36.5,
@@ -394,6 +397,7 @@ describe('PantryPageComponent', () => {
           shoppingLocation: 'Mayoreo',
           preferredBrand: 'Marca hogar',
           substituteBrand: 'Marca propia',
+          householdStaple: true,
           buyOnlyOnPromo: true,
           shoppingNotes: 'Comprar solo si hay promo',
           estimatedUnitPrice: 42.5,
@@ -412,11 +416,42 @@ describe('PantryPageComponent', () => {
 
     expect(exportText).toContain('Lista de compras PantryList');
     expect(exportText).toContain('Total estimado: 42.50 moneda local');
+    expect(exportText).toContain('Mayoreo:');
     expect(exportText).toContain('- Detergente: 1 lt');
-    expect(exportText).toContain('Comprar en: Mayoreo');
     expect(exportText).toContain('Marca: Marca hogar');
     expect(exportText).toContain('Solo promo');
     expect(exportText).toContain('Nota: Comprar solo si hay promo');
+  });
+
+  it('summarizes household staple attention and restock estimates', () => {
+    const stapleItems: PantryStapleItem[] = [
+      {
+        productTypeId: 'type-rice',
+        baseName: 'Arroz',
+        category: 'food',
+        defaultUnit: 'kg',
+        totalQuantity: 1,
+        suggestedPurchaseQuantity: 2,
+        estimatedRestockTotal: 60,
+        status: 'low',
+      },
+      {
+        productTypeId: 'type-detergent',
+        baseName: 'Detergente',
+        category: 'cleaning',
+        defaultUnit: 'lt',
+        totalQuantity: 3,
+        suggestedPurchaseQuantity: 1,
+        status: 'available',
+      },
+    ];
+
+    expect(component.getStapleAttentionSummary([...stapleItems])).toBe(
+      '1 de 2 básicos por revisar',
+    );
+    expect(component.getStapleRestockSummary([...stapleItems])).toBe(
+      'Reposición estimada: 60.00 moneda local',
+    );
   });
 
   it('marks shopping totals as partial when any suggested item has no price estimate', () => {
@@ -647,6 +682,7 @@ function makeShoppingPlanItem(
     estimatedLineTotal: 42.5,
     effectivePlanningSettings: makePantryGroup().effectivePlanningSettings,
     shoppingMetadata: {
+      householdStaple: false,
       buyOnlyOnPromo: false,
       estimatedUnitPrice: 42.5,
     },

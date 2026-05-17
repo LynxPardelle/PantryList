@@ -173,6 +173,7 @@ describe('buildPantryOverview depletion forecasts', () => {
         shoppingLocation: 'Mayoreo',
         preferredBrand: 'Marca hogar',
         substituteBrand: 'Marca propia',
+        householdStaple: true,
         buyOnlyOnPromo: true,
         shoppingNotes: 'Comprar solo si hay promo',
         estimatedUnitPrice: 42.5,
@@ -200,6 +201,7 @@ describe('buildPantryOverview depletion forecasts', () => {
         shoppingLocation: 'Mayoreo',
         preferredBrand: 'Marca hogar',
         substituteBrand: 'Marca propia',
+        householdStaple: true,
         buyOnlyOnPromo: true,
         shoppingNotes: 'Comprar solo si hay promo',
         estimatedUnitPrice: 42.5,
@@ -212,8 +214,80 @@ describe('buildPantryOverview depletion forecasts', () => {
       estimatedLineTotal: 85,
       shoppingMetadata: {
         shoppingLocation: 'Mayoreo',
+        householdStaple: true,
         buyOnlyOnPromo: true,
       },
+    });
+  });
+
+  it('builds household staple attention and value insights from existing metadata', () => {
+    const rice = makeProductType({
+      id: 'type-rice',
+      baseName: 'Arroz',
+      category: ProductCategory.FOOD,
+      defaultDepletionRule: {
+        enabled: true,
+        consumeAmount: 2,
+        unit: QuantityUnit.KILOGRAM,
+        everyAmount: 1,
+        everyPeriod: 'week',
+        anchorDate: new Date('2026-04-10T00:00:00.000Z'),
+      },
+      shoppingMetadata: {
+        storageLocation: 'Despensa',
+        shoppingLocation: 'Mercado',
+        householdStaple: true,
+        buyOnlyOnPromo: false,
+        estimatedUnitPrice: 30,
+      },
+    });
+    const soap = makeProductType({
+      id: 'type-soap-staple',
+      baseName: 'Jabon',
+      category: ProductCategory.HYGIENE,
+      shoppingMetadata: {
+        storageLocation: 'Bano',
+        shoppingLocation: 'Farmacia',
+        householdStaple: true,
+        buyOnlyOnPromo: false,
+        estimatedUnitPrice: 18,
+      },
+    });
+
+    const overview = buildPantryOverview(
+      userId,
+      [rice, soap],
+      [
+        makeInventoryLot({
+          id: 'lot-rice',
+          productTypeId: 'type-rice',
+          quantity: 5,
+          unit: QuantityUnit.KILOGRAM,
+        }),
+      ],
+      referenceDate,
+    );
+
+    expect(overview.stapleItems).toEqual([
+      expect.objectContaining({
+        productTypeId: 'type-soap-staple',
+        status: 'missing',
+        suggestedPurchaseQuantity: 1,
+        estimatedRestockTotal: 18,
+      }),
+      expect.objectContaining({
+        productTypeId: 'type-rice',
+        status: 'low',
+        suggestedPurchaseQuantity: 2,
+        estimatedRestockTotal: 60,
+      }),
+    ]);
+    expect(overview.valueInsights).toEqual({
+      stapleCount: 2,
+      stapleAttentionCount: 2,
+      estimatedShoppingTotal: 60,
+      estimatedExpiringValue: 0,
+      estimatedStapleRestockTotal: 78,
     });
   });
 
@@ -662,6 +736,7 @@ describe('buildPantryOverview depletion forecasts', () => {
       substituteBrand?: string;
       shoppingNotes?: string;
       estimatedUnitPrice?: number;
+      householdStaple: boolean;
       buyOnlyOnPromo: boolean;
     };
     defaultDepletionRule?: {

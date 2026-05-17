@@ -10,6 +10,8 @@ export interface PantrySummary {
   depletingTypes: number;
   shoppingPlanTypes: number;
   criticalLots: number;
+  stapleTypes: number;
+  stapleAttentionTypes: number;
 }
 
 export interface ExpiredEntryAlert {
@@ -55,6 +57,23 @@ export const selectShoppingPlanItems = createSelector(
   (overview) => overview?.shoppingPlanItems ?? [],
 );
 
+export const selectStapleItems = createSelector(
+  selectPantryOverview,
+  (overview) => overview?.stapleItems ?? [],
+);
+
+export const selectPantryValueInsights = createSelector(
+  selectPantryOverview,
+  (overview) =>
+    overview?.valueInsights ?? {
+      stapleCount: 0,
+      stapleAttentionCount: 0,
+      estimatedShoppingTotal: 0,
+      estimatedExpiringValue: 0,
+      estimatedStapleRestockTotal: 0,
+    },
+);
+
 export const selectShowGuidanceTips = createSelector(
   selectPantryOverview,
   (overview) => overview?.preferences.showGuidanceTips ?? true,
@@ -65,7 +84,14 @@ export const selectPantrySummary = createSelector(
   selectExpiringGroups,
   selectDepletingGroups,
   selectShoppingPlanItems,
-  (groups, expiringGroups, depletingGroups, shoppingPlanItems): PantrySummary => ({
+  selectStapleItems,
+  (
+    groups,
+    expiringGroups,
+    depletingGroups,
+    shoppingPlanItems,
+    stapleItems,
+  ): PantrySummary => ({
     totalTypes: groups.length,
     totalLots: groups.reduce((sum, group) => sum + group.lotCount, 0),
     expiredLots: groups.reduce(
@@ -77,6 +103,10 @@ export const selectPantrySummary = createSelector(
     expiringTypes: expiringGroups.length,
     depletingTypes: depletingGroups.length,
     shoppingPlanTypes: shoppingPlanItems.length,
+    stapleTypes: stapleItems.length,
+    stapleAttentionTypes: stapleItems.filter(
+      (item) => item.status !== 'available',
+    ).length,
     criticalLots: groups.reduce(
       (sum, group) =>
         sum +

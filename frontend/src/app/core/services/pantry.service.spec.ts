@@ -32,9 +32,24 @@ describe('PantryService', () => {
         shoppingLocation: 'Mayoreo',
         preferredBrand: 'Marca hogar',
         substituteBrand: 'Marca propia',
+        householdStaple: true,
         buyOnlyOnPromo: true,
         shoppingNotes: 'Comprar solo si hay promo',
         estimatedUnitPrice: 42.5,
+      });
+      expect(overview.stapleItems[0]).toEqual(
+        jasmine.objectContaining({
+          productTypeId: 'type-detergent',
+          status: 'missing',
+          estimatedRestockTotal: 42.5,
+        }),
+      );
+      expect(overview.valueInsights).toEqual({
+        stapleCount: 1,
+        stapleAttentionCount: 1,
+        estimatedShoppingTotal: 42.5,
+        estimatedExpiringValue: 0,
+        estimatedStapleRestockTotal: 42.5,
       });
       expect((overview.shoppingPlanItems[0] as any).estimatedLineTotal).toBe(42.5);
       expect(overview.shoppingPlanItems[0].recommendedPurchaseAt).toEqual(
@@ -82,6 +97,7 @@ describe('PantryService', () => {
             shoppingLocation: 'Mayoreo',
             preferredBrand: 'Marca hogar',
             substituteBrand: 'Marca propia',
+            householdStaple: true,
             buyOnlyOnPromo: true,
             shoppingNotes: 'Comprar solo si hay promo',
             estimatedUnitPrice: 42.5,
@@ -125,6 +141,7 @@ describe('PantryService', () => {
             shoppingLocation: 'Mayoreo',
             preferredBrand: 'Marca hogar',
             substituteBrand: 'Marca propia',
+            householdStaple: true,
             buyOnlyOnPromo: true,
             shoppingNotes: 'Comprar solo si hay promo',
             estimatedUnitPrice: 42.5,
@@ -142,6 +159,32 @@ describe('PantryService', () => {
         },
       ],
       shoppingPlanEstimatedTotal: 42.5,
+      stapleItems: [
+        {
+          productTypeId: 'type-detergent',
+          baseName: 'Detergente',
+          category: 'cleaning',
+          defaultUnit: 'lt',
+          totalQuantity: 1,
+          estimatedCurrentQuantity: 0,
+          suggestedPurchaseQuantity: 1,
+          estimatedUnitPrice: 42.5,
+          estimatedRestockTotal: 42.5,
+          status: 'missing',
+          shoppingMetadata: {
+            householdStaple: true,
+            buyOnlyOnPromo: true,
+            estimatedUnitPrice: 42.5,
+          },
+        },
+      ],
+      valueInsights: {
+        stapleCount: 1,
+        stapleAttentionCount: 1,
+        estimatedShoppingTotal: 42.5,
+        estimatedExpiringValue: 0,
+        estimatedStapleRestockTotal: 42.5,
+      },
     });
   });
 
@@ -158,6 +201,7 @@ describe('PantryService', () => {
             shoppingLocation: 'Mercado',
             preferredBrand: 'Marca local',
             substituteBrand: 'Marca propia',
+            householdStaple: true,
             buyOnlyOnPromo: true,
             shoppingNotes: 'Comprar bolsa grande si esta en promo',
             estimatedUnitPrice: 36.5,
@@ -177,6 +221,7 @@ describe('PantryService', () => {
       shoppingLocation: 'Mercado',
       preferredBrand: 'Marca local',
       substituteBrand: 'Marca propia',
+      householdStaple: true,
       buyOnlyOnPromo: true,
       shoppingNotes: 'Comprar bolsa grande si esta en promo',
       estimatedUnitPrice: 36.5,
@@ -192,6 +237,7 @@ describe('PantryService', () => {
         shoppingLocation: 'Mercado',
         preferredBrand: 'Marca local',
         substituteBrand: 'Marca propia',
+        householdStaple: true,
         buyOnlyOnPromo: true,
         shoppingNotes: 'Comprar bolsa grande si esta en promo',
         estimatedUnitPrice: 36.5,

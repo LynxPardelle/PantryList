@@ -38,6 +38,8 @@ import {
   ProductTypeEffectivePlanningSettings,
   PantryLotSummary,
   PantryOverviewItem,
+  PantryStapleItem,
+  PantryStapleStatus,
   ProductTypeDepletionRuleRequest,
   ProductTypePlanningSettingsRequest,
   ProductTypeShoppingMetadata,
@@ -57,8 +59,10 @@ import {
   selectPantryGroupsSorted,
   selectPantryLoading,
   selectPantrySummary,
+  selectPantryValueInsights,
   selectShowGuidanceTips,
   selectShoppingPlanItems,
+  selectStapleItems,
 } from '../../store/pantry/pantry.selectors';
 
 interface DeleteConfirmationTarget {
@@ -92,6 +96,8 @@ export class PantryPageComponent implements OnInit {
   readonly expiredAlert$ = this.store.select(selectExpiredEntryAlert);
   readonly depletingGroups$ = this.store.select(selectDepletingGroups);
   readonly shoppingPlanItems$ = this.store.select(selectShoppingPlanItems);
+  readonly stapleItems$ = this.store.select(selectStapleItems);
+  readonly valueInsights$ = this.store.select(selectPantryValueInsights);
   readonly pantryGroups$ = this.store.select(selectPantryGroupsSorted);
   readonly showGuidanceTips$ = this.store.select(selectShowGuidanceTips);
 
@@ -129,6 +135,11 @@ export class PantryPageComponent implements OnInit {
     critical: 'Comprar esta semana',
     upcoming: 'Comprar pronto',
   };
+  readonly stapleStatusLabels: Record<PantryStapleStatus, string> = {
+    missing: 'Falta en casa',
+    low: 'Revisar pronto',
+    available: 'Cubierto',
+  };
 
   readonly lotForm = this.formBuilder.nonNullable.group({
     selectionMode: ['existing' as ProductTypeSelectionMode, Validators.required],
@@ -141,6 +152,7 @@ export class PantryPageComponent implements OnInit {
     shoppingLocation: ['', [Validators.maxLength(80)]],
     preferredBrand: ['', [Validators.maxLength(80)]],
     substituteBrand: ['', [Validators.maxLength(80)]],
+    householdStaple: [false],
     buyOnlyOnPromo: [false],
     shoppingNotes: ['', [Validators.maxLength(160)]],
     estimatedUnitPrice: [
@@ -187,6 +199,7 @@ export class PantryPageComponent implements OnInit {
     shoppingLocation: ['', [Validators.maxLength(80)]],
     preferredBrand: ['', [Validators.maxLength(80)]],
     substituteBrand: ['', [Validators.maxLength(80)]],
+    householdStaple: [false],
     buyOnlyOnPromo: [false],
     shoppingNotes: ['', [Validators.maxLength(160)]],
     estimatedUnitPrice: [
@@ -421,6 +434,7 @@ export class PantryPageComponent implements OnInit {
       shoppingLocation: metadata.shoppingLocation ?? '',
       preferredBrand: metadata.preferredBrand ?? '',
       substituteBrand: metadata.substituteBrand ?? '',
+      householdStaple: metadata.householdStaple,
       buyOnlyOnPromo: metadata.buyOnlyOnPromo,
       shoppingNotes: metadata.shoppingNotes ?? '',
       estimatedUnitPrice: metadata.estimatedUnitPrice ?? null,
@@ -849,6 +863,30 @@ export class PantryPageComponent implements OnInit {
     return `${this.getShoppingPlanTotalLabel(items)}: ${totalValue}`;
   }
 
+  getStapleAttentionSummary(items: PantryStapleItem[]): string {
+    const attentionCount = items.filter((item) => item.status !== 'available').length;
+
+    if (items.length === 0) {
+      return 'Sin básicos marcados';
+    }
+
+    return attentionCount === 0
+      ? `${items.length} básicos cubiertos`
+      : `${attentionCount} de ${items.length} básicos por revisar`;
+  }
+
+  getStapleRestockSummary(items: PantryStapleItem[]): string {
+    const total = Number(
+      items
+        .reduce((sum, item) => sum + (item.estimatedRestockTotal ?? 0), 0)
+        .toFixed(2),
+    );
+
+    return total > 0
+      ? `Reposición estimada: ${this.formatShoppingPrice(total)}`
+      : 'Sin reposición estimada';
+  }
+
   buildShoppingPlanExportText(items: ShoppingPlanItem[]): string {
     if (items.length === 0) {
       return 'Lista de compras PantryList\nSin compras sugeridas.';
@@ -860,41 +898,43 @@ export class PantryPageComponent implements OnInit {
       '',
     ];
 
-    for (const item of items) {
-      const metadata = this.resolveShoppingMetadata(item.shoppingMetadata);
-      lines.push(
-        `- ${item.baseName}: ${this.formatQuantity(
-          item.suggestedPurchaseQuantity,
-          item.defaultUnit,
-        )}`,
-      );
+    for (const group of this.groupShoppingPlanByRoute(items)) {
+      lines.push(`${group.location}:`);
 
-      if (item.estimatedLineTotal !== undefined) {
-        lines.push(`  Aprox: ${this.formatShoppingPrice(item.estimatedLineTotal)}`);
+      for (const item of group.items) {
+        const metadata = this.resolveShoppingMetadata(item.shoppingMetadata);
+        lines.push(
+          `- ${item.baseName}: ${this.formatQuantity(
+            item.suggestedPurchaseQuantity,
+            item.defaultUnit,
+          )}`,
+        );
+
+        if (item.estimatedLineTotal !== undefined) {
+          lines.push(`  Aprox: ${this.formatShoppingPrice(item.estimatedLineTotal)}`);
+        }
+
+        if (metadata.preferredBrand) {
+          lines.push(`  Marca: ${metadata.preferredBrand}`);
+        }
+
+        if (metadata.substituteBrand) {
+          lines.push(`  Sustituto: ${metadata.substituteBrand}`);
+        }
+
+        if (metadata.buyOnlyOnPromo) {
+          lines.push('  Solo promo');
+        }
+
+        if (metadata.shoppingNotes) {
+          lines.push(`  Nota: ${metadata.shoppingNotes}`);
+        }
       }
 
-      if (metadata.shoppingLocation) {
-        lines.push(`  Comprar en: ${metadata.shoppingLocation}`);
-      }
-
-      if (metadata.preferredBrand) {
-        lines.push(`  Marca: ${metadata.preferredBrand}`);
-      }
-
-      if (metadata.substituteBrand) {
-        lines.push(`  Sustituto: ${metadata.substituteBrand}`);
-      }
-
-      if (metadata.buyOnlyOnPromo) {
-        lines.push('  Solo promo');
-      }
-
-      if (metadata.shoppingNotes) {
-        lines.push(`  Nota: ${metadata.shoppingNotes}`);
-      }
+      lines.push('');
     }
 
-    return lines.join('\n');
+    return lines.join('\n').trimEnd();
   }
 
   async copyShoppingPlan(items: ShoppingPlanItem[]): Promise<void> {
@@ -949,6 +989,7 @@ export class PantryPageComponent implements OnInit {
       shoppingLocation: '',
       preferredBrand: '',
       substituteBrand: '',
+      householdStaple: false,
       buyOnlyOnPromo: false,
       shoppingNotes: '',
       estimatedUnitPrice: null,
@@ -990,6 +1031,7 @@ export class PantryPageComponent implements OnInit {
     shoppingLocation?: string;
     preferredBrand?: string;
     substituteBrand?: string;
+    householdStaple?: boolean;
     buyOnlyOnPromo?: boolean;
     shoppingNotes?: string;
     estimatedUnitPrice?: number | string | null;
@@ -1000,6 +1042,7 @@ export class PantryPageComponent implements OnInit {
       shoppingLocation: this.toOptionalText(rawValue.shoppingLocation),
       preferredBrand: this.toOptionalText(rawValue.preferredBrand),
       substituteBrand: this.toOptionalText(rawValue.substituteBrand),
+      householdStaple: rawValue.householdStaple ?? false,
       buyOnlyOnPromo: rawValue.buyOnlyOnPromo ?? false,
       shoppingNotes: this.toOptionalText(rawValue.shoppingNotes),
     };
@@ -1203,9 +1246,34 @@ export class PantryPageComponent implements OnInit {
     metadata: ProductTypeShoppingMetadata | undefined,
   ): ProductTypeShoppingMetadata {
     return {
-      buyOnlyOnPromo: false,
       ...metadata,
+      householdStaple: metadata?.householdStaple ?? false,
+      buyOnlyOnPromo: metadata?.buyOnlyOnPromo ?? false,
     };
+  }
+
+  private groupShoppingPlanByRoute(
+    items: ShoppingPlanItem[],
+  ): { location: string; items: ShoppingPlanItem[] }[] {
+    const grouped = new Map<string, ShoppingPlanItem[]>();
+
+    for (const item of items) {
+      const location =
+        this.resolveShoppingMetadata(item.shoppingMetadata).shoppingLocation ||
+        'Sin tienda definida';
+      grouped.set(location, [...(grouped.get(location) ?? []), item]);
+    }
+
+    return Array.from(grouped.entries())
+      .map(([location, groupedItems]) => ({
+        location,
+        items: groupedItems,
+      }))
+      .sort((left, right) =>
+        left.location.localeCompare(right.location, 'es', {
+          sensitivity: 'base',
+        }),
+      );
   }
 
   private hasShoppingPriceEstimate(items: ShoppingPlanItem[]): boolean {

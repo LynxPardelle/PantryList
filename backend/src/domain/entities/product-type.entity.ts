@@ -45,6 +45,7 @@ export interface ProductTypeShoppingMetadataPrimitives {
   substituteBrand?: string;
   shoppingNotes?: string;
   estimatedUnitPrice?: number;
+  householdStaple: boolean;
   buyOnlyOnPromo: boolean;
 }
 
@@ -341,12 +342,18 @@ function normalizeShoppingMetadata(
   metadata: ProductTypeShoppingMetadataPatch | undefined,
 ): ProductTypeShoppingMetadataPrimitives {
   const buyOnlyOnPromo = metadata?.buyOnlyOnPromo ?? false;
+  const householdStaple = metadata?.householdStaple ?? false;
 
   if (typeof buyOnlyOnPromo !== 'boolean') {
     throw new Error('Buy-only-on-promo must be a boolean');
   }
 
+  if (typeof householdStaple !== 'boolean') {
+    throw new Error('Household staple must be a boolean');
+  }
+
   const normalized: ProductTypeShoppingMetadataPrimitives = {
+    householdStaple,
     buyOnlyOnPromo,
   };
 

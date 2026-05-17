@@ -54,6 +54,9 @@ export class ProductTypeShoppingMetadataResponseDto {
   estimatedUnitPrice?: number;
 
   @ApiProperty()
+  householdStaple: boolean;
+
+  @ApiProperty()
   buyOnlyOnPromo: boolean;
 }
 

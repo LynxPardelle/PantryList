@@ -61,6 +61,7 @@ describe('ProductTypesController archive and planning endpoints', () => {
       {
         storageLocation: 'Despensa',
         shoppingLocation: 'Mercado',
+        householdStaple: true,
         buyOnlyOnPromo: true,
         estimatedUnitPrice: 36.5,
       },
@@ -78,6 +79,7 @@ describe('ProductTypesController archive and planning endpoints', () => {
       shoppingMetadata: {
         storageLocation: 'Despensa',
         shoppingLocation: 'Mercado',
+        householdStaple: true,
         buyOnlyOnPromo: true,
         estimatedUnitPrice: 36.5,
       },

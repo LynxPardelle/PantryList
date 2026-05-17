@@ -21,6 +21,7 @@ export type ExpirationStatus = 'expired' | 'critical' | 'soon' | 'stable' | 'non
 export type ProductTypeSelectionMode = 'existing' | 'new';
 export type DepletionPeriod = 'day' | 'week' | 'month';
 export type ShoppingPlanUrgency = 'depleted' | 'critical' | 'upcoming';
+export type PantryStapleStatus = 'available' | 'low' | 'missing';
 export type PlanningSettingSource = 'profile' | 'productType';
 
 export const PRODUCT_UNITS: ProductUnit[] = [
@@ -101,6 +102,7 @@ export interface ProductTypeShoppingMetadata {
   substituteBrand?: string;
   shoppingNotes?: string;
   estimatedUnitPrice?: number;
+  householdStaple: boolean;
   buyOnlyOnPromo: boolean;
 }
 
@@ -222,6 +224,28 @@ export interface ShoppingPlanItem {
   shoppingMetadata?: ProductTypeShoppingMetadata;
 }
 
+export interface PantryStapleItem {
+  productTypeId: string;
+  baseName: string;
+  category: ProductCategory;
+  defaultUnit: ProductUnit;
+  totalQuantity: number;
+  estimatedCurrentQuantity?: number;
+  suggestedPurchaseQuantity: number;
+  estimatedUnitPrice?: number;
+  estimatedRestockTotal?: number;
+  status: PantryStapleStatus;
+  shoppingMetadata?: ProductTypeShoppingMetadata;
+}
+
+export interface PantryValueInsights {
+  stapleCount: number;
+  stapleAttentionCount: number;
+  estimatedShoppingTotal: number;
+  estimatedExpiringValue: number;
+  estimatedStapleRestockTotal: number;
+}
+
 export interface PantryOverview {
   userId: string;
   generatedAt: Date;
@@ -231,6 +255,8 @@ export interface PantryOverview {
   depletingItems: DepletingProductGroup[];
   shoppingPlanItems: ShoppingPlanItem[];
   shoppingPlanEstimatedTotal: number;
+  stapleItems: PantryStapleItem[];
+  valueInsights: PantryValueInsights;
 }
 
 export interface CreateProductTypeRequest {
@@ -390,6 +416,20 @@ export interface ApiShoppingPlanItem {
   shoppingMetadata?: ProductTypeShoppingMetadata;
 }
 
+export interface ApiPantryStapleItem {
+  productTypeId: string;
+  baseName: string;
+  category: ProductCategory;
+  defaultUnit: ProductUnit;
+  totalQuantity: number;
+  estimatedCurrentQuantity?: number;
+  suggestedPurchaseQuantity: number;
+  estimatedUnitPrice?: number;
+  estimatedRestockTotal?: number;
+  status: PantryStapleStatus;
+  shoppingMetadata?: ProductTypeShoppingMetadata;
+}
+
 export interface ApiPantryOverview {
   userId: string;
   generatedAt: string;
@@ -399,6 +439,8 @@ export interface ApiPantryOverview {
   depletingItems: ApiDepletingProductGroup[];
   shoppingPlanItems: ApiShoppingPlanItem[];
   shoppingPlanEstimatedTotal?: number;
+  stapleItems?: ApiPantryStapleItem[];
+  valueInsights?: PantryValueInsights;
 }
 
 export interface ApiInventoryLot {

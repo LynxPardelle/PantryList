@@ -69,6 +69,9 @@ export class ProductTypeShoppingMetadataDocument {
   estimatedUnitPrice?: number;
 
   @Prop({ required: true, default: false })
+  householdStaple: boolean;
+
+  @Prop({ required: true, default: false })
   buyOnlyOnPromo: boolean;
 }
 

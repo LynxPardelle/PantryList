@@ -112,7 +112,62 @@ export class ProductTypeShoppingMetadataResponseDto {
   estimatedUnitPrice?: number;
 
   @ApiProperty()
+  householdStaple: boolean;
+
+  @ApiProperty()
   buyOnlyOnPromo: boolean;
+}
+
+export class PantryStapleItemResponseDto {
+  @ApiProperty()
+  productTypeId: string;
+
+  @ApiProperty()
+  baseName: string;
+
+  @ApiProperty()
+  category: string;
+
+  @ApiProperty()
+  defaultUnit: string;
+
+  @ApiProperty()
+  totalQuantity: number;
+
+  @ApiProperty({ required: false })
+  estimatedCurrentQuantity?: number;
+
+  @ApiProperty()
+  suggestedPurchaseQuantity: number;
+
+  @ApiProperty({ required: false })
+  estimatedUnitPrice?: number;
+
+  @ApiProperty({ required: false })
+  estimatedRestockTotal?: number;
+
+  @ApiProperty()
+  status: string;
+
+  @ApiProperty({ type: ProductTypeShoppingMetadataResponseDto })
+  shoppingMetadata: ProductTypeShoppingMetadataResponseDto;
+}
+
+export class PantryValueInsightsResponseDto {
+  @ApiProperty()
+  stapleCount: number;
+
+  @ApiProperty()
+  stapleAttentionCount: number;
+
+  @ApiProperty()
+  estimatedShoppingTotal: number;
+
+  @ApiProperty()
+  estimatedExpiringValue: number;
+
+  @ApiProperty()
+  estimatedStapleRestockTotal: number;
 }
 
 export class DepletingProductGroupResponseDto {
@@ -283,4 +338,10 @@ export class PantryOverviewResponseDto {
 
   @ApiProperty()
   shoppingPlanEstimatedTotal: number;
+
+  @ApiProperty({ type: [PantryStapleItemResponseDto] })
+  stapleItems: PantryStapleItemResponseDto[];
+
+  @ApiProperty({ type: PantryValueInsightsResponseDto })
+  valueInsights: PantryValueInsightsResponseDto;
 }

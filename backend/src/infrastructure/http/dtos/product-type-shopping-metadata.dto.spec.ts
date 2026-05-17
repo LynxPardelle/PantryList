@@ -14,6 +14,7 @@ describe('ProductTypeShoppingMetadataDto', () => {
         substituteBrand: null,
         shoppingNotes: null,
         estimatedUnitPrice: null,
+        householdStaple: null,
         buyOnlyOnPromo: null,
       },
       { enableImplicitConversion: true },
@@ -27,6 +28,7 @@ describe('ProductTypeShoppingMetadataDto', () => {
     expect(errors.map((error) => error.property).sort()).toEqual([
       'buyOnlyOnPromo',
       'estimatedUnitPrice',
+      'householdStaple',
       'preferredBrand',
       'shoppingLocation',
       'shoppingNotes',

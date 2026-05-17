@@ -50,5 +50,10 @@ export class ProductTypeShoppingMetadataDto {
   @ApiPropertyOptional({ default: false })
   @ValidateIf((_, value) => value !== undefined)
   @IsBoolean()
+  householdStaple?: boolean;
+
+  @ApiPropertyOptional({ default: false })
+  @ValidateIf((_, value) => value !== undefined)
+  @IsBoolean()
   buyOnlyOnPromo?: boolean;
 }

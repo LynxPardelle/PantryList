@@ -45,6 +45,29 @@ export interface DepletingProductGroup {
 }
 
 export type ShoppingPlanUrgency = 'depleted' | 'critical' | 'upcoming';
+export type PantryStapleStatus = 'available' | 'low' | 'missing';
+
+export interface PantryStapleItem {
+  productTypeId: string;
+  baseName: string;
+  category: ProductCategory;
+  defaultUnit: QuantityUnit;
+  totalQuantity: number;
+  estimatedCurrentQuantity?: number;
+  suggestedPurchaseQuantity: number;
+  estimatedUnitPrice?: number;
+  estimatedRestockTotal?: number;
+  status: PantryStapleStatus;
+  shoppingMetadata: ProductTypeShoppingMetadataPrimitives;
+}
+
+export interface PantryValueInsights {
+  stapleCount: number;
+  stapleAttentionCount: number;
+  estimatedShoppingTotal: number;
+  estimatedExpiringValue: number;
+  estimatedStapleRestockTotal: number;
+}
 
 export interface ShoppingPlanItem {
   productTypeId: string;
@@ -106,4 +129,6 @@ export interface PantryOverview {
   depletingItems: DepletingProductGroup[];
   shoppingPlanItems: ShoppingPlanItem[];
   shoppingPlanEstimatedTotal: number;
+  stapleItems: PantryStapleItem[];
+  valueInsights: PantryValueInsights;
 }
