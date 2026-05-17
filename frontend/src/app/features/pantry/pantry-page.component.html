@@ -1171,6 +1171,49 @@
                         Eliminar definitivo
                       </button>
                     </div>
+                    @if (isDeleteConfirmationOpen('productType', productType.id)) {
+                      <div
+                        class="selection-card"
+                        role="group"
+                        [attr.aria-label]="'Confirmar eliminacion definitiva de ' + productType.baseName"
+                      >
+                        <label
+                          class="field"
+                          [for]="'delete-confirmation-product-type-' + productType.id"
+                        >
+                          <span>Escribe <strong>{{ productType.baseName }}</strong> para confirmar.</span>
+                          <input
+                            [id]="'delete-confirmation-product-type-' + productType.id"
+                            type="text"
+                            autocomplete="off"
+                            [value]="deleteConfirmationInput"
+                            [disabled]="mutationBusyKey !== null"
+                            (input)="updateDeleteConfirmationInput($any($event.target).value)"
+                          />
+                        </label>
+                        @if (deleteConfirmationError) {
+                          <p class="field-error" role="alert">{{ deleteConfirmationError }}</p>
+                        }
+                        <div class="lot-actions">
+                          <button
+                            type="button"
+                            class="secondary-button"
+                            [disabled]="mutationBusyKey !== null"
+                            (click)="cancelDeleteConfirmation()"
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            type="button"
+                            class="danger-button"
+                            [disabled]="!canConfirmDelete('productType', productType.id)"
+                            (click)="confirmDeleteConfirmation()"
+                          >
+                            Eliminar definitivo
+                          </button>
+                        </div>
+                      </div>
+                    }
                   </article>
                 }
 
@@ -1204,6 +1247,49 @@
                         Eliminar definitivo
                       </button>
                     </div>
+                    @if (isDeleteConfirmationOpen('inventoryLot', lot.id)) {
+                      <div
+                        class="selection-card"
+                        role="group"
+                        [attr.aria-label]="'Confirmar eliminacion definitiva de ' + getInventoryLotDisplayName(lot)"
+                      >
+                        <label
+                          class="field"
+                          [for]="'delete-confirmation-lot-' + lot.id"
+                        >
+                          <span>Escribe <strong>{{ getInventoryLotDisplayName(lot) }}</strong> para confirmar.</span>
+                          <input
+                            [id]="'delete-confirmation-lot-' + lot.id"
+                            type="text"
+                            autocomplete="off"
+                            [value]="deleteConfirmationInput"
+                            [disabled]="mutationBusyKey !== null"
+                            (input)="updateDeleteConfirmationInput($any($event.target).value)"
+                          />
+                        </label>
+                        @if (deleteConfirmationError) {
+                          <p class="field-error" role="alert">{{ deleteConfirmationError }}</p>
+                        }
+                        <div class="lot-actions">
+                          <button
+                            type="button"
+                            class="secondary-button"
+                            [disabled]="mutationBusyKey !== null"
+                            (click)="cancelDeleteConfirmation()"
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            type="button"
+                            class="danger-button"
+                            [disabled]="!canConfirmDelete('inventoryLot', lot.id)"
+                            (click)="confirmDeleteConfirmation()"
+                          >
+                            Eliminar definitivo
+                          </button>
+                        </div>
+                      </div>
+                    }
                   </article>
                 }
               </div>

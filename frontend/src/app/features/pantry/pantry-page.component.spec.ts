@@ -8,6 +8,7 @@ import { AuthFacade } from '../../core/services/auth.facade';
 import { PantryPageComponent } from './pantry-page.component';
 import { PantryService } from '../../core/services/pantry.service';
 import {
+  InventoryLot,
   PantryOverviewItem,
   ProductType,
   ShoppingPlanItem,
@@ -514,6 +515,47 @@ describe('PantryPageComponent', () => {
       inventoryLots: [],
     });
   });
+
+  it('requires inline confirmation before permanently deleting an archived product type', () => {
+    const productType = makeProductType();
+
+    component.deleteArchivedProductType(productType);
+
+    expect(component.deleteConfirmationTarget).toEqual({
+      kind: 'productType',
+      id: 'type-detergent',
+      expectedText: 'Detergente',
+    });
+    expect(pantryService.deleteProductType).not.toHaveBeenCalled();
+
+    component.updateDeleteConfirmationInput('Detergente equivocado');
+    component.confirmDeleteConfirmation();
+
+    expect(component.deleteConfirmationError).toContain('Detergente');
+    expect(pantryService.deleteProductType).not.toHaveBeenCalled();
+
+    component.updateDeleteConfirmationInput('Detergente');
+    component.confirmDeleteConfirmation();
+
+    expect(pantryService.deleteProductType).toHaveBeenCalledWith(
+      'type-detergent',
+      { confirmationText: 'Detergente' },
+    );
+    expect(component.deleteConfirmationTarget).toBeNull();
+  });
+
+  it('requires inline confirmation before permanently deleting an archived inventory lot', () => {
+    const inventoryLot = makeInventoryLot();
+
+    component.deleteArchivedInventoryLot(inventoryLot);
+    component.updateDeleteConfirmationInput('Lote familiar');
+    component.confirmDeleteConfirmation();
+
+    expect(pantryService.deleteInventoryLot).toHaveBeenCalledWith('lot-1', {
+      confirmationText: 'Lote familiar',
+    });
+    expect(component.deleteConfirmationTarget).toBeNull();
+  });
 });
 
 class AuthFacadeStub {
@@ -548,6 +590,41 @@ function makePantryGroup(
     },
     variants: [],
     lots: [],
+    ...overrides,
+  };
+}
+
+function makeProductType(overrides: Partial<ProductType> = {}): ProductType {
+  return {
+    id: 'type-detergent',
+    userId: 'user-1',
+    baseName: 'Detergente',
+    category: 'cleaning',
+    defaultUnit: 'lt',
+    planningSettings: {
+      planningEnabled: true,
+    },
+    archivedAt: new Date('2026-05-16T12:00:00.000Z'),
+    createdAt: new Date('2026-05-01T12:00:00.000Z'),
+    updatedAt: new Date('2026-05-16T12:00:00.000Z'),
+    ...overrides,
+  };
+}
+
+function makeInventoryLot(overrides: Partial<InventoryLot> = {}): InventoryLot {
+  return {
+    id: 'lot-1',
+    userId: 'user-1',
+    productTypeId: 'type-detergent',
+    variantName: 'Lote familiar',
+    quantity: 1,
+    unit: 'piezas',
+    expiresAt: null,
+    purchaseDate: null,
+    archivedAt: new Date('2026-05-16T12:00:00.000Z'),
+    expirationStatus: 'none',
+    createdAt: new Date('2026-05-01T12:00:00.000Z'),
+    updatedAt: new Date('2026-05-16T12:00:00.000Z'),
     ...overrides,
   };
 }

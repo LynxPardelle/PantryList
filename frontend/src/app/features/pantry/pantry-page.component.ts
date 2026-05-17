@@ -61,6 +61,12 @@ import {
   selectShoppingPlanItems,
 } from '../../store/pantry/pantry.selectors';
 
+interface DeleteConfirmationTarget {
+  kind: 'productType' | 'inventoryLot';
+  id: string;
+  expectedText: string;
+}
+
 @Component({
   selector: 'app-pantry-page',
   templateUrl: './pantry-page.component.html',
@@ -231,6 +237,9 @@ export class PantryPageComponent implements OnInit {
   archivedError: string | null = null;
   archivedItems: ArchivedPantryItems | null = null;
   mutationBusyKey: string | null = null;
+  deleteConfirmationTarget: DeleteConfirmationTarget | null = null;
+  deleteConfirmationInput = '';
+  deleteConfirmationError: string | null = null;
   editingPlanningProductTypeId: string | null = null;
   planningSettingsSavingProductTypeId: string | null = null;
   planningSettingsError: string | null = null;
@@ -685,30 +694,78 @@ export class PantryPageComponent implements OnInit {
   }
 
   deleteArchivedProductType(productType: ProductType): void {
-    const confirmationText = this.promptDeleteConfirmation(productType.baseName);
-
-    if (confirmationText === null) {
-      return;
-    }
-
-    this.runMutation(
-      `delete-type-${productType.id}`,
-      this.pantryService.deleteProductType(productType.id, { confirmationText }),
-      { refreshArchived: true },
-    );
+    this.startDeleteConfirmation({
+      kind: 'productType',
+      id: productType.id,
+      expectedText: productType.baseName,
+    });
   }
 
   deleteArchivedInventoryLot(lot: InventoryLot): void {
-    const displayName = this.getInventoryLotDisplayName(lot);
-    const confirmationText = this.promptDeleteConfirmation(displayName);
+    this.startDeleteConfirmation({
+      kind: 'inventoryLot',
+      id: lot.id,
+      expectedText: this.getInventoryLotDisplayName(lot),
+    });
+  }
 
-    if (confirmationText === null) {
+  updateDeleteConfirmationInput(value: string): void {
+    this.deleteConfirmationInput = value;
+    this.deleteConfirmationError = null;
+  }
+
+  cancelDeleteConfirmation(): void {
+    this.clearDeleteConfirmation();
+  }
+
+  isDeleteConfirmationOpen(
+    kind: DeleteConfirmationTarget['kind'],
+    id: string,
+  ): boolean {
+    return (
+      this.deleteConfirmationTarget?.kind === kind &&
+      this.deleteConfirmationTarget.id === id
+    );
+  }
+
+  canConfirmDelete(kind: DeleteConfirmationTarget['kind'], id: string): boolean {
+    return (
+      this.isDeleteConfirmationOpen(kind, id) &&
+      this.mutationBusyKey === null &&
+      this.deleteConfirmationInput.trim() ===
+        this.deleteConfirmationTarget?.expectedText
+    );
+  }
+
+  confirmDeleteConfirmation(): void {
+    const target = this.deleteConfirmationTarget;
+
+    if (!target) {
       return;
     }
 
+    const confirmationText = this.deleteConfirmationInput.trim();
+
+    if (confirmationText !== target.expectedText) {
+      this.deleteConfirmationError = `Escribe exactamente "${target.expectedText}" para confirmar.`;
+      this.changeDetector.markForCheck();
+      return;
+    }
+
+    const request =
+      target.kind === 'productType'
+        ? this.pantryService.deleteProductType(target.id, { confirmationText })
+        : this.pantryService.deleteInventoryLot(target.id, { confirmationText });
+    const busyKey =
+      target.kind === 'productType'
+        ? `delete-type-${target.id}`
+        : `delete-lot-${target.id}`;
+
+    this.clearDeleteConfirmation();
+
     this.runMutation(
-      `delete-lot-${lot.id}`,
-      this.pantryService.deleteInventoryLot(lot.id, { confirmationText }),
+      busyKey,
+      request,
       { refreshArchived: true },
     );
   }
@@ -1115,14 +1172,17 @@ export class PantryPageComponent implements OnInit {
     return window.confirm(message);
   }
 
-  private promptDeleteConfirmation(expectedText: string): string | null {
-    if (!isPlatformBrowser(this.platformId)) {
-      return null;
-    }
+  private startDeleteConfirmation(target: DeleteConfirmationTarget): void {
+    this.deleteConfirmationTarget = target;
+    this.deleteConfirmationInput = '';
+    this.deleteConfirmationError = null;
+    this.archivedError = null;
+  }
 
-    return window.prompt(
-      `Esta eliminacion es permanente. Escribe exactamente "${expectedText}" para confirmar.`,
-    );
+  private clearDeleteConfirmation(): void {
+    this.deleteConfirmationTarget = null;
+    this.deleteConfirmationInput = '';
+    this.deleteConfirmationError = null;
   }
 
   private toOptionalNumber(value: number | string | null | undefined): number | undefined {
