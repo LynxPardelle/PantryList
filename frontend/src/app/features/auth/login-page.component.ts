@@ -35,16 +35,28 @@ export class LoginPageComponent implements OnInit {
       map((providers) => this.toProviderOptions(providers)),
       catchError(() => of(this.toProviderOptions(['COGNITO']))),
     );
+  pendingProvider: string | null = null;
 
   ngOnInit(): void {
     this.authFacade.clearFeedback();
   }
 
   startCognitoLogin(provider?: string): void {
+    this.pendingProvider = provider ?? 'COGNITO';
     this.authFacade.startCognitoLogin(
       provider,
       this.route.snapshot.queryParamMap.get('redirectTo'),
     );
+  }
+
+  getPendingButtonLabel(provider: string): string {
+    return `Abriendo ${this.getProviderDisplayName(provider)}...`;
+  }
+
+  getLoginRedirectStatusMessage(): string {
+    return `Abriendo ${this.getProviderDisplayName(
+      this.pendingProvider ?? 'COGNITO',
+    )} en el flujo seguro de Cognito.`;
   }
 
   hasSocialProviders(options: LoginProviderOption[]): boolean {
@@ -74,6 +86,16 @@ export class LoginPageComponent implements OnInit {
     };
 
     return labels[provider] ?? `Entrar con ${provider}`;
+  }
+
+  private getProviderDisplayName(provider: string): string {
+    const labels: Record<string, string> = {
+      Google: 'Google',
+      Facebook: 'Facebook',
+      COGNITO: 'Cognito',
+    };
+
+    return labels[provider] ?? provider;
   }
 
   private getCallbackErrorMessage(error: string | null): string | null {

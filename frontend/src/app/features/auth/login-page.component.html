@@ -10,7 +10,11 @@
       </p>
     </div>
 
-    <div class="auth-form" aria-label="Opciones de inicio de sesi&oacute;n">
+    <div
+      class="auth-form"
+      aria-label="Opciones de inicio de sesi&oacute;n"
+      [attr.aria-busy]="(loginPending$ | async) ? 'true' : 'false'"
+    >
       @if (callbackError$ | async; as callbackError) {
         <p class="status-copy status-copy--error" role="alert">
           {{ callbackError }}
@@ -21,6 +25,17 @@
         <p class="status-copy status-copy--error" role="alert">{{ authError }}</p>
       }
 
+      @if (loginPending$ | async) {
+        <p
+          id="login-redirect-status"
+          class="status-copy"
+          role="status"
+          aria-live="polite"
+        >
+          {{ getLoginRedirectStatusMessage() }}
+        </p>
+      }
+
       @if (providerOptions$ | async; as providerOptions) {
         @for (option of providerOptions; track option.provider) {
           <button
@@ -28,9 +43,16 @@
             [class.secondary-button]="!option.primary"
             type="button"
             [disabled]="loginPending$ | async"
+            [attr.aria-describedby]="
+              (loginPending$ | async) ? 'login-redirect-status' : null
+            "
             (click)="startCognitoLogin(option.provider)"
           >
-            {{ option.label }}
+            {{
+              (loginPending$ | async) && pendingProvider === option.provider
+                ? getPendingButtonLabel(option.provider)
+                : option.label
+            }}
           </button>
         }
 
