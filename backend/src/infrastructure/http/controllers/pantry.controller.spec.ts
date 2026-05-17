@@ -37,7 +37,9 @@ describe('PantryController', () => {
     expect(exported.archived.inventoryLots[0].variantName).toBe('Botella');
     expect(getUserProfileUseCase.execute).toHaveBeenCalledWith('user-1');
     expect(getPantryOverviewUseCase.execute).toHaveBeenCalledWith('user-1');
-    expect(getArchivedPantryItemsUseCase.execute).toHaveBeenCalledWith('user-1');
+    expect(getArchivedPantryItemsUseCase.execute).toHaveBeenCalledWith(
+      'user-1',
+    );
   });
 });
 
