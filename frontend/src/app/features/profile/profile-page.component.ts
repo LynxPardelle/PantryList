@@ -6,11 +6,12 @@ import {
   PLATFORM_ID,
   inject,
 } from '@angular/core';
-import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { CommonModule, DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { finalize } from 'rxjs/operators';
+import { PantryService } from '../../core/services/pantry.service';
 import { ProfileService } from '../../core/services/profile.service';
 import { UserProfile } from '../../shared/models/profile.model';
 
@@ -25,15 +26,20 @@ import { UserProfile } from '../../shared/models/profile.model';
 export class ProfilePageComponent implements OnInit {
   private readonly formBuilder = inject(FormBuilder);
   private readonly profileService = inject(ProfileService);
+  private readonly pantryService = inject(PantryService);
+  private readonly document = inject(DOCUMENT);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly changeDetector = inject(ChangeDetectorRef);
 
   profile: UserProfile | null = null;
   loading = false;
   saving = false;
+  exporting = false;
   loadError: string | null = null;
   saveError: string | null = null;
   saveMessage: string | null = null;
+  exportError: string | null = null;
+  exportMessage: string | null = null;
 
   readonly preferencesForm = this.formBuilder.nonNullable.group({
     expirationWarningDays: [
@@ -122,6 +128,44 @@ export class ProfilePageComponent implements OnInit {
       });
   }
 
+  exportPantryData(): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    this.exporting = true;
+    this.exportError = null;
+    this.exportMessage = null;
+
+    this.pantryService
+      .exportPantryData()
+      .pipe(
+        finalize(() => {
+          this.exporting = false;
+          this.changeDetector.markForCheck();
+        }),
+      )
+      .subscribe({
+        next: (exportData) => {
+          try {
+            this.downloadJson(
+              exportData,
+              `pantrylist-export-${this.toSafeDateStamp(exportData.exportedAt)}.json`,
+            );
+            this.exportMessage = 'Export listo.';
+          } catch (error) {
+            this.exportError = this.getErrorMessage(error);
+          }
+
+          this.changeDetector.markForCheck();
+        },
+        error: (error) => {
+          this.exportError = this.getErrorMessage(error);
+          this.changeDetector.markForCheck();
+        },
+      });
+  }
+
   private getErrorMessage(error: unknown): string {
     if (error instanceof HttpErrorResponse) {
       const apiMessage =
@@ -134,5 +178,22 @@ export class ProfilePageComponent implements OnInit {
     }
 
     return 'No se pudo completar la solicitud.';
+  }
+
+  private downloadJson(data: unknown, filename: string): void {
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: 'application/json',
+    });
+    const url = URL.createObjectURL(blob);
+    const link = this.document.createElement('a');
+
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  private toSafeDateStamp(value: string): string {
+    return value.replace(/[:.]/g, '-');
   }
 }

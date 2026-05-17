@@ -1,4 +1,4 @@
-import { UserPreferences } from './profile.model';
+import { ApiUserProfile, UserPreferences } from './profile.model';
 
 export type ProductUnit =
   | 'lt'
@@ -420,4 +420,12 @@ export interface ApiInventoryLot {
 export interface ApiArchivedPantryItems {
   productTypes: ApiProductType[];
   inventoryLots: ApiInventoryLot[];
+}
+
+export interface ApiPantryExport {
+  formatVersion: 1;
+  exportedAt: string;
+  profile: ApiUserProfile;
+  overview: ApiPantryOverview;
+  archived: ApiArchivedPantryItems;
 }

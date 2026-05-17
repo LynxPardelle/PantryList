@@ -6,6 +6,7 @@ import { environment } from '../../../environments/environment';
 import {
   ApiInventoryLot,
   ApiArchivedPantryItems,
+  ApiPantryExport,
   ApiDepletingProductGroup,
   ApiPantryLotSummary,
   ApiPantryOverview,
@@ -42,6 +43,7 @@ export class PantryService {
   private readonly inventoryLotsUrl = `${this.apiUrl}/inventory-lots`;
   private readonly pantryOverviewUrl = `${this.apiUrl}/pantry/overview`;
   private readonly archivedPantryUrl = `${this.apiUrl}/pantry/archived`;
+  private readonly pantryExportUrl = `${this.apiUrl}/pantry/export`;
 
   constructor(private readonly http: HttpClient) {}
 
@@ -253,6 +255,12 @@ export class PantryService {
         ),
       })),
     );
+  }
+
+  exportPantryData(): Observable<ApiPantryExport> {
+    return this.http.get<ApiPantryExport>(this.pantryExportUrl, {
+      withCredentials: true,
+    });
   }
 
   private normalizeProductType(productType: ApiProductType): ProductType {

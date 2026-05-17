@@ -304,6 +304,56 @@ describe('PantryService', () => {
       ],
     });
   });
+
+  it('requests a portable pantry export', () => {
+    service.exportPantryData().subscribe((exportData) => {
+      expect(exportData.formatVersion).toBe(1);
+      expect(exportData.profile.email).toBe('chef@example.com');
+    });
+
+    const request = httpMock.expectOne(`${environment.apiUrl}/pantry/export`);
+    expect(request.request.withCredentials).toBeTrue();
+    request.flush({
+      formatVersion: 1,
+      exportedAt: '2026-05-17T00:00:00.000Z',
+      profile: {
+        id: 'user-1',
+        email: 'chef@example.com',
+        username: 'chef',
+        status: 'active',
+        connectedIdentityCount: 1,
+        createdAt: '2026-05-01T00:00:00.000Z',
+        updatedAt: '2026-05-02T00:00:00.000Z',
+        preferences: {
+          expirationWarningDays: 7,
+          showExpiredEntryAlert: true,
+          depletionWarningThresholdRatio: 1,
+          shoppingPlanLeadDays: 3,
+          showGuidanceTips: true,
+        },
+      },
+      overview: {
+        userId: 'user-1',
+        generatedAt: '2026-05-17T00:00:00.000Z',
+        preferences: {
+          expirationWarningDays: 7,
+          showExpiredEntryAlert: true,
+          depletionWarningThresholdRatio: 1,
+          shoppingPlanLeadDays: 3,
+          showGuidanceTips: true,
+        },
+        items: [],
+        expiringItems: [],
+        depletingItems: [],
+        shoppingPlanItems: [],
+        shoppingPlanEstimatedTotal: 0,
+      },
+      archived: {
+        productTypes: [],
+        inventoryLots: [],
+      },
+    });
+  });
 });
 
 function makeEffectivePlanningSettings() {

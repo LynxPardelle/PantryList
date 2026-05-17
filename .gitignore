@@ -20,6 +20,7 @@ build/
 cdk.out/
 tmp/
 out-tsc/
+Output/
 
 # IDE
 .vscode/

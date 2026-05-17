@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ReactiveFormsModule } from '@angular/forms';
 import { RouterTestingModule } from '@angular/router/testing';
 import { of, throwError } from 'rxjs';
+import { PantryService } from '../../core/services/pantry.service';
 import { ProfileService } from '../../core/services/profile.service';
 import { ProfilePageComponent } from './profile-page.component';
 
@@ -9,6 +10,7 @@ describe('ProfilePageComponent', () => {
   let fixture: ComponentFixture<ProfilePageComponent>;
   let component: ProfilePageComponent;
   let profileService: jasmine.SpyObj<ProfileService>;
+  let pantryService: jasmine.SpyObj<PantryService>;
 
   beforeEach(async () => {
     profileService = jasmine.createSpyObj<ProfileService>('ProfileService', [
@@ -42,6 +44,51 @@ describe('ProfilePageComponent', () => {
         showGuidanceTips: true,
       }),
     );
+    pantryService = jasmine.createSpyObj<PantryService>('PantryService', [
+      'exportPantryData',
+    ]);
+    pantryService.exportPantryData.and.returnValue(
+      of({
+        formatVersion: 1,
+        exportedAt: '2026-05-17T00:00:00.000Z',
+        profile: {
+          id: 'user-1',
+          email: 'chef@example.com',
+          username: 'chef',
+          status: 'active',
+          connectedIdentityCount: 2,
+          createdAt: '2026-04-01T00:00:00.000Z',
+          updatedAt: '2026-04-02T00:00:00.000Z',
+          preferences: {
+            expirationWarningDays: 10,
+            showExpiredEntryAlert: false,
+            depletionWarningThresholdRatio: 1.5,
+            shoppingPlanLeadDays: 5,
+            showGuidanceTips: false,
+          },
+        },
+        overview: {
+          userId: 'user-1',
+          generatedAt: '2026-05-17T00:00:00.000Z',
+          preferences: {
+            expirationWarningDays: 10,
+            showExpiredEntryAlert: false,
+            depletionWarningThresholdRatio: 1.5,
+            shoppingPlanLeadDays: 5,
+            showGuidanceTips: false,
+          },
+          items: [],
+          expiringItems: [],
+          depletingItems: [],
+          shoppingPlanItems: [],
+          shoppingPlanEstimatedTotal: 0,
+        },
+        archived: {
+          productTypes: [],
+          inventoryLots: [],
+        },
+      }),
+    );
 
     await TestBed.configureTestingModule({
       imports: [ProfilePageComponent, ReactiveFormsModule, RouterTestingModule],
@@ -49,6 +96,10 @@ describe('ProfilePageComponent', () => {
         {
           provide: ProfileService,
           useValue: profileService,
+        },
+        {
+          provide: PantryService,
+          useValue: pantryService,
         },
       ],
     }).compileComponents();
@@ -94,5 +145,35 @@ describe('ProfilePageComponent', () => {
 
     expect(component.preferencesForm.enabled).toBeTrue();
     expect(component.saveError).toBe('API failed');
+  });
+
+  it('downloads a portable pantry export', () => {
+    spyOn(window.URL, 'createObjectURL').and.returnValue('blob:pantry-export');
+    spyOn(window.URL, 'revokeObjectURL');
+    spyOn(HTMLAnchorElement.prototype, 'click').and.stub();
+
+    component.exportPantryData();
+
+    expect(pantryService.exportPantryData).toHaveBeenCalled();
+    expect(component.exportMessage).toBe('Export listo.');
+  });
+
+  it('shows an error when pantry export fails', () => {
+    pantryService.exportPantryData.and.returnValue(
+      throwError(() => new Error('Export failed')),
+    );
+
+    component.exportPantryData();
+
+    expect(component.exportError).toBe('Export failed');
+  });
+
+  it('shows an error when pantry export download cannot be prepared', () => {
+    spyOn(window.URL, 'createObjectURL').and.throwError('Blob failed');
+
+    component.exportPantryData();
+
+    expect(component.exportMessage).toBeNull();
+    expect(component.exportError).toBe('Blob failed');
   });
 });
