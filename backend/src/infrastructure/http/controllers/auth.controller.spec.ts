@@ -304,16 +304,19 @@ describe('AuthController Cognito flow', () => {
     expect(response).toEqual({ logoutUrl: 'https://cognito.example/logout' });
   });
 
-  it('revokes refresh token, clears local cookies, and redirects for browser logout forms', async () => {
+  it('requires XSRF, revokes refresh token, clears local cookies, and redirects for browser logout forms', async () => {
     const { controller, authCookieService, tokenClient } = makeController();
+    const request = { method: 'POST' } as FastifyRequest;
     const reply = makeReply();
 
-    await controller.logoutFromBrowser({} as FastifyRequest, reply);
+    await controller.logoutFromBrowser(request, reply);
 
     expect(tokenClient.revoke.mock.calls[0]).toEqual([
       { refreshToken: 'refresh-token' },
     ]);
-    expect(authCookieService.ensureXsrfForRequest).not.toHaveBeenCalled();
+    expect(authCookieService.ensureXsrfForRequest).toHaveBeenCalledWith(
+      request,
+    );
     expect(authCookieService.clearSessionCookies.mock.calls[0]).toEqual([
       reply,
     ]);

@@ -5,13 +5,16 @@ import {
   Param,
   Post,
   Put,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { FastifyRequest } from 'fastify';
 import { CreateProductUseCase } from '../../../application/use-cases/create-product.use-case';
 import { GetProductByIdUseCase } from '../../../application/use-cases/get-product-by-id.use-case';
 import { UpdateProductQuantityUseCase } from '../../../application/use-cases/update-product-quantity.use-case';
 import { GetProductsByUserUseCase } from '../../../application/use-cases/get-products-by-user.use-case';
+import { AuthCookieService } from '../auth/auth-cookie.service';
 import { AccessTokenGuard } from '../auth/access-token.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
@@ -30,6 +33,7 @@ export class ProductsController {
     private readonly getProductByIdUseCase: GetProductByIdUseCase,
     private readonly updateProductQuantityUseCase: UpdateProductQuantityUseCase,
     private readonly getProductsByUserUseCase: GetProductsByUserUseCase,
+    private readonly authCookieService: AuthCookieService,
   ) {}
 
   @Post()
@@ -37,7 +41,10 @@ export class ProductsController {
   async create(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() createProductDto: CreateProductDto,
+    @Req() request: FastifyRequest,
   ): Promise<ProductResponseDto> {
+    this.authCookieService.ensureXsrfForRequest(request);
+
     const command: CreateProductCommand = {
       userId: currentUser.userId,
       title: createProductDto.title,
@@ -81,7 +88,10 @@ export class ProductsController {
     @Param('id') id: string,
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() updateQuantityDto: UpdateQuantityDto,
+    @Req() request: FastifyRequest,
   ): Promise<ProductResponseDto> {
+    this.authCookieService.ensureXsrfForRequest(request);
+
     const product = await this.updateProductQuantityUseCase.execute(
       id,
       currentUser.userId,

@@ -58,7 +58,10 @@ export class ProductTypesController {
   async create(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() createProductTypeDto: CreateProductTypeDto,
+    @Req() request: FastifyRequest,
   ): Promise<ProductTypeResponseDto> {
+    this.authCookieService.ensureXsrfForRequest(request);
+
     const productType = await this.createProductTypeUseCase.execute({
       userId: currentUser.userId,
       baseName: createProductTypeDto.baseName,

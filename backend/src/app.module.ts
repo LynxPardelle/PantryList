@@ -22,6 +22,7 @@ import { CognitoAuthTransactionService } from './application/services/cognito-au
 import { CognitoProfileSyncService } from './application/services/cognito-profile-sync.service';
 import { ArchiveInventoryLotUseCase } from './application/use-cases/archive-inventory-lot.use-case';
 import { ArchiveProductTypeUseCase } from './application/use-cases/archive-product-type.use-case';
+import { CloseShoppingPurchaseUseCase } from './application/use-cases/close-shopping-purchase.use-case';
 import { ConsumeInventoryLotUseCase } from './application/use-cases/consume-inventory-lot.use-case';
 import { CreateInventoryLotUseCase } from './application/use-cases/create-inventory-lot.use-case';
 import { CreateProductUseCase } from './application/use-cases/create-product.use-case';
@@ -320,6 +321,7 @@ const inventoryLotRepositoryProvider = useDynamoDb
     CognitoTokenClientService,
     CognitoTokenVerifierService,
     GetCurrentUserUseCase,
+    CloseShoppingPurchaseUseCase,
     CreateProductUseCase,
     CreateProductTypeUseCase,
     CreateInventoryLotUseCase,

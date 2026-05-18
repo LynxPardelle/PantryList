@@ -209,6 +209,7 @@ export class AuthController {
     @Res() reply: FastifyReply,
   ): Promise<void> {
     this.ensureCognitoEnabled();
+    this.authCookieService.ensureXsrfForRequest(request);
     await this.revokeRefreshTokenIfPresent(request);
     this.authCookieService.clearSessionCookies(reply);
     reply.redirect(this.authUrlBuilder.buildLogoutUrl(), 302);

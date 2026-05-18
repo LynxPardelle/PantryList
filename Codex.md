@@ -7,6 +7,8 @@
 - Keep research writeups in `docs/research/`. Naming and branding research belongs in `docs/research/naming/`.
 - Keep competitor and future-feature research in `docs/research/features/`.
 - Keep monetization research in `docs/research/monetization/`.
+- When closing any improvement batch, show the full remaining feature backlog with completed items removed, grouped by source/section, and include a short prioritized recommendation for the next batch.
+- Use `caveman` communication style by default for this project unless the user explicitly asks for normal mode.
 
 ## Current Project Direction
 
@@ -19,3 +21,4 @@
 - The next `Household Basics + Visible Savings` package uses existing product-type shopping metadata and derived pantry overview fields instead of adding an event-history table. It adds household staples, staple attention/restock insights, value summaries, and shopping export grouping by store route. Detailed consumption history, collaboration, AI/receipt capture, payments, and retailer integrations remain deferred.
 - Dokploy owns the actual production auto deploy after `main` changes. The GitHub workflow uses a `production-smoke` job after merge to verify `https://pantrylist.lynxpardelle.com/healthz`, `/api/healthz`, and no-cache HTML headers. Runtime Docker images intentionally remove global `npm/npx` because Trivy flagged the base image npm dependency tree; the apps run with `node` directly in production.
 - Production authenticated audits should cover stale-session behavior, not only anonymous redirects. Protected frontend services now send credentials explicitly, and lot registration has a timeout so the UI cannot stay on `Registrando lote...` indefinitely when a protected request hangs.
+- The next approved improvement direction is a six-block package, in order: privacy controls/data lifecycle, pagination/query limits, observability baseline, shopping mode plus close-purchase flow, offline-capable PWA behavior for shopping, and household sharing lite. The shopping-mode block may include mobile checklist UX, keep-screen-awake support, real paid-price capture, closing purchases into lots, planned-vs-real budget comparison, and robust Web Share/WhatsApp/copy fallback.

@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ReactiveFormsModule } from '@angular/forms';
 import { RouterTestingModule } from '@angular/router/testing';
 import { of, throwError } from 'rxjs';
+import { AuthFacade } from '../../core/services/auth.facade';
 import { PantryService } from '../../core/services/pantry.service';
 import { ProfileService } from '../../core/services/profile.service';
 import { ProfilePageComponent } from './profile-page.component';
@@ -9,10 +10,12 @@ import { ProfilePageComponent } from './profile-page.component';
 describe('ProfilePageComponent', () => {
   let fixture: ComponentFixture<ProfilePageComponent>;
   let component: ProfilePageComponent;
+  let authFacade: jasmine.SpyObj<AuthFacade>;
   let profileService: jasmine.SpyObj<ProfileService>;
   let pantryService: jasmine.SpyObj<PantryService>;
 
   beforeEach(async () => {
+    authFacade = jasmine.createSpyObj<AuthFacade>('AuthFacade', ['logout']);
     profileService = jasmine.createSpyObj<ProfileService>('ProfileService', [
       'getProfile',
       'updatePreferences',
@@ -94,6 +97,10 @@ describe('ProfilePageComponent', () => {
       imports: [ProfilePageComponent, ReactiveFormsModule, RouterTestingModule],
       providers: [
         {
+          provide: AuthFacade,
+          useValue: authFacade,
+        },
+        {
           provide: ProfileService,
           useValue: profileService,
         },
@@ -131,6 +138,12 @@ describe('ProfilePageComponent', () => {
 
     expect(profileService.updatePreferences).not.toHaveBeenCalled();
     expect(component.saveError).toContain('Revisa');
+  });
+
+  it('delegates logout to the auth facade', () => {
+    component.logout();
+
+    expect(authFacade.logout).toHaveBeenCalled();
   });
 
   it('keeps the form editable when the preference update fails', () => {

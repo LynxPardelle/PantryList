@@ -1,11 +1,17 @@
 import { InventoryLot } from '../../../domain/entities/inventory-lot.entity';
 import { QuantityUnit } from '../../../domain/enums';
+import {
+  MAX_ACTIVE_INVENTORY_LOTS_PER_USER,
+  MAX_ARCHIVED_INVENTORY_LOTS_PER_USER,
+  MAX_INVENTORY_LOTS_PER_PRODUCT_TYPE,
+} from '../../../application/constants/query-limits';
 import { ProductTypeId } from '../../../domain/value-objects/product-type-id.vo';
 import { UserId } from '../../../domain/value-objects/user-id.vo';
 import { MongoInventoryLotRepository } from './mongodb-inventory-lot.repository';
 
 type QueryResult<T> = {
   sort: () => QueryResult<T>;
+  limit: (limit: number) => QueryResult<T>;
   lean: () => {
     exec: () => Promise<T>;
   };
@@ -29,12 +35,17 @@ describe('MongoInventoryLotRepository archive-aware queries', () => {
       updatedAt: new Date('2026-04-20T00:00:00.000Z'),
     });
 
-  const makeQuery = <T>(value: T): QueryResult<T> => ({
-    sort: () => makeQuery(value),
-    lean: () => ({
-      exec: () => Promise.resolve(value),
-    }),
-  });
+  const makeQuery = <T>(value: T): QueryResult<T> => {
+    const query: QueryResult<T> = {
+      sort: () => query,
+      limit: () => query,
+      lean: () => ({
+        exec: () => Promise.resolve(value),
+      }),
+    };
+
+    return query;
+  };
 
   it('persists archive state', async () => {
     const lot = makeInventoryLot();
@@ -67,13 +78,15 @@ describe('MongoInventoryLotRepository archive-aware queries', () => {
   });
 
   it('excludes archived lots from active user listings', async () => {
+    const query = makeQuery([]);
     const model = {
       findOneAndUpdate: jest.fn(),
       findOne: jest.fn(),
-      find: jest.fn().mockReturnValue(makeQuery([])),
+      find: jest.fn().mockReturnValue(query),
       updateMany: jest.fn(),
       deleteOne: jest.fn(),
     };
+    jest.spyOn(query, 'limit');
 
     const repository = new MongoInventoryLotRepository(model as never);
 
@@ -83,16 +96,21 @@ describe('MongoInventoryLotRepository archive-aware queries', () => {
       userId: userId.toString(),
       archivedAt: { $exists: false },
     });
+    expect(query.limit).toHaveBeenCalledWith(
+      MAX_ACTIVE_INVENTORY_LOTS_PER_USER,
+    );
   });
 
   it('excludes archived lots from active product type listings', async () => {
+    const query = makeQuery([]);
     const model = {
       findOneAndUpdate: jest.fn(),
       findOne: jest.fn(),
-      find: jest.fn().mockReturnValue(makeQuery([])),
+      find: jest.fn().mockReturnValue(query),
       updateMany: jest.fn(),
       deleteOne: jest.fn(),
     };
+    jest.spyOn(query, 'limit');
 
     const repository = new MongoInventoryLotRepository(model as never);
 
@@ -102,17 +120,22 @@ describe('MongoInventoryLotRepository archive-aware queries', () => {
       productTypeId: productTypeId.toString(),
       archivedAt: { $exists: false },
     });
+    expect(query.limit).toHaveBeenCalledWith(
+      MAX_INVENTORY_LOTS_PER_PRODUCT_TYPE,
+    );
   });
 
   it('lists archived lots separately', async () => {
     const lot = makeInventoryLot().toPrimitives();
+    const query = makeQuery([lot]);
     const model = {
       findOneAndUpdate: jest.fn(),
       findOne: jest.fn(),
-      find: jest.fn().mockReturnValue(makeQuery([lot])),
+      find: jest.fn().mockReturnValue(query),
       updateMany: jest.fn(),
       deleteOne: jest.fn(),
     };
+    jest.spyOn(query, 'limit');
 
     const repository = new MongoInventoryLotRepository(model as never);
 
@@ -122,6 +145,9 @@ describe('MongoInventoryLotRepository archive-aware queries', () => {
       userId: userId.toString(),
       archivedAt: { $exists: true },
     });
+    expect(query.limit).toHaveBeenCalledWith(
+      MAX_ARCHIVED_INVENTORY_LOTS_PER_USER,
+    );
     expect(archived[0].toPrimitives()).toMatchObject({
       id: 'lot-1',
       archivedReason: 'Regalado',

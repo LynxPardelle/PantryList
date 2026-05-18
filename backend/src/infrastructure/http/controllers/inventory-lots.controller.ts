@@ -54,7 +54,10 @@ export class InventoryLotsController {
   async create(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() createInventoryLotDto: CreateInventoryLotDto,
+    @Req() request: FastifyRequest,
   ): Promise<InventoryLotResponseDto> {
+    this.authCookieService.ensureXsrfForRequest(request);
+
     const inventoryLot = await this.createInventoryLotUseCase.execute({
       userId: currentUser.userId,
       productTypeId: createInventoryLotDto.productTypeId,
@@ -111,7 +114,10 @@ export class InventoryLotsController {
     @Param('id') id: string,
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() consumeInventoryLotDto: ConsumeInventoryLotDto,
+    @Req() request: FastifyRequest,
   ): Promise<InventoryLotResponseDto | null> {
+    this.authCookieService.ensureXsrfForRequest(request);
+
     const inventoryLot = await this.consumeInventoryLotUseCase.execute(
       id,
       currentUser.userId,

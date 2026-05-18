@@ -312,6 +312,20 @@ export interface CreateInventoryLotRequest {
   purchaseDate?: string;
 }
 
+export interface CloseShoppingPurchaseItemRequest {
+  productTypeId: string;
+  variantName?: string;
+  quantity: number;
+  unit: ProductUnit;
+  paidUnitPrice?: number;
+  shoppingLocation?: string;
+  expiresAt?: string;
+}
+
+export interface CloseShoppingPurchaseRequest {
+  items: CloseShoppingPurchaseItemRequest[];
+}
+
 export interface ConsumeInventoryLotRequest {
   quantity: number;
 }
