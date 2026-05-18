@@ -31,12 +31,12 @@ jobs:
         set -euo pipefail
         curl --fail --show-error --silent --location \
           "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
-          --output gitleaks.tar.gz
+          --output "gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
         curl --fail --show-error --silent --location \
           "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_checksums.txt" \
           --output gitleaks_checksums.txt
         grep "gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" gitleaks_checksums.txt | sha256sum --check -
-        tar -xzf gitleaks.tar.gz gitleaks
+        tar -xzf "gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" gitleaks
         sudo install -m 0755 gitleaks /usr/local/bin/gitleaks
 
     - name: Scan repository secrets
