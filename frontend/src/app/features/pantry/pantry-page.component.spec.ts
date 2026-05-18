@@ -417,10 +417,49 @@ describe('PantryPageComponent', () => {
     expect(exportText).toContain('Lista de compras PantryList');
     expect(exportText).toContain('Total estimado: 42.50 moneda local');
     expect(exportText).toContain('Mayoreo:');
+    expect(exportText).toContain('Subtotal ruta: 42.50 moneda local');
     expect(exportText).toContain('- Detergente: 1 lt');
     expect(exportText).toContain('Marca: Marca hogar');
     expect(exportText).toContain('Solo promo');
     expect(exportText).toContain('Nota: Comprar solo si hay promo');
+    expect((component as any).getWhatsAppShoppingUrl(exportText)).toBe(
+      `https://wa.me/?text=${encodeURIComponent(exportText)}`,
+    );
+  });
+
+  it('compares the smart basket against a stored household budget', () => {
+    (component as any).saveShoppingBudget(800);
+
+    expect((component as any).shoppingBudget).toBe(800);
+    expect((component as any).getBudgetStatusLabel(650)).toBe(
+      'Dentro del presupuesto: quedan 150.00 moneda local',
+    );
+    expect((component as any).getBudgetStatusLabel(925)).toBe(
+      'Sobre presupuesto por 125.00 moneda local',
+    );
+  });
+
+  it('parses quick capture lines for offline purchase drafts', () => {
+    const parsed = (component as any).parseQuickCaptureText(
+      'Arroz | 2 kg | Mercado | 35\nShampoo | 1 botella | Farmacia',
+    );
+
+    expect(parsed).toEqual([
+      {
+        name: 'Arroz',
+        quantity: 2,
+        unit: 'kg',
+        shoppingLocation: 'Mercado',
+        estimatedUnitPrice: 35,
+      },
+      {
+        name: 'Shampoo',
+        quantity: 1,
+        unit: 'botella',
+        shoppingLocation: 'Farmacia',
+        estimatedUnitPrice: undefined,
+      },
+    ]);
   });
 
   it('summarizes household staple attention and restock estimates', () => {

@@ -8,4 +8,17 @@ platformBrowser()
       provideZoneChangeDetection({ eventCoalescing: true }),
     ],
   })
+  .then(() => registerPantryListServiceWorker())
   .catch((err) => console.error(err));
+
+function registerPantryListServiceWorker(): void {
+  if (!('serviceWorker' in navigator)) {
+    return;
+  }
+
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/pantrylist-sw.js').catch(() => {
+      // Offline support is optional; a failed registration must not block login.
+    });
+  });
+}

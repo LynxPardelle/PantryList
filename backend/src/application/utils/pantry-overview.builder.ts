@@ -9,6 +9,7 @@ import { calculateGroupedDepletionForecast } from '../services/depletion-forecas
 import {
   DepletingProductGroup,
   ExpiringProductGroup,
+  PriceReferenceItem,
   PantryStapleItem,
   PantryStapleStatus,
   PantryLotSummary,
@@ -16,8 +17,11 @@ import {
   PantryOverviewItem,
   ProductTypeEffectivePlanningSettings,
   ShoppingPlanItem,
+  ShoppingRouteGroup,
   ShoppingPlanUrgency,
 } from '../read-models/pantry-overview.read-model';
+
+const DEFAULT_SHOPPING_LOCATION = 'Sin tienda definida';
 
 export function buildPantryOverview(
   userId: string,
@@ -256,6 +260,8 @@ export function buildPantryOverview(
       .reduce((sum, item) => sum + (item.estimatedLineTotal ?? 0), 0)
       .toFixed(2),
   );
+  const shoppingRouteGroups = buildShoppingRouteGroups(shoppingPlanItems);
+  const priceReferenceItems = buildPriceReferenceItems(activeProductTypes);
   const stapleItems = items
     .filter((item) => item.shoppingMetadata.householdStaple)
     .map<PantryStapleItem>((item) => {
@@ -309,6 +315,8 @@ export function buildPantryOverview(
     depletingItems,
     shoppingPlanItems,
     shoppingPlanEstimatedTotal,
+    shoppingRouteGroups,
+    priceReferenceItems,
     stapleItems,
     valueInsights: {
       stapleCount: stapleItems.length,
@@ -320,6 +328,70 @@ export function buildPantryOverview(
       estimatedStapleRestockTotal,
     },
   };
+}
+
+function buildShoppingRouteGroups(
+  shoppingPlanItems: ShoppingPlanItem[],
+): ShoppingRouteGroup[] {
+  const grouped = new Map<string, ShoppingPlanItem[]>();
+
+  for (const item of shoppingPlanItems) {
+    const location =
+      item.shoppingMetadata.shoppingLocation ?? DEFAULT_SHOPPING_LOCATION;
+    grouped.set(location, [...(grouped.get(location) ?? []), item]);
+  }
+
+  return Array.from(grouped.entries())
+    .map(([shoppingLocation, items]) => ({
+      shoppingLocation,
+      itemCount: items.length,
+      urgentItemCount: items.filter((item) => item.urgency !== 'upcoming')
+        .length,
+      promoOnlyCount: items.filter(
+        (item) => item.shoppingMetadata.buyOnlyOnPromo,
+      ).length,
+      missingPriceCount: items.filter(
+        (item) => item.estimatedLineTotal === undefined,
+      ).length,
+      estimatedTotal: Number(
+        items
+          .reduce((sum, item) => sum + (item.estimatedLineTotal ?? 0), 0)
+          .toFixed(2),
+      ),
+      nextRecommendedPurchaseAt: items
+        .map((item) => item.recommendedPurchaseAt)
+        .sort((left, right) => left.getTime() - right.getTime())[0],
+      items: [...items].sort(compareShoppingPlanItem),
+    }))
+    .sort(compareShoppingRouteGroup);
+}
+
+function buildPriceReferenceItems(
+  productTypes: ProductType[],
+): PriceReferenceItem[] {
+  return productTypes
+    .filter(
+      (productType) =>
+        productType.shoppingMetadata.estimatedUnitPrice !== undefined,
+    )
+    .map((productType) => {
+      const metadata = productType.shoppingMetadata;
+
+      return {
+        productTypeId: productType.id.toString(),
+        baseName: productType.baseName,
+        category: productType.category,
+        defaultUnit: productType.defaultUnit,
+        shoppingLocation:
+          metadata.shoppingLocation ?? DEFAULT_SHOPPING_LOCATION,
+        preferredBrand: metadata.preferredBrand,
+        substituteBrand: metadata.substituteBrand,
+        estimatedUnitPrice: metadata.estimatedUnitPrice!,
+        buyOnlyOnPromo: metadata.buyOnlyOnPromo,
+        updatedAt: productType.updatedAt,
+      };
+    })
+    .sort(comparePriceReferenceItem);
 }
 
 function getEstimatedLineTotal(
@@ -420,6 +492,50 @@ function compareShoppingPlanItem(
 
   if (dateDifference !== 0) {
     return dateDifference;
+  }
+
+  return compareText(left.baseName, right.baseName);
+}
+
+function compareShoppingRouteGroup(
+  left: ShoppingRouteGroup,
+  right: ShoppingRouteGroup,
+): number {
+  const dateDifference =
+    left.nextRecommendedPurchaseAt.getTime() -
+    right.nextRecommendedPurchaseAt.getTime();
+
+  if (dateDifference !== 0) {
+    return dateDifference;
+  }
+
+  const missingPriceDifference =
+    left.missingPriceCount - right.missingPriceCount;
+
+  if (missingPriceDifference !== 0) {
+    return missingPriceDifference;
+  }
+
+  const urgentDifference = right.urgentItemCount - left.urgentItemCount;
+
+  if (urgentDifference !== 0) {
+    return urgentDifference;
+  }
+
+  return compareText(left.shoppingLocation, right.shoppingLocation);
+}
+
+function comparePriceReferenceItem(
+  left: PriceReferenceItem,
+  right: PriceReferenceItem,
+): number {
+  const locationDifference = compareText(
+    left.shoppingLocation,
+    right.shoppingLocation,
+  );
+
+  if (locationDifference !== 0) {
+    return locationDifference;
   }
 
   return compareText(left.baseName, right.baseName);

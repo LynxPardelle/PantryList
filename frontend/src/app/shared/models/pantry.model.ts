@@ -224,6 +224,30 @@ export interface ShoppingPlanItem {
   shoppingMetadata?: ProductTypeShoppingMetadata;
 }
 
+export interface ShoppingRouteGroup {
+  shoppingLocation: string;
+  itemCount: number;
+  urgentItemCount: number;
+  promoOnlyCount: number;
+  missingPriceCount: number;
+  estimatedTotal: number;
+  nextRecommendedPurchaseAt: Date;
+  items: ShoppingPlanItem[];
+}
+
+export interface PriceReferenceItem {
+  productTypeId: string;
+  baseName: string;
+  category: ProductCategory;
+  defaultUnit: ProductUnit;
+  shoppingLocation: string;
+  preferredBrand?: string;
+  substituteBrand?: string;
+  estimatedUnitPrice: number;
+  buyOnlyOnPromo: boolean;
+  updatedAt: Date;
+}
+
 export interface PantryStapleItem {
   productTypeId: string;
   baseName: string;
@@ -255,6 +279,8 @@ export interface PantryOverview {
   depletingItems: DepletingProductGroup[];
   shoppingPlanItems: ShoppingPlanItem[];
   shoppingPlanEstimatedTotal: number;
+  shoppingRouteGroups: ShoppingRouteGroup[];
+  priceReferenceItems: PriceReferenceItem[];
   stapleItems: PantryStapleItem[];
   valueInsights: PantryValueInsights;
 }
@@ -416,6 +442,30 @@ export interface ApiShoppingPlanItem {
   shoppingMetadata?: ProductTypeShoppingMetadata;
 }
 
+export interface ApiShoppingRouteGroup {
+  shoppingLocation: string;
+  itemCount: number;
+  urgentItemCount: number;
+  promoOnlyCount: number;
+  missingPriceCount: number;
+  estimatedTotal: number;
+  nextRecommendedPurchaseAt: string;
+  items: ApiShoppingPlanItem[];
+}
+
+export interface ApiPriceReferenceItem {
+  productTypeId: string;
+  baseName: string;
+  category: ProductCategory;
+  defaultUnit: ProductUnit;
+  shoppingLocation: string;
+  preferredBrand?: string;
+  substituteBrand?: string;
+  estimatedUnitPrice: number;
+  buyOnlyOnPromo: boolean;
+  updatedAt: string;
+}
+
 export interface ApiPantryStapleItem {
   productTypeId: string;
   baseName: string;
@@ -439,6 +489,8 @@ export interface ApiPantryOverview {
   depletingItems: ApiDepletingProductGroup[];
   shoppingPlanItems: ApiShoppingPlanItem[];
   shoppingPlanEstimatedTotal?: number;
+  shoppingRouteGroups?: ApiShoppingRouteGroup[];
+  priceReferenceItems?: ApiPriceReferenceItem[];
   stapleItems?: ApiPantryStapleItem[];
   valueInsights?: PantryValueInsights;
 }

@@ -88,6 +88,30 @@ export interface ShoppingPlanItem {
   shoppingMetadata: ProductTypeShoppingMetadataPrimitives;
 }
 
+export interface ShoppingRouteGroup {
+  shoppingLocation: string;
+  itemCount: number;
+  urgentItemCount: number;
+  promoOnlyCount: number;
+  missingPriceCount: number;
+  estimatedTotal: number;
+  nextRecommendedPurchaseAt: Date;
+  items: ShoppingPlanItem[];
+}
+
+export interface PriceReferenceItem {
+  productTypeId: string;
+  baseName: string;
+  category: ProductCategory;
+  defaultUnit: QuantityUnit;
+  shoppingLocation: string;
+  preferredBrand?: string;
+  substituteBrand?: string;
+  estimatedUnitPrice: number;
+  buyOnlyOnPromo: boolean;
+  updatedAt: Date;
+}
+
 export type PlanningSettingSource = 'profile' | 'productType';
 
 export interface ProductTypeEffectivePlanningSettings {
@@ -129,6 +153,8 @@ export interface PantryOverview {
   depletingItems: DepletingProductGroup[];
   shoppingPlanItems: ShoppingPlanItem[];
   shoppingPlanEstimatedTotal: number;
+  shoppingRouteGroups: ShoppingRouteGroup[];
+  priceReferenceItems: PriceReferenceItem[];
   stapleItems: PantryStapleItem[];
   valueInsights: PantryValueInsights;
 }

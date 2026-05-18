@@ -291,6 +291,143 @@ describe('buildPantryOverview depletion forecasts', () => {
     });
   });
 
+  it('groups the shopping plan by store route with urgency and price coverage', () => {
+    const soap = makeProductType({
+      id: 'type-soap-route',
+      baseName: 'Jabon',
+      defaultDepletionRule: {
+        enabled: true,
+        consumeAmount: 1,
+        unit: QuantityUnit.PIECE,
+        everyAmount: 1,
+        everyPeriod: 'day',
+        anchorDate: new Date('2026-04-20T00:00:00.000Z'),
+      },
+      shoppingMetadata: {
+        shoppingLocation: 'Tiendita',
+        householdStaple: true,
+        buyOnlyOnPromo: false,
+        estimatedUnitPrice: 18,
+      },
+    });
+    const rice = makeProductType({
+      id: 'type-rice-route',
+      baseName: 'Arroz',
+      defaultDepletionRule: {
+        enabled: true,
+        consumeAmount: 2,
+        unit: QuantityUnit.KILOGRAM,
+        everyAmount: 1,
+        everyPeriod: 'week',
+        anchorDate: new Date('2026-04-17T00:00:00.000Z'),
+      },
+      shoppingMetadata: {
+        shoppingLocation: 'Mercado',
+        householdStaple: true,
+        buyOnlyOnPromo: true,
+      },
+    });
+
+    const overview = buildPantryOverview(
+      userId,
+      [rice, soap],
+      [
+        makeInventoryLot({
+          id: 'lot-soap-route',
+          productTypeId: 'type-soap-route',
+          quantity: 1,
+          unit: QuantityUnit.PIECE,
+        }),
+        makeInventoryLot({
+          id: 'lot-rice-route',
+          productTypeId: 'type-rice-route',
+          quantity: 2,
+          unit: QuantityUnit.KILOGRAM,
+        }),
+      ],
+      referenceDate,
+    );
+
+    expect((overview as any).shoppingRouteGroups).toEqual([
+      expect.objectContaining({
+        shoppingLocation: 'Tiendita',
+        itemCount: 1,
+        urgentItemCount: 1,
+        promoOnlyCount: 0,
+        missingPriceCount: 0,
+        estimatedTotal: 18,
+        nextRecommendedPurchaseAt: referenceDate,
+        items: [
+          expect.objectContaining({
+            productTypeId: 'type-soap-route',
+            urgency: 'depleted',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        shoppingLocation: 'Mercado',
+        itemCount: 1,
+        urgentItemCount: 1,
+        promoOnlyCount: 1,
+        missingPriceCount: 1,
+        estimatedTotal: 0,
+        items: [
+          expect.objectContaining({
+            productTypeId: 'type-rice-route',
+          }),
+        ],
+      }),
+    ]);
+  });
+
+  it('builds a price reference book from shopping metadata', () => {
+    const rice = makeProductType({
+      id: 'type-rice-price',
+      baseName: 'Arroz',
+      category: ProductCategory.FOOD,
+      shoppingMetadata: {
+        shoppingLocation: 'Mercado',
+        preferredBrand: 'Marca local',
+        substituteBrand: 'Marca propia',
+        householdStaple: true,
+        buyOnlyOnPromo: true,
+        estimatedUnitPrice: 31.75,
+      },
+    });
+    const soap = makeProductType({
+      id: 'type-soap-price',
+      baseName: 'Jabon',
+      category: ProductCategory.HYGIENE,
+      shoppingMetadata: {
+        shoppingLocation: 'Farmacia',
+        householdStaple: false,
+        buyOnlyOnPromo: false,
+      },
+    });
+
+    const overview = buildPantryOverview(
+      userId,
+      [soap, rice],
+      [],
+      referenceDate,
+    );
+
+    expect((overview as any).priceReferenceItems).toEqual([
+      {
+        productTypeId: 'type-rice-price',
+        baseName: 'Arroz',
+        category: ProductCategory.FOOD,
+        defaultUnit: QuantityUnit.PIECE,
+        shoppingLocation: 'Mercado',
+        preferredBrand: 'Marca local',
+        substituteBrand: 'Marca propia',
+        estimatedUnitPrice: 31.75,
+        buyOnlyOnPromo: true,
+        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+      },
+    ]);
+  });
+
   it('separates expired lots from today-critical lots and includes them in priority groups', () => {
     const tuna = makeProductType({
       id: 'type-tuna',

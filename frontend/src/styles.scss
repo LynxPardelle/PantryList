@@ -73,7 +73,8 @@ select:disabled {
 }
 
 input,
-select {
+select,
+textarea {
   width: 100%;
   min-height: 3rem;
   padding: 0.85rem 1rem;
@@ -86,6 +87,7 @@ select {
 
 input:focus,
 select:focus,
+textarea:focus,
 button:focus-visible {
   outline: none;
   border-color: rgba(158, 87, 49, 0.7);
@@ -620,11 +622,32 @@ button:focus-visible {
   margin-bottom: 1rem;
 }
 
+.budget-form {
+  display: grid;
+  grid-template-columns: minmax(150px, 220px) auto auto;
+  gap: 0.65rem;
+  align-items: end;
+}
+
+.budget-status[data-tone='ok'] {
+  color: #465238;
+}
+
+.budget-status[data-tone='over'] {
+  color: var(--color-danger-text);
+}
+
 .shopping-export-text {
   width: 100%;
   min-height: 9rem;
   margin-bottom: 1rem;
   resize: vertical;
+}
+
+.whatsapp-link {
+  display: inline-flex;
+  margin-bottom: 1rem;
+  text-decoration: none;
 }
 
 .shopping-metadata-editor {
@@ -700,6 +723,71 @@ button:focus-visible {
   font-size: 1.35rem;
 }
 
+.route-group-stack,
+.quick-draft-stack,
+.price-reference-list {
+  display: grid;
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.route-group-card,
+.quick-draft-card,
+.price-reference-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 22px;
+  background: rgba(255, 250, 242, 0.9);
+}
+
+.route-group-card h3,
+.route-group-card p,
+.quick-draft-card h3,
+.price-reference-row h3 {
+  margin: 0;
+}
+
+.route-group-total,
+.price-reference-value {
+  display: grid;
+  justify-items: end;
+  gap: 0.2rem;
+  text-align: right;
+}
+
+.route-group-total span,
+.route-group-total small,
+.price-reference-value small,
+.quick-draft-card small {
+  color: var(--color-text-muted);
+}
+
+.quick-capture-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.9rem;
+}
+
+.quick-draft-items {
+  display: grid;
+  gap: 0.6rem;
+  grid-column: 1 / -1;
+}
+
+.quick-draft-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(120px, 0.4fr) auto;
+  gap: 0.65rem;
+  align-items: center;
+  padding: 0.75rem;
+  border-radius: 16px;
+  background: var(--color-surface-tint);
+}
+
 .shopping-urgency-pill {
   display: inline-flex;
   align-items: center;
@@ -733,6 +821,10 @@ button:focus-visible {
   .depletion-card,
   .staple-row,
   .shopping-plan-row,
+  .route-group-card,
+  .quick-draft-row,
+  .price-reference-row,
+  .budget-form,
   .planning-settings-editor,
   .shopping-metadata-editor,
   .archived-row,
@@ -756,7 +848,9 @@ button:focus-visible {
   .depletion-meter,
   .staple-value,
   .shopping-plan-stock,
-  .shopping-plan-date {
+  .shopping-plan-date,
+  .route-group-total,
+  .price-reference-value {
     justify-items: start;
     text-align: left;
   }

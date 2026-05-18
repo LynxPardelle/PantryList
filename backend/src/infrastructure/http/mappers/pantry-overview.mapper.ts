@@ -1,18 +1,22 @@
 import {
   DepletingProductGroup,
   ExpiringProductGroup,
+  PriceReferenceItem,
   PantryLotSummary,
   PantryOverview,
   PantryStapleItem,
   ShoppingPlanItem,
+  ShoppingRouteGroup,
 } from '../../../application/read-models/pantry-overview.read-model';
 import {
   DepletingProductGroupResponseDto,
   ExpiringProductGroupResponseDto,
+  PriceReferenceItemResponseDto,
   PantryLotSummaryResponseDto,
   PantryOverviewResponseDto,
   PantryStapleItemResponseDto,
   ShoppingPlanItemResponseDto,
+  ShoppingRouteGroupResponseDto,
 } from '../dtos/pantry-overview-response.dto';
 
 export class PantryOverviewMapper {
@@ -50,6 +54,12 @@ export class PantryOverviewMapper {
         this.toShoppingPlanItemResponse(item),
       ),
       shoppingPlanEstimatedTotal: overview.shoppingPlanEstimatedTotal,
+      shoppingRouteGroups: (overview.shoppingRouteGroups ?? []).map((group) =>
+        this.toShoppingRouteGroupResponse(group),
+      ),
+      priceReferenceItems: (overview.priceReferenceItems ?? []).map((item) =>
+        this.toPriceReferenceItemResponse(item),
+      ),
       stapleItems: overview.stapleItems.map((item) =>
         this.toStapleItemResponse(item),
       ),
@@ -109,6 +119,38 @@ export class PantryOverviewMapper {
       depletionRule: item.depletionRule,
       effectivePlanningSettings: item.effectivePlanningSettings,
       shoppingMetadata: item.shoppingMetadata,
+    };
+  }
+
+  static toShoppingRouteGroupResponse(
+    group: ShoppingRouteGroup,
+  ): ShoppingRouteGroupResponseDto {
+    return {
+      shoppingLocation: group.shoppingLocation,
+      itemCount: group.itemCount,
+      urgentItemCount: group.urgentItemCount,
+      promoOnlyCount: group.promoOnlyCount,
+      missingPriceCount: group.missingPriceCount,
+      estimatedTotal: group.estimatedTotal,
+      nextRecommendedPurchaseAt: group.nextRecommendedPurchaseAt,
+      items: group.items.map((item) => this.toShoppingPlanItemResponse(item)),
+    };
+  }
+
+  static toPriceReferenceItemResponse(
+    item: PriceReferenceItem,
+  ): PriceReferenceItemResponseDto {
+    return {
+      productTypeId: item.productTypeId,
+      baseName: item.baseName,
+      category: item.category,
+      defaultUnit: item.defaultUnit,
+      shoppingLocation: item.shoppingLocation,
+      preferredBrand: item.preferredBrand,
+      substituteBrand: item.substituteBrand,
+      estimatedUnitPrice: item.estimatedUnitPrice,
+      buyOnlyOnPromo: item.buyOnlyOnPromo,
+      updatedAt: item.updatedAt,
     };
   }
 

@@ -255,6 +255,64 @@ export class ShoppingPlanItemResponseDto {
   shoppingMetadata: ProductTypeShoppingMetadataResponseDto;
 }
 
+export class ShoppingRouteGroupResponseDto {
+  @ApiProperty()
+  shoppingLocation: string;
+
+  @ApiProperty()
+  itemCount: number;
+
+  @ApiProperty()
+  urgentItemCount: number;
+
+  @ApiProperty()
+  promoOnlyCount: number;
+
+  @ApiProperty()
+  missingPriceCount: number;
+
+  @ApiProperty()
+  estimatedTotal: number;
+
+  @ApiProperty()
+  nextRecommendedPurchaseAt: Date;
+
+  @ApiProperty({ type: [ShoppingPlanItemResponseDto] })
+  items: ShoppingPlanItemResponseDto[];
+}
+
+export class PriceReferenceItemResponseDto {
+  @ApiProperty()
+  productTypeId: string;
+
+  @ApiProperty()
+  baseName: string;
+
+  @ApiProperty()
+  category: string;
+
+  @ApiProperty()
+  defaultUnit: string;
+
+  @ApiProperty()
+  shoppingLocation: string;
+
+  @ApiProperty({ required: false })
+  preferredBrand?: string;
+
+  @ApiProperty({ required: false })
+  substituteBrand?: string;
+
+  @ApiProperty()
+  estimatedUnitPrice: number;
+
+  @ApiProperty()
+  buyOnlyOnPromo: boolean;
+
+  @ApiProperty()
+  updatedAt: Date;
+}
+
 export class PantryOverviewItemResponseDto {
   @ApiProperty()
   productTypeId: string;
@@ -338,6 +396,12 @@ export class PantryOverviewResponseDto {
 
   @ApiProperty()
   shoppingPlanEstimatedTotal: number;
+
+  @ApiProperty({ type: [ShoppingRouteGroupResponseDto] })
+  shoppingRouteGroups: ShoppingRouteGroupResponseDto[];
+
+  @ApiProperty({ type: [PriceReferenceItemResponseDto] })
+  priceReferenceItems: PriceReferenceItemResponseDto[];
 
   @ApiProperty({ type: [PantryStapleItemResponseDto] })
   stapleItems: PantryStapleItemResponseDto[];

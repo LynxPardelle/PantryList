@@ -12,9 +12,11 @@ import {
   ApiPantryOverview,
   ApiPantryOverviewItem,
   ApiPantryStapleItem,
+  ApiPriceReferenceItem,
   ApiProductType,
   ApiProductTypeDepletionRule,
   ApiShoppingPlanItem,
+  ApiShoppingRouteGroup,
   ArchivedPantryItems,
   ArchivePantryItemRequest,
   ConsumeInventoryLotRequest,
@@ -27,6 +29,7 @@ import {
   PantryOverview,
   PantryOverviewItem,
   PantryStapleItem,
+  PriceReferenceItem,
   ProductTypeDepletionRule,
   ProductTypeDepletionRuleRequest,
   ProductTypePlanningSettingsRequest,
@@ -35,6 +38,7 @@ import {
   ProductType,
   RegisterLotRequest,
   ShoppingPlanItem,
+  ShoppingRouteGroup,
 } from '../../shared/models/pantry.model';
 
 @Injectable({
@@ -323,6 +327,12 @@ export class PantryService {
         this.normalizeShoppingPlanItem(item),
       ),
       shoppingPlanEstimatedTotal: overview.shoppingPlanEstimatedTotal ?? 0,
+      shoppingRouteGroups: (overview.shoppingRouteGroups ?? []).map((group) =>
+        this.normalizeShoppingRouteGroup(group),
+      ),
+      priceReferenceItems: (overview.priceReferenceItems ?? []).map((item) =>
+        this.normalizePriceReferenceItem(item),
+      ),
       stapleItems: (overview.stapleItems ?? []).map((item) =>
         this.normalizeStapleItem(item),
       ),
@@ -375,6 +385,25 @@ export class PantryService {
       shoppingMetadata: item.shoppingMetadata
         ? this.normalizeShoppingMetadata(item.shoppingMetadata)
         : undefined,
+    };
+  }
+
+  private normalizeShoppingRouteGroup(
+    group: ApiShoppingRouteGroup,
+  ): ShoppingRouteGroup {
+    return {
+      ...group,
+      nextRecommendedPurchaseAt: new Date(group.nextRecommendedPurchaseAt),
+      items: group.items.map((item) => this.normalizeShoppingPlanItem(item)),
+    };
+  }
+
+  private normalizePriceReferenceItem(
+    item: ApiPriceReferenceItem,
+  ): PriceReferenceItem {
+    return {
+      ...item,
+      updatedAt: new Date(item.updatedAt),
     };
   }
 

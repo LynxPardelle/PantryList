@@ -600,7 +600,32 @@
         @if (shoppingPlanItems$ | async; as shoppingPlanItems) {
           @if (shoppingPlanItems.length > 0) {
             <div class="shopping-plan-tools">
-              <strong>{{ getShoppingPlanTotalSummary(shoppingPlanItems) }}</strong>
+              <div>
+                <strong>{{ getShoppingPlanTotalSummary(shoppingPlanItems) }}</strong>
+                <p
+                  class="helper-copy budget-status"
+                  [attr.data-tone]="getBudgetStatusTone(getShoppingPlanEstimatedTotal(shoppingPlanItems))"
+                >
+                  {{ getBudgetStatusLabel(getShoppingPlanEstimatedTotal(shoppingPlanItems)) }}
+                </p>
+              </div>
+              <form class="budget-form" [formGroup]="shoppingBudgetForm" (ngSubmit)="saveShoppingBudget()">
+                <label class="field" for="shoppingBudgetAmount">
+                  <span>Presupuesto de esta compra</span>
+                  <input
+                    id="shoppingBudgetAmount"
+                    type="number"
+                    formControlName="amount"
+                    min="0"
+                    step="0.01"
+                    placeholder="800"
+                  />
+                </label>
+                <button type="submit" class="secondary-button">Guardar</button>
+                @if (shoppingBudget !== null) {
+                  <button type="button" class="ghost-button" (click)="clearShoppingBudget()">Quitar</button>
+                }
+              </form>
               <button type="button" class="secondary-button" (click)="copyShoppingPlan(shoppingPlanItems)">
                 Copiar lista
               </button>
@@ -617,6 +642,41 @@
                 [value]="shoppingExportText"
                 readonly
               ></textarea>
+              <a
+                class="ghost-button whatsapp-link"
+                [href]="getWhatsAppShoppingUrl(shoppingExportText)"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Abrir en WhatsApp
+              </a>
+            }
+
+            @if (shoppingRouteGroups$ | async; as routeGroups) {
+              @if (routeGroups.length > 0) {
+                <div class="route-group-stack" aria-label="Rutas de compra sugeridas">
+                  @for (route of routeGroups; track trackByShoppingLocation($index, route)) {
+                    <article class="route-group-card">
+                      <div>
+                        <p class="panel-kicker">Ruta</p>
+                        <h3>{{ route.shoppingLocation }}</h3>
+                        <p>
+                          {{ route.itemCount }} productos ·
+                          {{ route.urgentItemCount }} urgentes ·
+                          {{ route.promoOnlyCount }} solo promo
+                        </p>
+                      </div>
+                      <div class="route-group-total">
+                        <span>{{ route.nextRecommendedPurchaseAt | date:'dd MMM':'UTC' }}</span>
+                        <strong>{{ formatShoppingPrice(route.estimatedTotal) }}</strong>
+                        @if (route.missingPriceCount > 0) {
+                          <small>{{ route.missingPriceCount }} sin precio</small>
+                        }
+                      </div>
+                    </article>
+                  }
+                </div>
+              }
             }
 
             <div class="shopping-plan-stack">
@@ -673,6 +733,117 @@
             <section class="empty-state compact-empty-state">
               <h3>A&uacute;n no hay compras calculadas.</h3>
               <p>Activa durabilidad en un tipo base para construir un calendario de reposici&oacute;n.</p>
+            </section>
+          }
+        }
+      </article>
+
+      <article class="panel quick-capture-panel">
+        <div class="panel-header">
+          <div>
+            <p class="panel-kicker">Captura r&aacute;pida</p>
+            <h2>Borrador de compra</h2>
+          </div>
+        </div>
+
+        <form class="quick-capture-form" [formGroup]="quickCaptureForm" (ngSubmit)="saveQuickCaptureDraft()">
+          <label class="field field-full" for="quickCaptureText">
+            <span>Ticket o lista manual</span>
+            <textarea
+              id="quickCaptureText"
+              formControlName="rawText"
+              rows="5"
+              placeholder="Arroz | 2 kg | Mercado | 35&#10;Shampoo | 1 botella | Farmacia"
+            ></textarea>
+          </label>
+          <p class="helper-copy field-full">
+            Formato: producto | cantidad unidad | tienda | precio. Se guarda localmente si no hay conexi&oacute;n.
+          </p>
+          @if (isOffline) {
+            <p class="helper-copy field-full" role="status">Sin conexi&oacute;n: los borradores quedan en este navegador.</p>
+          }
+          <div class="depletion-editor-actions field-full">
+            <button class="primary-button" type="submit">Guardar borrador</button>
+            @if (quickCaptureDrafts.length > 0) {
+              <button class="secondary-button" type="button" (click)="clearQuickCaptureDrafts()">Limpiar borradores</button>
+            }
+          </div>
+        </form>
+
+        @if (quickCaptureStatus) {
+          <p class="helper-copy" aria-live="polite">{{ quickCaptureStatus }}</p>
+        }
+
+        @if (quickCaptureDrafts.length > 0) {
+          <div class="quick-draft-stack">
+            @for (draft of quickCaptureDrafts; track draft.id) {
+              <article class="quick-draft-card">
+                <div>
+                  <p class="panel-kicker">Borrador local</p>
+                  <h3>{{ draft.items.length }} productos</h3>
+                  <small>Guardado {{ draft.createdAt | date:'dd MMM, HH:mm' }}</small>
+                </div>
+                <div class="quick-draft-items">
+                  @for (item of draft.items; track item.name + item.unit + item.quantity) {
+                    <div class="quick-draft-row">
+                      <span>{{ item.name }}</span>
+                      <strong>{{ item.quantity }} {{ item.unit }}</strong>
+                      <small>
+                        {{ item.shoppingLocation || 'Sin tienda' }}
+                        @if (item.estimatedUnitPrice !== undefined) {
+                          · {{ formatShoppingPrice(item.estimatedUnitPrice) }}
+                        }
+                      </small>
+                      <button class="ghost-button" type="button" (click)="useQuickCaptureItem(item)">Usar</button>
+                    </div>
+                  }
+                </div>
+                @if (getQuickCaptureTotal(draft.items) > 0) {
+                  <p class="helper-copy">Estimado del borrador: {{ formatShoppingPrice(getQuickCaptureTotal(draft.items)) }}</p>
+                }
+              </article>
+            }
+          </div>
+        }
+      </article>
+
+      <article class="panel price-reference-panel">
+        <div class="panel-header">
+          <div>
+            <p class="panel-kicker">Precios</p>
+            <h2>Historial de referencia</h2>
+          </div>
+        </div>
+
+        @if (priceReferenceItems$ | async; as priceReferenceItems) {
+          @if (priceReferenceItems.length > 0) {
+            <div class="price-reference-list">
+              @for (item of priceReferenceItems; track trackByPriceReferenceId($index, item)) {
+                <article class="price-reference-row">
+                  <div>
+                    <p class="panel-kicker">{{ item.shoppingLocation }}</p>
+                    <h3>{{ item.baseName }}</h3>
+                    <small>
+                      {{ item.preferredBrand || 'Sin marca fija' }}
+                      @if (item.substituteBrand) {
+                        · Sustituto: {{ item.substituteBrand }}
+                      }
+                    </small>
+                  </div>
+                  <div class="price-reference-value">
+                    <strong>{{ formatShoppingPrice(item.estimatedUnitPrice) }}</strong>
+                    <small>por {{ item.defaultUnit }} · {{ item.updatedAt | date:'dd MMM y':'UTC' }}</small>
+                    @if (item.buyOnlyOnPromo) {
+                      <span class="shopping-urgency-pill">Solo promo</span>
+                    }
+                  </div>
+                </article>
+              }
+            </div>
+          } @else {
+            <section class="empty-state compact-empty-state">
+              <h3>A&uacute;n no hay precios de referencia.</h3>
+              <p>Agrega precio estimado y tienda en los datos de compra de cada tipo base.</p>
             </section>
           }
         }

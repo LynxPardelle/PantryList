@@ -57,6 +57,16 @@ export const selectShoppingPlanItems = createSelector(
   (overview) => overview?.shoppingPlanItems ?? [],
 );
 
+export const selectShoppingRouteGroups = createSelector(
+  selectPantryOverview,
+  (overview) => overview?.shoppingRouteGroups ?? [],
+);
+
+export const selectPriceReferenceItems = createSelector(
+  selectPantryOverview,
+  (overview) => overview?.priceReferenceItems ?? [],
+);
+
 export const selectStapleItems = createSelector(
   selectPantryOverview,
   (overview) => overview?.stapleItems ?? [],

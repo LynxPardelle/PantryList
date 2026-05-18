@@ -40,6 +40,7 @@ import {
   PantryOverviewItem,
   PantryStapleItem,
   PantryStapleStatus,
+  PriceReferenceItem,
   ProductTypeDepletionRuleRequest,
   ProductTypePlanningSettingsRequest,
   ProductTypeShoppingMetadata,
@@ -49,6 +50,7 @@ import {
   ProductUnit,
   ShoppingPlanItem,
   ShoppingPlanUrgency,
+  ShoppingRouteGroup,
 } from '../../shared/models/pantry.model';
 import * as PantryActions from '../../store/pantry/pantry.actions';
 import {
@@ -60,8 +62,10 @@ import {
   selectPantryLoading,
   selectPantrySummary,
   selectPantryValueInsights,
+  selectPriceReferenceItems,
   selectShowGuidanceTips,
   selectShoppingPlanItems,
+  selectShoppingRouteGroups,
   selectStapleItems,
 } from '../../store/pantry/pantry.selectors';
 
@@ -69,6 +73,21 @@ interface DeleteConfirmationTarget {
   kind: 'productType' | 'inventoryLot';
   id: string;
   expectedText: string;
+}
+
+interface QuickCaptureItem {
+  name: string;
+  quantity: number;
+  unit: string;
+  shoppingLocation?: string;
+  estimatedUnitPrice?: number;
+}
+
+interface QuickCaptureDraft {
+  id: string;
+  createdAt: Date;
+  rawText: string;
+  items: QuickCaptureItem[];
 }
 
 @Component({
@@ -87,6 +106,8 @@ export class PantryPageComponent implements OnInit {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly changeDetector = inject(ChangeDetectorRef);
   private readonly lotRegistrationTimeoutMs = 15000;
+  private readonly shoppingBudgetStorageKey = 'pantrylist.shoppingBudget';
+  private readonly quickCaptureStorageKey = 'pantrylist.quickCaptureDrafts';
 
   readonly username$ = this.authFacade.currentUsername$;
   readonly loading$ = this.store.select(selectPantryLoading);
@@ -96,6 +117,8 @@ export class PantryPageComponent implements OnInit {
   readonly expiredAlert$ = this.store.select(selectExpiredEntryAlert);
   readonly depletingGroups$ = this.store.select(selectDepletingGroups);
   readonly shoppingPlanItems$ = this.store.select(selectShoppingPlanItems);
+  readonly shoppingRouteGroups$ = this.store.select(selectShoppingRouteGroups);
+  readonly priceReferenceItems$ = this.store.select(selectPriceReferenceItems);
   readonly stapleItems$ = this.store.select(selectStapleItems);
   readonly valueInsights$ = this.store.select(selectPantryValueInsights);
   readonly pantryGroups$ = this.store.select(selectPantryGroupsSorted);
@@ -208,6 +231,14 @@ export class PantryPageComponent implements OnInit {
     ],
   });
 
+  readonly shoppingBudgetForm = this.formBuilder.group({
+    amount: [null as number | null, [Validators.min(0)]],
+  });
+
+  readonly quickCaptureForm = this.formBuilder.nonNullable.group({
+    rawText: [''],
+  });
+
   readonly existingTypeSuggestions$ =
     this.lotForm.controls.selectionMode.valueChanges.pipe(
       startWith(this.lotForm.controls.selectionMode.getRawValue()),
@@ -261,12 +292,18 @@ export class PantryPageComponent implements OnInit {
   shoppingMetadataError: string | null = null;
   shoppingExportStatus: string | null = null;
   shoppingExportText: string | null = null;
+  shoppingBudget: number | null = null;
+  quickCaptureDrafts: QuickCaptureDraft[] = [];
+  quickCaptureStatus: string | null = null;
+  isOffline = false;
   readonly consumeErrors: Record<string, string> = {};
   private readonly expandedProductTypeIds = new Set<string>();
 
   ngOnInit(): void {
     if (isPlatformBrowser(this.platformId)) {
       this.loadOverview();
+      this.loadLocalShoppingSupport();
+      this.watchNetworkState();
     }
 
     this.lotForm.controls.existingTypeSearch.valueChanges
@@ -806,6 +843,14 @@ export class PantryPageComponent implements OnInit {
     return lot.lotId;
   }
 
+  trackByShoppingLocation(_: number, group: ShoppingRouteGroup): string {
+    return group.shoppingLocation;
+  }
+
+  trackByPriceReferenceId(_: number, item: PriceReferenceItem): string {
+    return item.productTypeId;
+  }
+
   getExpiredQuantity(group: { lots: PantryLotSummary[] }): number {
     return this.sumLotsByStatus(group.lots, ['expired']);
   }
@@ -900,6 +945,19 @@ export class PantryPageComponent implements OnInit {
 
     for (const group of this.groupShoppingPlanByRoute(items)) {
       lines.push(`${group.location}:`);
+      lines.push(`Subtotal ruta: ${this.getRouteTotalSummary(group.items)}`);
+
+      const missingPriceCount = group.items.filter(
+        (item) => item.estimatedLineTotal === undefined,
+      ).length;
+
+      if (missingPriceCount > 0) {
+        lines.push(
+          `Precios pendientes: ${missingPriceCount} ${
+            missingPriceCount === 1 ? 'producto' : 'productos'
+          }`,
+        );
+      }
 
       for (const item of group.items) {
         const metadata = this.resolveShoppingMetadata(item.shoppingMetadata);
@@ -957,6 +1015,139 @@ export class PantryPageComponent implements OnInit {
     }
   }
 
+  getWhatsAppShoppingUrl(exportText: string): string {
+    return `https://wa.me/?text=${encodeURIComponent(exportText)}`;
+  }
+
+  getRouteTotalSummary(items: ShoppingPlanItem[]): string {
+    if (!this.hasShoppingPriceEstimate(items)) {
+      return 'sin precios estimados';
+    }
+
+    return this.formatShoppingPrice(this.getShoppingPlanEstimatedTotal(items));
+  }
+
+  saveShoppingBudget(amount?: number | null): void {
+    const rawAmount = amount ?? this.shoppingBudgetForm.controls.amount.value;
+    const parsedAmount = this.toOptionalNumber(rawAmount);
+
+    if (parsedAmount === undefined || parsedAmount < 0) {
+      this.shoppingBudget = null;
+      this.removeLocalValue(this.shoppingBudgetStorageKey);
+      this.shoppingBudgetForm.patchValue({ amount: null }, { emitEvent: false });
+      return;
+    }
+
+    this.shoppingBudget = Number(parsedAmount.toFixed(2));
+    this.shoppingBudgetForm.patchValue(
+      { amount: this.shoppingBudget },
+      { emitEvent: false },
+    );
+    this.setLocalValue(
+      this.shoppingBudgetStorageKey,
+      JSON.stringify(this.shoppingBudget),
+    );
+  }
+
+  clearShoppingBudget(): void {
+    this.shoppingBudget = null;
+    this.shoppingBudgetForm.patchValue({ amount: null }, { emitEvent: false });
+    this.removeLocalValue(this.shoppingBudgetStorageKey);
+  }
+
+  getBudgetStatusLabel(total: number): string {
+    if (this.shoppingBudget === null) {
+      return 'Sin presupuesto definido';
+    }
+
+    const difference = Number((this.shoppingBudget - total).toFixed(2));
+
+    return difference >= 0
+      ? `Dentro del presupuesto: quedan ${this.formatShoppingPrice(difference)}`
+      : `Sobre presupuesto por ${this.formatShoppingPrice(Math.abs(difference))}`;
+  }
+
+  getBudgetStatusTone(total: number): 'unset' | 'ok' | 'over' {
+    if (this.shoppingBudget === null) {
+      return 'unset';
+    }
+
+    return total <= this.shoppingBudget ? 'ok' : 'over';
+  }
+
+  parseQuickCaptureText(rawText: string): QuickCaptureItem[] {
+    return rawText
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => this.parseQuickCaptureLine(line))
+      .filter((item): item is QuickCaptureItem => item !== null);
+  }
+
+  saveQuickCaptureDraft(): void {
+    const rawText = this.quickCaptureForm.controls.rawText.value.trim();
+    const items = this.parseQuickCaptureText(rawText);
+
+    if (items.length === 0) {
+      this.quickCaptureStatus =
+        'Escribe al menos un producto para guardar el borrador.';
+      return;
+    }
+
+    const draft: QuickCaptureDraft = {
+      id: `${Date.now()}`,
+      createdAt: new Date(),
+      rawText,
+      items,
+    };
+
+    this.quickCaptureDrafts = [draft, ...this.quickCaptureDrafts].slice(0, 8);
+    this.quickCaptureForm.reset({ rawText: '' });
+    this.quickCaptureStatus = this.isOffline
+      ? 'Borrador guardado sin conexion.'
+      : 'Borrador guardado para capturar cuando convenga.';
+    this.persistQuickCaptureDrafts();
+  }
+
+  clearQuickCaptureDrafts(): void {
+    this.quickCaptureDrafts = [];
+    this.quickCaptureStatus = 'Borradores locales eliminados.';
+    this.removeLocalValue(this.quickCaptureStorageKey);
+  }
+
+  useQuickCaptureItem(item: QuickCaptureItem): void {
+    this.setSelectionMode('new');
+    this.lotForm.patchValue(
+      {
+        newBaseName: item.name,
+        unit: this.toKnownProductUnit(item.unit),
+        quantity: item.quantity,
+        shoppingLocation: item.shoppingLocation ?? '',
+        estimatedUnitPrice: item.estimatedUnitPrice ?? null,
+        purchaseDate: toDateInputValue(new Date()),
+      },
+      { emitEvent: false },
+    );
+
+    if (isPlatformBrowser(this.platformId)) {
+      document
+        .querySelector('.register-panel')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  getQuickCaptureTotal(items: QuickCaptureItem[]): number {
+    return Number(
+      items
+        .reduce(
+          (sum, item) =>
+            sum + (item.estimatedUnitPrice ?? 0) * item.quantity,
+          0,
+        )
+        .toFixed(2),
+    );
+  }
+
   getPlanningSourceLabel(
     settings: ProductTypeEffectivePlanningSettings,
     key:
@@ -974,6 +1165,143 @@ export class PantryPageComponent implements OnInit {
 
   getInventoryLotDisplayName(lot: InventoryLot): string {
     return lot.variantName?.trim() || `Lote ${lot.id}`;
+  }
+
+  private parseQuickCaptureLine(line: string): QuickCaptureItem | null {
+    const [namePart, quantityPart, locationPart, pricePart] = line
+      .split('|')
+      .map((part) => part.trim());
+    const name = namePart?.trim();
+
+    if (!name) {
+      return null;
+    }
+
+    const quantityMatch = (quantityPart ?? '').match(
+      /^(\d+(?:[\.,]\d+)?)\s*(.*)$/,
+    );
+    const quantity = quantityMatch
+      ? Number(quantityMatch[1].replace(',', '.'))
+      : 1;
+    const unit = quantityMatch?.[2]?.trim() || 'piezas';
+    const estimatedUnitPrice = this.toOptionalNumber(pricePart);
+
+    return {
+      name,
+      quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : 1,
+      unit,
+      shoppingLocation: this.toOptionalText(locationPart),
+      estimatedUnitPrice:
+        estimatedUnitPrice === undefined
+          ? undefined
+          : Number(estimatedUnitPrice.toFixed(2)),
+    };
+  }
+
+  private loadLocalShoppingSupport(): void {
+    const storedBudget = this.getLocalValue(this.shoppingBudgetStorageKey);
+
+    if (storedBudget) {
+      try {
+        const parsedBudget = Number(JSON.parse(storedBudget));
+
+        if (Number.isFinite(parsedBudget) && parsedBudget >= 0) {
+          this.shoppingBudget = Number(parsedBudget.toFixed(2));
+          this.shoppingBudgetForm.patchValue(
+            { amount: this.shoppingBudget },
+            { emitEvent: false },
+          );
+        }
+      } catch {
+        this.shoppingBudget = null;
+      }
+    }
+
+    const storedDrafts = this.getLocalValue(this.quickCaptureStorageKey);
+
+    if (storedDrafts) {
+      try {
+        const parsedDrafts = JSON.parse(storedDrafts) as Array<
+          Omit<QuickCaptureDraft, 'createdAt'> & { createdAt: string }
+        >;
+        this.quickCaptureDrafts = parsedDrafts.map((draft) => ({
+          ...draft,
+          createdAt: new Date(draft.createdAt),
+        }));
+      } catch {
+        this.quickCaptureDrafts = [];
+      }
+    }
+  }
+
+  private watchNetworkState(): void {
+    this.isOffline = typeof navigator !== 'undefined' ? !navigator.onLine : false;
+
+    const setOnline = () => {
+      this.isOffline = false;
+      this.changeDetector.markForCheck();
+    };
+    const setOffline = () => {
+      this.isOffline = true;
+      this.changeDetector.markForCheck();
+    };
+
+    window.addEventListener('online', setOnline);
+    window.addEventListener('offline', setOffline);
+    this.destroyRef.onDestroy(() => {
+      window.removeEventListener('online', setOnline);
+      window.removeEventListener('offline', setOffline);
+    });
+  }
+
+  private persistQuickCaptureDrafts(): void {
+    this.setLocalValue(
+      this.quickCaptureStorageKey,
+      JSON.stringify(this.quickCaptureDrafts),
+    );
+  }
+
+  private getLocalValue(key: string): string | null {
+    if (!isPlatformBrowser(this.platformId)) {
+      return null;
+    }
+
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  }
+
+  private setLocalValue(key: string, value: string): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    try {
+      localStorage.setItem(key, value);
+    } catch {
+      this.quickCaptureStatus =
+        'No se pudo guardar en este navegador; conserva el texto manualmente.';
+    }
+  }
+
+  private removeLocalValue(key: string): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // Local persistence is a convenience; failing closed keeps the app usable.
+    }
+  }
+
+  private toKnownProductUnit(unit: string): ProductUnit {
+    return PRODUCT_UNITS.includes(unit as ProductUnit)
+      ? (unit as ProductUnit)
+      : 'piezas';
   }
 
   private resetLotForm(): void {

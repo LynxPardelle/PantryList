@@ -51,6 +51,24 @@ describe('PantryService', () => {
         estimatedExpiringValue: 0,
         estimatedStapleRestockTotal: 42.5,
       });
+      expect((overview as any).shoppingRouteGroups[0]).toEqual(
+        jasmine.objectContaining({
+          shoppingLocation: 'Mayoreo',
+          itemCount: 1,
+          estimatedTotal: 42.5,
+          missingPriceCount: 0,
+          nextRecommendedPurchaseAt: new Date('2026-04-28T00:00:00.000Z'),
+        }),
+      );
+      expect((overview as any).priceReferenceItems[0]).toEqual(
+        jasmine.objectContaining({
+          productTypeId: 'type-detergent',
+          baseName: 'Detergente',
+          shoppingLocation: 'Mayoreo',
+          estimatedUnitPrice: 42.5,
+          updatedAt: new Date('2026-04-24T00:00:00.000Z'),
+        }),
+      );
       expect((overview.shoppingPlanItems[0] as any).estimatedLineTotal).toBe(42.5);
       expect(overview.shoppingPlanItems[0].recommendedPurchaseAt).toEqual(
         new Date('2026-04-28T00:00:00.000Z'),
@@ -159,6 +177,67 @@ describe('PantryService', () => {
         },
       ],
       shoppingPlanEstimatedTotal: 42.5,
+      shoppingRouteGroups: [
+        {
+          shoppingLocation: 'Mayoreo',
+          itemCount: 1,
+          urgentItemCount: 0,
+          promoOnlyCount: 1,
+          missingPriceCount: 0,
+          estimatedTotal: 42.5,
+          nextRecommendedPurchaseAt: '2026-04-28T00:00:00.000Z',
+          items: [
+            {
+              productTypeId: 'type-detergent',
+              baseName: 'Detergente',
+              category: 'cleaning',
+              defaultUnit: 'lt',
+              totalQuantity: 2,
+              estimatedCurrentQuantity: 1,
+              estimatedConsumedQuantity: 1,
+              estimatedDepletionAt: '2026-05-01T00:00:00.000Z',
+              recommendedPurchaseAt: '2026-04-28T00:00:00.000Z',
+              suggestedPurchaseQuantity: 1,
+              estimatedUnitPrice: 42.5,
+              estimatedLineTotal: 42.5,
+              shoppingMetadata: {
+                storageLocation: 'Limpieza',
+                shoppingLocation: 'Mayoreo',
+                preferredBrand: 'Marca hogar',
+                substituteBrand: 'Marca propia',
+                householdStaple: true,
+                buyOnlyOnPromo: true,
+                shoppingNotes: 'Comprar solo si hay promo',
+                estimatedUnitPrice: 42.5,
+              },
+              urgency: 'upcoming',
+              effectivePlanningSettings: makeEffectivePlanningSettings(),
+              depletionRule: {
+                enabled: true,
+                consumeAmount: 1,
+                unit: 'lt',
+                everyAmount: 1,
+                everyPeriod: 'week',
+                anchorDate: '2026-04-17T00:00:00.000Z',
+              },
+            },
+          ],
+        },
+      ],
+      priceReferenceItems: [
+        {
+          productTypeId: 'type-detergent',
+          baseName: 'Detergente',
+          category: 'cleaning',
+          defaultUnit: 'lt',
+          shoppingLocation: 'Mayoreo',
+          preferredBrand: 'Marca hogar',
+          substituteBrand: 'Marca propia',
+          estimatedUnitPrice: 42.5,
+          buyOnlyOnPromo: true,
+          updatedAt: '2026-04-24T00:00:00.000Z',
+        },
+      ],
       stapleItems: [
         {
           productTypeId: 'type-detergent',
