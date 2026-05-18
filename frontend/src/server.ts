@@ -9,6 +9,7 @@ import {
   buildProxyHeaders,
   isAbortError,
 } from './server-proxy';
+import { createProtectedRouteRedirect } from './server-auth-routes';
 import {
   createRateLimit,
   readPositiveInteger,
@@ -122,6 +123,8 @@ app.use('/api', express.json({ limit: '1mb' }), async (req, res, next) => {
     clearTimeout(timeout);
   }
 });
+
+app.use(createProtectedRouteRedirect());
 
 /**
  * Serve static files from /browser
