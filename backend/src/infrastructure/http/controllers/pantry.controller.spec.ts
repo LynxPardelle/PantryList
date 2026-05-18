@@ -1,6 +1,11 @@
+import { FastifyRequest } from 'fastify';
+import { AuthCookieService } from '../auth/auth-cookie.service';
+import { CloseShoppingPurchaseUseCase } from '../../../application/use-cases/close-shopping-purchase.use-case';
 import { GetArchivedPantryItemsUseCase } from '../../../application/use-cases/get-archived-pantry-items.use-case';
 import { GetPantryOverviewUseCase } from '../../../application/use-cases/get-pantry-overview.use-case';
 import { GetUserProfileUseCase } from '../../../application/use-cases/get-user-profile.use-case';
+import { InventoryLot } from '../../../domain/entities/inventory-lot.entity';
+import { QuantityUnit } from '../../../domain/enums';
 import { PantryController } from './pantry.controller';
 
 describe('PantryController', () => {
@@ -8,6 +13,8 @@ describe('PantryController', () => {
   let getPantryOverviewUseCase: jest.Mocked<GetPantryOverviewUseCase>;
   let getArchivedPantryItemsUseCase: jest.Mocked<GetArchivedPantryItemsUseCase>;
   let getUserProfileUseCase: jest.Mocked<GetUserProfileUseCase>;
+  let closeShoppingPurchaseUseCase: jest.Mocked<CloseShoppingPurchaseUseCase>;
+  let authCookieService: jest.Mocked<AuthCookieService>;
 
   beforeEach(() => {
     getPantryOverviewUseCase = {
@@ -19,11 +26,19 @@ describe('PantryController', () => {
     getUserProfileUseCase = {
       execute: jest.fn().mockResolvedValue(makeProfile()),
     } as unknown as jest.Mocked<GetUserProfileUseCase>;
+    closeShoppingPurchaseUseCase = {
+      execute: jest.fn().mockResolvedValue([makeInventoryLot()]),
+    } as unknown as jest.Mocked<CloseShoppingPurchaseUseCase>;
+    authCookieService = {
+      ensureXsrfForRequest: jest.fn(),
+    } as unknown as jest.Mocked<AuthCookieService>;
 
     controller = new PantryController(
       getPantryOverviewUseCase,
       getArchivedPantryItemsUseCase,
       getUserProfileUseCase,
+      closeShoppingPurchaseUseCase,
+      authCookieService,
     );
   });
 
@@ -40,6 +55,45 @@ describe('PantryController', () => {
     expect(getArchivedPantryItemsUseCase.execute).toHaveBeenCalledWith(
       'user-1',
     );
+  });
+
+  it('requires XSRF and closes a shopping purchase for the current user', async () => {
+    const request = { method: 'POST' } as FastifyRequest;
+
+    const response = await controller.checkout(
+      { userId: 'user-1' },
+      {
+        items: [
+          {
+            productTypeId: 'type-1',
+            quantity: 2,
+            unit: QuantityUnit.KILOGRAM,
+            paidUnitPrice: 35.5,
+            shoppingLocation: 'Mercado',
+          },
+        ],
+      },
+      request,
+    );
+
+    expect(authCookieService.ensureXsrfForRequest).toHaveBeenCalledWith(
+      request,
+    );
+    expect(closeShoppingPurchaseUseCase.execute).toHaveBeenCalledWith({
+      userId: 'user-1',
+      items: [
+        {
+          productTypeId: 'type-1',
+          variantName: undefined,
+          quantity: 2,
+          unit: QuantityUnit.KILOGRAM,
+          paidUnitPrice: 35.5,
+          shoppingLocation: 'Mercado',
+          expiresAt: undefined,
+        },
+      ],
+    });
+    expect(response[0].productTypeId).toBe('type-1');
   });
 });
 
@@ -114,6 +168,19 @@ function makeArchivedItems() {
       },
     ],
   };
+}
+
+function makeInventoryLot(): InventoryLot {
+  return InventoryLot.fromPrimitives({
+    id: 'lot-1',
+    userId: 'user-1',
+    productTypeId: 'type-1',
+    quantity: 2,
+    unit: QuantityUnit.KILOGRAM,
+    purchaseDate: new Date('2026-05-18T00:00:00.000Z'),
+    createdAt: new Date('2026-05-18T00:00:00.000Z'),
+    updatedAt: new Date('2026-05-18T00:00:00.000Z'),
+  });
 }
 
 function makePreferences() {

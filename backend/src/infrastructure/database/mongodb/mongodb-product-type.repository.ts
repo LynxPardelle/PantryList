@@ -7,6 +7,11 @@ import {
   ProductTypePlanningSettingsPrimitives,
   ProductTypePrimitives,
 } from '../../../domain/entities/product-type.entity';
+import {
+  MAX_ACTIVE_PRODUCT_TYPES_PER_USER,
+  MAX_ARCHIVED_PRODUCT_TYPES_PER_USER,
+  MAX_PRODUCT_TYPE_SEARCH_RESULTS,
+} from '../../../application/constants/query-limits';
 import { ProductTypeRepository } from '../../../domain/repositories/product-type.repository';
 import { ProductTypeId } from '../../../domain/value-objects/product-type-id.vo';
 import { UserId } from '../../../domain/value-objects/user-id.vo';
@@ -103,6 +108,7 @@ export class MongoProductTypeRepository implements ProductTypeRepository {
     const productTypes = await this.productTypeModel
       .find({ userId: userId.toString(), archivedAt: { $exists: false } })
       .sort({ baseName: 1 })
+      .limit(MAX_ACTIVE_PRODUCT_TYPES_PER_USER)
       .lean()
       .exec();
 
@@ -115,6 +121,7 @@ export class MongoProductTypeRepository implements ProductTypeRepository {
     const productTypes = await this.productTypeModel
       .find({ userId: userId.toString(), archivedAt: { $exists: true } })
       .sort({ archivedAt: -1 })
+      .limit(MAX_ARCHIVED_PRODUCT_TYPES_PER_USER)
       .lean()
       .exec();
 
@@ -139,6 +146,7 @@ export class MongoProductTypeRepository implements ProductTypeRepository {
     const productTypes = await this.productTypeModel
       .find(query)
       .sort({ baseName: 1 })
+      .limit(MAX_PRODUCT_TYPE_SEARCH_RESULTS)
       .lean()
       .exec();
 

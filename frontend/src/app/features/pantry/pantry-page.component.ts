@@ -26,6 +26,7 @@ import { AuthFacade } from '../../core/services/auth.facade';
 import { PantryService } from '../../core/services/pantry.service';
 import {
   ArchivedPantryItems,
+  CloseShoppingPurchaseItemRequest,
   DEPLETION_PERIODS,
   DepletionPeriod,
   ExpirationStatus,
@@ -90,6 +91,19 @@ interface QuickCaptureDraft {
   items: QuickCaptureItem[];
 }
 
+interface ShoppingTripDraftItem {
+  productTypeId: string;
+  checked: boolean;
+  quantity: number;
+  unit: ProductUnit;
+  paidUnitPrice?: number;
+  shoppingLocation?: string;
+}
+
+interface ScreenWakeLock {
+  release: () => Promise<void>;
+}
+
 @Component({
   selector: 'app-pantry-page',
   templateUrl: './pantry-page.component.html',
@@ -108,6 +122,7 @@ export class PantryPageComponent implements OnInit {
   private readonly lotRegistrationTimeoutMs = 15000;
   private readonly shoppingBudgetStorageKey = 'pantrylist.shoppingBudget';
   private readonly quickCaptureStorageKey = 'pantrylist.quickCaptureDrafts';
+  private readonly shoppingTripStorageKey = 'pantrylist.shoppingTripDraft';
 
   readonly username$ = this.authFacade.currentUsername$;
   readonly loading$ = this.store.select(selectPantryLoading);
@@ -293,17 +308,27 @@ export class PantryPageComponent implements OnInit {
   shoppingExportStatus: string | null = null;
   shoppingExportText: string | null = null;
   shoppingBudget: number | null = null;
+  shoppingModeActive = false;
+  shoppingTripDraft: Record<string, ShoppingTripDraftItem> = {};
+  shoppingCheckoutStatus: string | null = null;
+  shoppingCheckoutBusy = false;
+  privacyExportStatus: string | null = null;
+  privacyExportBusy = false;
   quickCaptureDrafts: QuickCaptureDraft[] = [];
   quickCaptureStatus: string | null = null;
   isOffline = false;
   readonly consumeErrors: Record<string, string> = {};
   private readonly expandedProductTypeIds = new Set<string>();
+  private shoppingWakeLock: ScreenWakeLock | null = null;
 
   ngOnInit(): void {
     if (isPlatformBrowser(this.platformId)) {
       this.loadOverview();
       this.loadLocalShoppingSupport();
       this.watchNetworkState();
+      this.destroyRef.onDestroy(() => {
+        void this.releaseShoppingWakeLock();
+      });
     }
 
     this.lotForm.controls.existingTypeSearch.valueChanges
@@ -1015,8 +1040,221 @@ export class PantryPageComponent implements OnInit {
     }
   }
 
+  async shareShoppingPlan(items: ShoppingPlanItem[]): Promise<void> {
+    const exportText = this.buildShoppingPlanExportText(items);
+    this.shoppingExportText = exportText;
+
+    if (!isPlatformBrowser(this.platformId)) {
+      this.shoppingExportStatus = 'Lista generada para compartir manualmente.';
+      this.changeDetector.markForCheck();
+      return;
+    }
+
+    const shareNavigator = navigator as Navigator & {
+      share?: (data: { title?: string; text: string }) => Promise<void>;
+    };
+
+    if (shareNavigator.share) {
+      try {
+        await shareNavigator.share({
+          title: 'Lista PantryList',
+          text: exportText,
+        });
+        this.shoppingExportStatus = 'Lista lista para compartir.';
+        this.changeDetector.markForCheck();
+        return;
+      } catch {
+        this.shoppingExportStatus = 'No se pudo abrir compartir; usa copia o WhatsApp.';
+      }
+    }
+
+    await this.copyShoppingPlan(items);
+  }
+
   getWhatsAppShoppingUrl(exportText: string): string {
     return `https://wa.me/?text=${encodeURIComponent(exportText)}`;
+  }
+
+  downloadPantryExport(): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      this.privacyExportStatus = 'Export disponible solo en navegador.';
+      return;
+    }
+
+    this.privacyExportBusy = true;
+    this.privacyExportStatus = null;
+
+    this.pantryService.exportPantryData().pipe(
+      timeout(this.lotRegistrationTimeoutMs),
+      finalize(() => {
+        this.privacyExportBusy = false;
+        this.changeDetector.markForCheck();
+      }),
+    ).subscribe({
+      next: (exportData) => {
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+          type: 'application/json',
+        });
+        const downloadUrl = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = downloadUrl;
+        anchor.download = `pantrylist-export-${toDateInputValue(new Date())}.json`;
+        anchor.click();
+        URL.revokeObjectURL(downloadUrl);
+        this.privacyExportStatus = 'Export descargado en este navegador.';
+      },
+      error: (error) => {
+        this.privacyExportStatus = this.getErrorMessage(error);
+      },
+    });
+  }
+
+  async enterShoppingMode(items: ShoppingPlanItem[]): Promise<void> {
+    this.ensureShoppingTripDraft(items);
+    this.shoppingModeActive = true;
+    this.shoppingCheckoutStatus = this.isOffline
+      ? 'Modo compra sin conexion; el cierre queda pendiente.'
+      : 'Modo compra activo.';
+    await this.requestShoppingWakeLock();
+    this.changeDetector.markForCheck();
+  }
+
+  exitShoppingMode(): void {
+    this.shoppingModeActive = false;
+    this.shoppingCheckoutStatus = null;
+    void this.releaseShoppingWakeLock();
+    this.persistShoppingTripDraft();
+  }
+
+  getShoppingTripItem(item: ShoppingPlanItem): ShoppingTripDraftItem {
+    return {
+      ...this.buildDefaultShoppingTripItem(item),
+      ...this.shoppingTripDraft[item.productTypeId],
+      unit: item.defaultUnit,
+    };
+  }
+
+  updateShoppingTripChecked(item: ShoppingPlanItem, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.updateShoppingTripDraftItem(item, { checked: input.checked });
+  }
+
+  updateShoppingTripQuantity(
+    item: ShoppingPlanItem,
+    value: string | number | null,
+  ): void {
+    const quantity = this.toOptionalNumber(value);
+
+    if (quantity === undefined || quantity <= 0) {
+      this.shoppingCheckoutStatus = 'Cantidad invalida para cerrar compra.';
+      return;
+    }
+
+    this.updateShoppingTripDraftItem(item, {
+      quantity: Number(quantity.toFixed(2)),
+    });
+  }
+
+  updateShoppingTripPaidUnitPrice(
+    item: ShoppingPlanItem,
+    value: string | number | null,
+  ): void {
+    const paidUnitPrice = this.toOptionalNumber(value);
+
+    this.updateShoppingTripDraftItem(item, {
+      paidUnitPrice:
+        paidUnitPrice === undefined || paidUnitPrice <= 0
+          ? undefined
+          : Number(paidUnitPrice.toFixed(2)),
+    });
+  }
+
+  updateShoppingTripLocation(item: ShoppingPlanItem, value: string): void {
+    this.updateShoppingTripDraftItem(item, {
+      shoppingLocation: this.toOptionalText(value),
+    });
+  }
+
+  closeShoppingTrip(items: ShoppingPlanItem[]): void {
+    const selectedItems = this.getSelectedShoppingTripItems(items);
+
+    if (selectedItems.length === 0) {
+      this.shoppingCheckoutStatus = 'Marca al menos un producto comprado.';
+      return;
+    }
+
+    if (this.isOffline) {
+      this.shoppingCheckoutStatus =
+        'Sin conexion. Borrador guardado para cerrar despues.';
+      this.persistShoppingTripDraft();
+      return;
+    }
+
+    const requestItems: CloseShoppingPurchaseItemRequest[] = selectedItems.map(
+      ({ draft }) => ({
+        productTypeId: draft.productTypeId,
+        quantity: draft.quantity,
+        unit: draft.unit,
+        paidUnitPrice: draft.paidUnitPrice,
+        shoppingLocation: draft.shoppingLocation,
+      }),
+    );
+
+    this.shoppingCheckoutBusy = true;
+    this.shoppingCheckoutStatus = null;
+
+    this.pantryService.closeShoppingPurchase({ items: requestItems }).pipe(
+      timeout(this.lotRegistrationTimeoutMs),
+      finalize(() => {
+        this.shoppingCheckoutBusy = false;
+        this.changeDetector.markForCheck();
+      }),
+    ).subscribe({
+      next: (lots) => {
+        this.shoppingCheckoutStatus = `Compra cerrada: ${lots.length} lotes registrados.`;
+        this.shoppingModeActive = false;
+        this.shoppingTripDraft = {};
+        this.removeLocalValue(this.shoppingTripStorageKey);
+        void this.releaseShoppingWakeLock();
+        this.loadOverview();
+      },
+      error: (error) => {
+        this.shoppingCheckoutStatus = this.getErrorMessage(error);
+        this.persistShoppingTripDraft();
+      },
+    });
+  }
+
+  clearShoppingTripDraft(items: ShoppingPlanItem[]): void {
+    this.shoppingTripDraft = {};
+    this.ensureShoppingTripDraft(items);
+    this.shoppingCheckoutStatus = 'Borrador de compra reiniciado.';
+  }
+
+  getShoppingTripSelectedCount(items: ShoppingPlanItem[]): number {
+    return this.getSelectedShoppingTripItems(items).length;
+  }
+
+  getShoppingTripPlannedTotal(items: ShoppingPlanItem[]): number {
+    return Number(
+      this.getSelectedShoppingTripItems(items)
+        .reduce((sum, selection) => sum + (selection.planItem.estimatedLineTotal ?? 0), 0)
+        .toFixed(2),
+    );
+  }
+
+  getShoppingTripActualTotal(items: ShoppingPlanItem[]): number {
+    return Number(
+      this.getSelectedShoppingTripItems(items)
+        .reduce((sum, selection) => {
+          const unitPrice =
+            selection.draft.paidUnitPrice ??
+            selection.planItem.estimatedUnitPrice ??
+            0;
+          return sum + unitPrice * selection.draft.quantity;
+        }, 0)
+        .toFixed(2),
+    );
   }
 
   getRouteTotalSummary(items: ShoppingPlanItem[]): string {
@@ -1232,6 +1470,22 @@ export class PantryPageComponent implements OnInit {
         this.quickCaptureDrafts = [];
       }
     }
+
+    const storedTripDraft = this.getLocalValue(this.shoppingTripStorageKey);
+
+    if (storedTripDraft) {
+      try {
+        const parsedItems = JSON.parse(storedTripDraft) as ShoppingTripDraftItem[];
+        this.shoppingTripDraft = parsedItems.reduce<
+          Record<string, ShoppingTripDraftItem>
+        >((draft, item) => ({
+          ...draft,
+          [item.productTypeId]: item,
+        }), {});
+      } catch {
+        this.shoppingTripDraft = {};
+      }
+    }
   }
 
   private watchNetworkState(): void {
@@ -1259,6 +1513,107 @@ export class PantryPageComponent implements OnInit {
       this.quickCaptureStorageKey,
       JSON.stringify(this.quickCaptureDrafts),
     );
+  }
+
+  private ensureShoppingTripDraft(items: ShoppingPlanItem[]): void {
+    this.shoppingTripDraft = items.reduce<Record<string, ShoppingTripDraftItem>>(
+      (draft, item) => ({
+        ...draft,
+        [item.productTypeId]: this.getShoppingTripItem(item),
+      }),
+      {},
+    );
+    this.persistShoppingTripDraft();
+  }
+
+  private updateShoppingTripDraftItem(
+    item: ShoppingPlanItem,
+    patch: Partial<ShoppingTripDraftItem>,
+  ): void {
+    this.shoppingTripDraft = {
+      ...this.shoppingTripDraft,
+      [item.productTypeId]: {
+        ...this.getShoppingTripItem(item),
+        ...patch,
+        productTypeId: item.productTypeId,
+        unit: item.defaultUnit,
+      },
+    };
+    this.persistShoppingTripDraft();
+  }
+
+  private buildDefaultShoppingTripItem(
+    item: ShoppingPlanItem,
+  ): ShoppingTripDraftItem {
+    const metadata = this.resolveShoppingMetadata(item.shoppingMetadata);
+
+    return {
+      productTypeId: item.productTypeId,
+      checked: false,
+      quantity: item.suggestedPurchaseQuantity,
+      unit: item.defaultUnit,
+      paidUnitPrice: item.estimatedUnitPrice,
+      shoppingLocation: metadata.shoppingLocation,
+    };
+  }
+
+  private getSelectedShoppingTripItems(
+    items: ShoppingPlanItem[],
+  ): { planItem: ShoppingPlanItem; draft: ShoppingTripDraftItem }[] {
+    return items
+      .map((planItem) => ({
+        planItem,
+        draft: this.getShoppingTripItem(planItem),
+      }))
+      .filter((selection) => selection.draft.checked);
+  }
+
+  private persistShoppingTripDraft(): void {
+    const draftItems = Object.values(this.shoppingTripDraft);
+
+    if (draftItems.length === 0) {
+      this.removeLocalValue(this.shoppingTripStorageKey);
+      return;
+    }
+
+    this.setLocalValue(this.shoppingTripStorageKey, JSON.stringify(draftItems));
+  }
+
+  private async requestShoppingWakeLock(): Promise<void> {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    const wakeLockNavigator = navigator as Navigator & {
+      wakeLock?: {
+        request: (type: 'screen') => Promise<ScreenWakeLock>;
+      };
+    };
+
+    if (!wakeLockNavigator.wakeLock) {
+      return;
+    }
+
+    try {
+      this.shoppingWakeLock = await wakeLockNavigator.wakeLock.request('screen');
+    } catch {
+      this.shoppingCheckoutStatus =
+        'Modo compra activo; este navegador puede bloquear pantalla.';
+    }
+  }
+
+  private async releaseShoppingWakeLock(): Promise<void> {
+    if (!this.shoppingWakeLock) {
+      return;
+    }
+
+    try {
+      await this.shoppingWakeLock.release();
+    } catch {
+      // Wake Lock is best effort only.
+    } finally {
+      this.shoppingWakeLock = null;
+    }
   }
 
   private getLocalValue(key: string): string | null {

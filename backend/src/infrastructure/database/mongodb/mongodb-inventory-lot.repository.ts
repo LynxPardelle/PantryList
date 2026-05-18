@@ -5,6 +5,11 @@ import {
   InventoryLot,
   InventoryLotPrimitives,
 } from '../../../domain/entities/inventory-lot.entity';
+import {
+  MAX_ACTIVE_INVENTORY_LOTS_PER_USER,
+  MAX_ARCHIVED_INVENTORY_LOTS_PER_USER,
+  MAX_INVENTORY_LOTS_PER_PRODUCT_TYPE,
+} from '../../../application/constants/query-limits';
 import { InventoryLotRepository } from '../../../domain/repositories/inventory-lot.repository';
 import { InventoryLotId } from '../../../domain/value-objects/inventory-lot-id.vo';
 import { ProductTypeId } from '../../../domain/value-objects/product-type-id.vo';
@@ -84,6 +89,7 @@ export class MongoInventoryLotRepository implements InventoryLotRepository {
     const lots = await this.inventoryLotModel
       .find({ userId: userId.toString(), archivedAt: { $exists: false } })
       .sort({ updatedAt: -1 })
+      .limit(MAX_ACTIVE_INVENTORY_LOTS_PER_USER)
       .lean()
       .exec();
 
@@ -94,6 +100,7 @@ export class MongoInventoryLotRepository implements InventoryLotRepository {
     const lots = await this.inventoryLotModel
       .find({ userId: userId.toString(), archivedAt: { $exists: true } })
       .sort({ archivedAt: -1 })
+      .limit(MAX_ARCHIVED_INVENTORY_LOTS_PER_USER)
       .lean()
       .exec();
 
@@ -109,6 +116,7 @@ export class MongoInventoryLotRepository implements InventoryLotRepository {
         archivedAt: { $exists: false },
       })
       .sort({ updatedAt: -1 })
+      .limit(MAX_INVENTORY_LOTS_PER_PRODUCT_TYPE)
       .lean()
       .exec();
 

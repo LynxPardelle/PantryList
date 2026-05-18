@@ -1,10 +1,15 @@
 import { ProductCategory, QuantityUnit } from '../../../domain/enums';
 import { ProductType } from '../../../domain/entities/product-type.entity';
+import {
+  MAX_ACTIVE_PRODUCT_TYPES_PER_USER,
+  MAX_ARCHIVED_PRODUCT_TYPES_PER_USER,
+} from '../../../application/constants/query-limits';
 import { UserId } from '../../../domain/value-objects/user-id.vo';
 import { MongoProductTypeRepository } from './mongodb-product-type.repository';
 
 type QueryResult<T> = {
   sort: () => QueryResult<T>;
+  limit: (limit: number) => QueryResult<T>;
   lean: () => {
     exec: () => Promise<T>;
   };
@@ -30,12 +35,17 @@ describe('MongoProductTypeRepository archive-aware queries', () => {
       updatedAt: new Date('2026-04-20T00:00:00.000Z'),
     });
 
-  const makeQuery = <T>(value: T): QueryResult<T> => ({
-    sort: () => makeQuery(value),
-    lean: () => ({
-      exec: () => Promise.resolve(value),
-    }),
-  });
+  const makeQuery = <T>(value: T): QueryResult<T> => {
+    const query: QueryResult<T> = {
+      sort: () => query,
+      limit: () => query,
+      lean: () => ({
+        exec: () => Promise.resolve(value),
+      }),
+    };
+
+    return query;
+  };
 
   it('persists planning settings and archive state', async () => {
     const productType = makeProductType();
@@ -72,13 +82,15 @@ describe('MongoProductTypeRepository archive-aware queries', () => {
   });
 
   it('excludes archived product types from active user listings', async () => {
+    const query = makeQuery([]);
     const model = {
       findOneAndUpdate: jest.fn(),
       findOne: jest.fn(),
-      find: jest.fn().mockReturnValue(makeQuery([])),
+      find: jest.fn().mockReturnValue(query),
       updateMany: jest.fn(),
       deleteOne: jest.fn(),
     };
+    jest.spyOn(query, 'limit');
 
     const repository = new MongoProductTypeRepository(model as never);
 
@@ -88,17 +100,20 @@ describe('MongoProductTypeRepository archive-aware queries', () => {
       userId: userId.toString(),
       archivedAt: { $exists: false },
     });
+    expect(query.limit).toHaveBeenCalledWith(MAX_ACTIVE_PRODUCT_TYPES_PER_USER);
   });
 
   it('lists archived product types separately', async () => {
     const productType = makeProductType().toPrimitives();
+    const query = makeQuery([productType]);
     const model = {
       findOneAndUpdate: jest.fn(),
       findOne: jest.fn(),
-      find: jest.fn().mockReturnValue(makeQuery([productType])),
+      find: jest.fn().mockReturnValue(query),
       updateMany: jest.fn(),
       deleteOne: jest.fn(),
     };
+    jest.spyOn(query, 'limit');
 
     const repository = new MongoProductTypeRepository(model as never);
 
@@ -108,6 +123,9 @@ describe('MongoProductTypeRepository archive-aware queries', () => {
       userId: userId.toString(),
       archivedAt: { $exists: true },
     });
+    expect(query.limit).toHaveBeenCalledWith(
+      MAX_ARCHIVED_PRODUCT_TYPES_PER_USER,
+    );
     expect(archived[0].toPrimitives()).toMatchObject({
       id: 'type-1',
       archivedReason: 'Ya no se compra',

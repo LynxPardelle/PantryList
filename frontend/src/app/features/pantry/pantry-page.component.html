@@ -18,9 +18,7 @@
         Registra cada compra por lote y decide de cu&aacute;l consumir cuando haga falta.
       </p>
       <a class="ghost-button" routerLink="/profile">Perfil y preferencias</a>
-      <form class="logout-form" method="post" action="/api/auth/logout/browser">
-        <button class="secondary-button" type="submit">Cerrar sesi&oacute;n</button>
-      </form>
+      <button class="secondary-button" type="button" (click)="logout()">Cerrar sesi&oacute;n</button>
     </aside>
   </section>
 
@@ -629,6 +627,12 @@
               <button type="button" class="secondary-button" (click)="copyShoppingPlan(shoppingPlanItems)">
                 Copiar lista
               </button>
+              <button type="button" class="secondary-button" (click)="shareShoppingPlan(shoppingPlanItems)">
+                Compartir
+              </button>
+              <button type="button" class="primary-button" (click)="shoppingModeActive ? exitShoppingMode() : enterShoppingMode(shoppingPlanItems)">
+                {{ shoppingModeActive ? 'Salir de compra' : 'Modo compra' }}
+              </button>
             </div>
 
             @if (shoppingExportStatus) {
@@ -650,6 +654,86 @@
               >
                 Abrir en WhatsApp
               </a>
+            }
+
+            @if (shoppingCheckoutStatus) {
+              <p class="helper-copy" aria-live="polite">{{ shoppingCheckoutStatus }}</p>
+            }
+
+            @if (shoppingModeActive) {
+              <section class="shopping-mode-panel" aria-label="Modo compra">
+                <div class="shopping-mode-summary">
+                  <div>
+                    <p class="panel-kicker">Modo compra</p>
+                    <h3>{{ getShoppingTripSelectedCount(shoppingPlanItems) }} seleccionados</h3>
+                  </div>
+                  <div class="shopping-mode-totals">
+                    <span>Plan: {{ formatShoppingPrice(getShoppingTripPlannedTotal(shoppingPlanItems)) }}</span>
+                    <strong>Real: {{ formatShoppingPrice(getShoppingTripActualTotal(shoppingPlanItems)) }}</strong>
+                  </div>
+                </div>
+
+                <div class="shopping-mode-list">
+                  @for (item of shoppingPlanItems; track trackByProductTypeId($index, item)) {
+                    <article class="shopping-mode-row">
+                      <label class="shopping-check">
+                        <input
+                          type="checkbox"
+                          [checked]="getShoppingTripItem(item).checked"
+                          (change)="updateShoppingTripChecked(item, $event)"
+                        />
+                        <span>{{ item.baseName }}</span>
+                      </label>
+
+                      <label class="field">
+                        <span>Cantidad</span>
+                        <input
+                          type="number"
+                          min="0.01"
+                          step="0.01"
+                          [value]="getShoppingTripItem(item).quantity"
+                          (input)="updateShoppingTripQuantity(item, $any($event.target).value)"
+                        />
+                      </label>
+
+                      <label class="field">
+                        <span>Precio pagado</span>
+                        <input
+                          type="number"
+                          min="0.01"
+                          step="0.01"
+                          [value]="getShoppingTripItem(item).paidUnitPrice ?? ''"
+                          (input)="updateShoppingTripPaidUnitPrice(item, $any($event.target).value)"
+                        />
+                      </label>
+
+                      <label class="field">
+                        <span>Tienda</span>
+                        <input
+                          type="text"
+                          list="shopping-location-options"
+                          [value]="getShoppingTripItem(item).shoppingLocation ?? ''"
+                          (input)="updateShoppingTripLocation(item, $any($event.target).value)"
+                        />
+                      </label>
+                    </article>
+                  }
+                </div>
+
+                <div class="shopping-mode-actions">
+                  <button
+                    type="button"
+                    class="primary-button"
+                    [disabled]="shoppingCheckoutBusy"
+                    (click)="closeShoppingTrip(shoppingPlanItems)"
+                  >
+                    {{ shoppingCheckoutBusy ? 'Cerrando...' : 'Cerrar compra' }}
+                  </button>
+                  <button type="button" class="ghost-button" (click)="clearShoppingTripDraft(shoppingPlanItems)">
+                    Reiniciar
+                  </button>
+                </div>
+              </section>
             }
 
             @if (shoppingRouteGroups$ | async; as routeGroups) {
@@ -804,6 +888,27 @@
               </article>
             }
           </div>
+        }
+      </article>
+
+      <article class="panel privacy-panel">
+        <div class="panel-header">
+          <div>
+            <p class="panel-kicker">Privacidad</p>
+            <h2>Datos y privacidad</h2>
+          </div>
+          <button
+            type="button"
+            class="secondary-button"
+            [disabled]="privacyExportBusy"
+            (click)="downloadPantryExport()"
+          >
+            {{ privacyExportBusy ? 'Exportando...' : 'Exportar datos' }}
+          </button>
+        </div>
+
+        @if (privacyExportStatus) {
+          <p class="helper-copy" aria-live="polite">{{ privacyExportStatus }}</p>
         }
       </article>
 

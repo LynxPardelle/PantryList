@@ -9,6 +9,11 @@ import {
   ProductTypePrimitives,
   ProductTypeShoppingMetadataPrimitives,
 } from '../../../domain/entities/product-type.entity';
+import {
+  MAX_ACTIVE_PRODUCT_TYPES_PER_USER,
+  MAX_ARCHIVED_PRODUCT_TYPES_PER_USER,
+  MAX_PRODUCT_TYPE_SEARCH_RESULTS,
+} from '../../../application/constants/query-limits';
 import { ProductTypeRepository } from '../../../domain/repositories/product-type.repository';
 import { ProductTypeId } from '../../../domain/value-objects/product-type-id.vo';
 import { UserId } from '../../../domain/value-objects/user-id.vo';
@@ -104,7 +109,10 @@ export class DynamoDbProductTypeRepository implements ProductTypeRepository {
   }
 
   async findByUserId(userId: UserId): Promise<ProductType[]> {
-    const productTypes = await this.findAllByUserId(userId);
+    const productTypes = await this.findAllByUserId(
+      userId,
+      MAX_ACTIVE_PRODUCT_TYPES_PER_USER,
+    );
 
     return productTypes
       .filter((productType) => !productType.archivedAt)
@@ -112,7 +120,10 @@ export class DynamoDbProductTypeRepository implements ProductTypeRepository {
   }
 
   async findArchivedByUserId(userId: UserId): Promise<ProductType[]> {
-    const productTypes = await this.findAllByUserId(userId);
+    const productTypes = await this.findAllByUserId(
+      userId,
+      MAX_ARCHIVED_PRODUCT_TYPES_PER_USER,
+    );
 
     return productTypes
       .filter((productType) => Boolean(productType.archivedAt))
@@ -130,12 +141,14 @@ export class DynamoDbProductTypeRepository implements ProductTypeRepository {
     const normalizedSearch = search ? normalizeBaseName(search) : undefined;
 
     if (!normalizedSearch) {
-      return productTypes;
+      return productTypes.slice(0, MAX_PRODUCT_TYPE_SEARCH_RESULTS);
     }
 
-    return productTypes.filter((productType) =>
-      normalizeBaseName(productType.baseName).includes(normalizedSearch),
-    );
+    return productTypes
+      .filter((productType) =>
+        normalizeBaseName(productType.baseName).includes(normalizedSearch),
+      )
+      .slice(0, MAX_PRODUCT_TYPE_SEARCH_RESULTS);
   }
 
   async findByBaseName(
@@ -182,7 +195,10 @@ export class DynamoDbProductTypeRepository implements ProductTypeRepository {
     );
   }
 
-  private async findAllByUserId(userId: UserId): Promise<ProductType[]> {
+  private async findAllByUserId(
+    userId: UserId,
+    limit?: number,
+  ): Promise<ProductType[]> {
     const result = await this.dynamoDb.send(
       new QueryCommand({
         TableName: this.tableName,
@@ -191,6 +207,7 @@ export class DynamoDbProductTypeRepository implements ProductTypeRepository {
         ExpressionAttributeValues: {
           ':userId': userId.toString(),
         },
+        ...(limit ? { Limit: limit } : {}),
       }),
     );
 

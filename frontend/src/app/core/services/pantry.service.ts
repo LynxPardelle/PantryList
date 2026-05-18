@@ -19,6 +19,7 @@ import {
   ApiShoppingRouteGroup,
   ArchivedPantryItems,
   ArchivePantryItemRequest,
+  CloseShoppingPurchaseRequest,
   ConsumeInventoryLotRequest,
   CreateInventoryLotRequest,
   CreateProductTypeRequest,
@@ -51,6 +52,7 @@ export class PantryService {
   private readonly pantryOverviewUrl = `${this.apiUrl}/pantry/overview`;
   private readonly archivedPantryUrl = `${this.apiUrl}/pantry/archived`;
   private readonly pantryExportUrl = `${this.apiUrl}/pantry/export`;
+  private readonly pantryCheckoutUrl = `${this.apiUrl}/pantry/checkout`;
 
   constructor(private readonly http: HttpClient) {}
 
@@ -268,6 +270,22 @@ export class PantryService {
     return this.http.get<ApiPantryExport>(this.pantryExportUrl, {
       withCredentials: true,
     });
+  }
+
+  closeShoppingPurchase(
+    request: CloseShoppingPurchaseRequest,
+  ): Observable<InventoryLot[]> {
+    return this.http
+      .post<ApiInventoryLot[]>(this.pantryCheckoutUrl, request, {
+        withCredentials: true,
+      })
+      .pipe(
+        map((inventoryLots) =>
+          inventoryLots.map((inventoryLot) =>
+            this.normalizeInventoryLot(inventoryLot),
+          ),
+        ),
+      );
   }
 
   private normalizeProductType(productType: ApiProductType): ProductType {
