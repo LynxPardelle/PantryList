@@ -45,8 +45,17 @@ export interface ProductTypeShoppingMetadataPrimitives {
   substituteBrand?: string;
   shoppingNotes?: string;
   estimatedUnitPrice?: number;
+  priceHistory?: ProductTypePriceHistoryEntryPrimitives[];
   householdStaple: boolean;
   buyOnlyOnPromo: boolean;
+}
+
+export interface ProductTypePriceHistoryEntryPrimitives {
+  shoppingLocation?: string;
+  preferredBrand?: string;
+  unit: QuantityUnit;
+  estimatedUnitPrice: number;
+  recordedAt: Date;
 }
 
 export type ProductTypeShoppingMetadataPatch =
@@ -82,6 +91,13 @@ export class ProductType {
       throw new Error('Base name cannot be empty');
     }
 
+    const now = new Date();
+    const normalizedShoppingMetadata = withCurrentPriceHistoryEntry(
+      normalizeShoppingMetadata(shoppingMetadata, defaultUnit),
+      defaultUnit,
+      now,
+    );
+
     return new ProductType(
       ProductTypeId.generate(),
       userId,
@@ -90,9 +106,11 @@ export class ProductType {
       defaultUnit,
       normalizeDefaultDepletionRule(defaultDepletionRule, defaultUnit),
       normalizePlanningSettings(undefined, defaultDepletionRule),
-      normalizeShoppingMetadata(shoppingMetadata),
+      normalizedShoppingMetadata,
       undefined,
       undefined,
+      now,
+      now,
     );
   }
 
@@ -113,7 +131,10 @@ export class ProductType {
         primitives.planningSettings,
         defaultDepletionRule,
       ),
-      normalizeShoppingMetadata(primitives.shoppingMetadata),
+      normalizeShoppingMetadata(
+        primitives.shoppingMetadata,
+        primitives.defaultUnit,
+      ),
       primitives.archivedAt ? new Date(primitives.archivedAt) : undefined,
       normalizeOptionalText(primitives.archivedReason),
       primitives.createdAt,
@@ -195,11 +216,27 @@ export class ProductType {
   }
 
   updateShoppingMetadata(input: ProductTypeShoppingMetadataPatch): void {
-    this._shoppingMetadata = normalizeShoppingMetadata({
-      ...this._shoppingMetadata,
-      ...input,
-    });
-    this._updatedAt = new Date();
+    const previousShoppingMetadata = this._shoppingMetadata;
+    const nextUpdatedAt = new Date();
+    const normalizedShoppingMetadata = normalizeShoppingMetadata(
+      {
+        ...this._shoppingMetadata,
+        ...input,
+      },
+      this._defaultUnit,
+    );
+
+    this._shoppingMetadata = shouldRecordPriceHistory(
+      previousShoppingMetadata,
+      normalizedShoppingMetadata,
+    )
+      ? withCurrentPriceHistoryEntry(
+          normalizedShoppingMetadata,
+          this._defaultUnit,
+          nextUpdatedAt,
+        )
+      : normalizedShoppingMetadata;
+    this._updatedAt = nextUpdatedAt;
   }
 
   archive(reason?: string): void {
@@ -340,6 +377,7 @@ function clonePlanningSettings(
 
 function normalizeShoppingMetadata(
   metadata: ProductTypeShoppingMetadataPatch | undefined,
+  defaultUnit: QuantityUnit,
 ): ProductTypeShoppingMetadataPrimitives {
   const buyOnlyOnPromo = metadata?.buyOnlyOnPromo ?? false;
   const householdStaple = metadata?.householdStaple ?? false;
@@ -395,14 +433,115 @@ function normalizeShoppingMetadata(
     );
   }
 
+  const priceHistory = normalizePriceHistory(
+    metadata?.priceHistory,
+    defaultUnit,
+  );
+
+  if (priceHistory.length > 0) {
+    normalized.priceHistory = priceHistory;
+  }
+
   return normalized;
 }
 
 function cloneShoppingMetadata(
   metadata: ProductTypeShoppingMetadataPrimitives,
 ): ProductTypeShoppingMetadataPrimitives {
-  return { ...metadata };
+  const cloned = { ...metadata };
+
+  if (metadata.priceHistory) {
+    cloned.priceHistory = metadata.priceHistory.map((entry) => ({
+      ...entry,
+      recordedAt: new Date(entry.recordedAt),
+    }));
+  }
+
+  return cloned;
 }
+
+function normalizePriceHistory(
+  priceHistory: ProductTypePriceHistoryEntryPrimitives[] | undefined,
+  defaultUnit: QuantityUnit,
+): ProductTypePriceHistoryEntryPrimitives[] {
+  if (!Array.isArray(priceHistory)) {
+    return [];
+  }
+
+  return priceHistory
+    .map((entry) => ({
+      shoppingLocation: normalizeLimitedOptionalText(
+        entry.shoppingLocation,
+        80,
+        'Shopping location must be 80 characters or fewer',
+      ),
+      preferredBrand: normalizeLimitedOptionalText(
+        entry.preferredBrand,
+        80,
+        'Preferred brand must be 80 characters or fewer',
+      ),
+      unit: PRODUCT_UNITS.has(entry.unit) ? entry.unit : defaultUnit,
+      estimatedUnitPrice: normalizePriceHistoryAmount(entry.estimatedUnitPrice),
+      recordedAt: new Date(entry.recordedAt),
+    }))
+    .filter((entry) => !Number.isNaN(entry.recordedAt.getTime()))
+    .sort(
+      (left, right) => right.recordedAt.getTime() - left.recordedAt.getTime(),
+    )
+    .slice(0, 12);
+}
+
+function normalizePriceHistoryAmount(estimatedUnitPrice: number): number {
+  assertNumberBetween(
+    estimatedUnitPrice,
+    0.01,
+    1_000_000,
+    'Estimated unit price must be between 0.01 and 1000000',
+  );
+
+  return Number(estimatedUnitPrice.toFixed(2));
+}
+
+function shouldRecordPriceHistory(
+  previous: ProductTypeShoppingMetadataPrimitives,
+  next: ProductTypeShoppingMetadataPrimitives,
+): boolean {
+  if (next.estimatedUnitPrice === undefined) {
+    return false;
+  }
+
+  return (
+    previous.estimatedUnitPrice !== next.estimatedUnitPrice ||
+    previous.shoppingLocation !== next.shoppingLocation ||
+    previous.preferredBrand !== next.preferredBrand
+  );
+}
+
+function withCurrentPriceHistoryEntry(
+  metadata: ProductTypeShoppingMetadataPrimitives,
+  defaultUnit: QuantityUnit,
+  recordedAt: Date,
+): ProductTypeShoppingMetadataPrimitives {
+  if (metadata.estimatedUnitPrice === undefined) {
+    return metadata;
+  }
+
+  return {
+    ...metadata,
+    priceHistory: [
+      {
+        shoppingLocation: metadata.shoppingLocation,
+        preferredBrand: metadata.preferredBrand,
+        unit: defaultUnit,
+        estimatedUnitPrice: metadata.estimatedUnitPrice,
+        recordedAt,
+      },
+      ...(metadata.priceHistory ?? []),
+    ].slice(0, 12),
+  };
+}
+
+const PRODUCT_UNITS = new Set<QuantityUnit>(Object.values(QuantityUnit));
 
 function assertNumberBetween(
   value: number,

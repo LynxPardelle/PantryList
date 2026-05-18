@@ -1,6 +1,9 @@
 import { InventoryLot } from '../../domain/entities/inventory-lot.entity';
-import { ProductType } from '../../domain/entities/product-type.entity';
-import { ExpirationStatus } from '../../domain/enums';
+import {
+  ProductType,
+  ProductTypeShoppingMetadataPrimitives,
+} from '../../domain/entities/product-type.entity';
+import { ExpirationStatus, QuantityUnit } from '../../domain/enums';
 import {
   UserPreferences,
   UserPreferencesPatch,
@@ -387,11 +390,47 @@ function buildPriceReferenceItems(
         preferredBrand: metadata.preferredBrand,
         substituteBrand: metadata.substituteBrand,
         estimatedUnitPrice: metadata.estimatedUnitPrice!,
+        priceHistory: buildPriceHistory(
+          metadata,
+          productType.defaultUnit,
+          productType.updatedAt,
+        ),
         buyOnlyOnPromo: metadata.buyOnlyOnPromo,
         updatedAt: productType.updatedAt,
       };
     })
     .sort(comparePriceReferenceItem);
+}
+
+function buildPriceHistory(
+  metadata: ProductTypeShoppingMetadataPrimitives,
+  defaultUnit: QuantityUnit,
+  updatedAt: Date,
+): PriceReferenceItem['priceHistory'] {
+  if (metadata.priceHistory && metadata.priceHistory.length > 0) {
+    return metadata.priceHistory
+      .map((entry) => ({
+        ...entry,
+        recordedAt: new Date(entry.recordedAt),
+      }))
+      .sort(
+        (left, right) => right.recordedAt.getTime() - left.recordedAt.getTime(),
+      );
+  }
+
+  if (metadata.estimatedUnitPrice === undefined) {
+    return [];
+  }
+
+  return [
+    {
+      shoppingLocation: metadata.shoppingLocation,
+      preferredBrand: metadata.preferredBrand,
+      unit: defaultUnit,
+      estimatedUnitPrice: metadata.estimatedUnitPrice,
+      recordedAt: updatedAt,
+    },
+  ];
 }
 
 function getEstimatedLineTotal(

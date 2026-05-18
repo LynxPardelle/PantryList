@@ -34,6 +34,23 @@ export class ProductTypePlanningSettingsResponseDto {
   shoppingPlanLeadDaysOverride?: number;
 }
 
+export class ProductTypePriceHistoryEntryResponseDto {
+  @ApiProperty({ required: false })
+  shoppingLocation?: string;
+
+  @ApiProperty({ required: false })
+  preferredBrand?: string;
+
+  @ApiProperty()
+  unit: string;
+
+  @ApiProperty()
+  estimatedUnitPrice: number;
+
+  @ApiProperty()
+  recordedAt: Date;
+}
+
 export class ProductTypeShoppingMetadataResponseDto {
   @ApiProperty({ required: false })
   storageLocation?: string;
@@ -52,6 +69,12 @@ export class ProductTypeShoppingMetadataResponseDto {
 
   @ApiProperty({ required: false })
   estimatedUnitPrice?: number;
+
+  @ApiProperty({
+    required: false,
+    type: [ProductTypePriceHistoryEntryResponseDto],
+  })
+  priceHistory?: ProductTypePriceHistoryEntryResponseDto[];
 
   @ApiProperty()
   householdStaple: boolean;

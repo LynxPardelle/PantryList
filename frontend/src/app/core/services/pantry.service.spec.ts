@@ -66,6 +66,13 @@ describe('PantryService', () => {
           baseName: 'Detergente',
           shoppingLocation: 'Mayoreo',
           estimatedUnitPrice: 42.5,
+          priceHistory: [
+            jasmine.objectContaining({
+              shoppingLocation: 'Mayoreo',
+              estimatedUnitPrice: 42.5,
+              recordedAt: new Date('2026-04-24T00:00:00.000Z'),
+            }),
+          ],
           updatedAt: new Date('2026-04-24T00:00:00.000Z'),
         }),
       );
@@ -234,6 +241,15 @@ describe('PantryService', () => {
           preferredBrand: 'Marca hogar',
           substituteBrand: 'Marca propia',
           estimatedUnitPrice: 42.5,
+          priceHistory: [
+            {
+              shoppingLocation: 'Mayoreo',
+              preferredBrand: 'Marca hogar',
+              unit: 'lt',
+              estimatedUnitPrice: 42.5,
+              recordedAt: '2026-04-24T00:00:00.000Z',
+            },
+          ],
           buyOnlyOnPromo: true,
           updatedAt: '2026-04-24T00:00:00.000Z',
         },

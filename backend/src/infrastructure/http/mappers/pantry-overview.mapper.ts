@@ -149,6 +149,13 @@ export class PantryOverviewMapper {
       preferredBrand: item.preferredBrand,
       substituteBrand: item.substituteBrand,
       estimatedUnitPrice: item.estimatedUnitPrice,
+      priceHistory: item.priceHistory.map((entry) => ({
+        shoppingLocation: entry.shoppingLocation,
+        preferredBrand: entry.preferredBrand,
+        unit: entry.unit,
+        estimatedUnitPrice: entry.estimatedUnitPrice,
+        recordedAt: entry.recordedAt,
+      })),
       buyOnlyOnPromo: item.buyOnlyOnPromo,
       updatedAt: item.updatedAt,
     };

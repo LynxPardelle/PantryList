@@ -766,6 +766,21 @@ button:focus-visible {
   color: var(--color-text-muted);
 }
 
+.price-history-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  grid-column: 1 / -1;
+}
+
+.price-history-list span {
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+}
+
 .quick-capture-form {
   display: grid;
   grid-template-columns: 1fr;

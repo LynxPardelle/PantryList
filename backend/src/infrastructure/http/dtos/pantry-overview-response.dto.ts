@@ -281,6 +281,23 @@ export class ShoppingRouteGroupResponseDto {
   items: ShoppingPlanItemResponseDto[];
 }
 
+export class PriceHistoryEntryResponseDto {
+  @ApiProperty({ required: false })
+  shoppingLocation?: string;
+
+  @ApiProperty({ required: false })
+  preferredBrand?: string;
+
+  @ApiProperty()
+  unit: string;
+
+  @ApiProperty()
+  estimatedUnitPrice: number;
+
+  @ApiProperty()
+  recordedAt: Date;
+}
+
 export class PriceReferenceItemResponseDto {
   @ApiProperty()
   productTypeId: string;
@@ -305,6 +322,9 @@ export class PriceReferenceItemResponseDto {
 
   @ApiProperty()
   estimatedUnitPrice: number;
+
+  @ApiProperty({ type: [PriceHistoryEntryResponseDto] })
+  priceHistory: PriceHistoryEntryResponseDto[];
 
   @ApiProperty()
   buyOnlyOnPromo: boolean;

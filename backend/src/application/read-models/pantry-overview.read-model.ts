@@ -99,6 +99,14 @@ export interface ShoppingRouteGroup {
   items: ShoppingPlanItem[];
 }
 
+export interface PriceHistoryEntry {
+  shoppingLocation?: string;
+  preferredBrand?: string;
+  unit: QuantityUnit;
+  estimatedUnitPrice: number;
+  recordedAt: Date;
+}
+
 export interface PriceReferenceItem {
   productTypeId: string;
   baseName: string;
@@ -108,6 +116,7 @@ export interface PriceReferenceItem {
   preferredBrand?: string;
   substituteBrand?: string;
   estimatedUnitPrice: number;
+  priceHistory: PriceHistoryEntry[];
   buyOnlyOnPromo: boolean;
   updatedAt: Date;
 }

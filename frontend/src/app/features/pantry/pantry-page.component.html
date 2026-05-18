@@ -837,6 +837,20 @@
                       <span class="shopping-urgency-pill">Solo promo</span>
                     }
                   </div>
+                  @if (item.priceHistory.length > 0) {
+                    <div class="price-history-list">
+                      @for (entry of item.priceHistory; track entry.recordedAt) {
+                        <span>
+                          {{ entry.recordedAt | date:'dd MMM':'UTC' }} ·
+                          {{ formatShoppingPrice(entry.estimatedUnitPrice) }}
+                          por {{ entry.unit }}
+                          @if (entry.shoppingLocation) {
+                            · {{ entry.shoppingLocation }}
+                          }
+                        </span>
+                      }
+                    </div>
+                  }
                 </article>
               }
             </div>

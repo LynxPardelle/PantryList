@@ -99,6 +99,14 @@ describe('CreateProductTypeUseCase', () => {
       buyOnlyOnPromo: true,
       shoppingNotes: 'Comprar bolsa grande si esta en promo',
       estimatedUnitPrice: 36.5,
+      priceHistory: [
+        expect.objectContaining({
+          shoppingLocation: 'Mercado',
+          preferredBrand: 'Marca local',
+          unit: 'kg',
+          estimatedUnitPrice: 36.5,
+        }),
+      ],
     });
   });
 });

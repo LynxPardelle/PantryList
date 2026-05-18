@@ -86,6 +86,46 @@ describe('ProductType planning settings and archive state', () => {
     });
   });
 
+  it('records a bounded price history when shopping price references change', () => {
+    const productType = ProductType.create(
+      UserId.fromString('user-1'),
+      'Arroz',
+      ProductCategory.FOOD,
+      QuantityUnit.KILOGRAM,
+      undefined,
+      {
+        shoppingLocation: 'Mercado',
+        preferredBrand: 'Marca local',
+        householdStaple: true,
+        buyOnlyOnPromo: false,
+        estimatedUnitPrice: 31.75,
+      },
+    );
+
+    productType.updateShoppingMetadata({
+      shoppingLocation: 'Bodega',
+      preferredBrand: 'Marca local',
+      estimatedUnitPrice: 29.5,
+    });
+
+    const metadata = productType.toPrimitives().shoppingMetadata!;
+
+    expect(metadata.priceHistory).toEqual([
+      expect.objectContaining({
+        shoppingLocation: 'Bodega',
+        preferredBrand: 'Marca local',
+        unit: QuantityUnit.KILOGRAM,
+        estimatedUnitPrice: 29.5,
+      }),
+      expect.objectContaining({
+        shoppingLocation: 'Mercado',
+        preferredBrand: 'Marca local',
+        unit: QuantityUnit.KILOGRAM,
+        estimatedUnitPrice: 31.75,
+      }),
+    ]);
+  });
+
   it('rejects invalid planning override boundaries', () => {
     const productType = ProductType.fromPrimitives({
       id: 'type-1',

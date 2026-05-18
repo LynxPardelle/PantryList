@@ -102,8 +102,17 @@ export interface ProductTypeShoppingMetadata {
   substituteBrand?: string;
   shoppingNotes?: string;
   estimatedUnitPrice?: number;
+  priceHistory?: ProductTypePriceHistoryEntry[];
   householdStaple: boolean;
   buyOnlyOnPromo: boolean;
+}
+
+export interface ProductTypePriceHistoryEntry {
+  shoppingLocation?: string;
+  preferredBrand?: string;
+  unit: ProductUnit;
+  estimatedUnitPrice: number;
+  recordedAt: Date;
 }
 
 export type ProductTypeShoppingMetadataRequest =
@@ -244,6 +253,7 @@ export interface PriceReferenceItem {
   preferredBrand?: string;
   substituteBrand?: string;
   estimatedUnitPrice: number;
+  priceHistory: ProductTypePriceHistoryEntry[];
   buyOnlyOnPromo: boolean;
   updatedAt: Date;
 }
@@ -462,8 +472,17 @@ export interface ApiPriceReferenceItem {
   preferredBrand?: string;
   substituteBrand?: string;
   estimatedUnitPrice: number;
+  priceHistory?: ApiProductTypePriceHistoryEntry[];
   buyOnlyOnPromo: boolean;
   updatedAt: string;
+}
+
+export interface ApiProductTypePriceHistoryEntry {
+  shoppingLocation?: string;
+  preferredBrand?: string;
+  unit: ProductUnit;
+  estimatedUnitPrice: number;
+  recordedAt: string;
 }
 
 export interface ApiPantryStapleItem {

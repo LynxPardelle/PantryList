@@ -403,6 +403,10 @@ export class PantryService {
   ): PriceReferenceItem {
     return {
       ...item,
+      priceHistory: (item.priceHistory ?? []).map((entry) => ({
+        ...entry,
+        recordedAt: new Date(entry.recordedAt),
+      })),
       updatedAt: new Date(item.updatedAt),
     };
   }
@@ -428,10 +432,19 @@ export class PantryService {
   private normalizeShoppingMetadata(
     metadata: Partial<ProductTypeShoppingMetadata>,
   ): ProductTypeShoppingMetadata {
-    return {
+    const normalized: ProductTypeShoppingMetadata = {
       ...metadata,
       householdStaple: metadata.householdStaple ?? false,
       buyOnlyOnPromo: metadata.buyOnlyOnPromo ?? false,
     };
+
+    if (metadata.priceHistory) {
+      normalized.priceHistory = metadata.priceHistory.map((entry) => ({
+        ...entry,
+        recordedAt: new Date(entry.recordedAt),
+      }));
+    }
+
+    return normalized;
   }
 }

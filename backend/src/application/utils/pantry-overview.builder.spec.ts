@@ -422,6 +422,15 @@ describe('buildPantryOverview depletion forecasts', () => {
         preferredBrand: 'Marca local',
         substituteBrand: 'Marca propia',
         estimatedUnitPrice: 31.75,
+        priceHistory: [
+          {
+            shoppingLocation: 'Mercado',
+            preferredBrand: 'Marca local',
+            unit: QuantityUnit.PIECE,
+            estimatedUnitPrice: 31.75,
+            recordedAt: new Date('2026-01-01T00:00:00.000Z'),
+          },
+        ],
         buyOnlyOnPromo: true,
         updatedAt: new Date('2026-01-01T00:00:00.000Z'),
       },

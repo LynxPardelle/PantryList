@@ -49,6 +49,28 @@ export const ProductTypePlanningSettingsSchema = SchemaFactory.createForClass(
 );
 
 @Schema({ _id: false, versionKey: false })
+export class ProductTypePriceHistoryEntryDocument {
+  @Prop({ required: false, trim: true, maxlength: 80 })
+  shoppingLocation?: string;
+
+  @Prop({ required: false, trim: true, maxlength: 80 })
+  preferredBrand?: string;
+
+  @Prop({ required: true, enum: Object.values(QuantityUnit) })
+  unit: QuantityUnit;
+
+  @Prop({ required: true, min: 0.01, max: 1000000 })
+  estimatedUnitPrice: number;
+
+  @Prop({ required: true })
+  recordedAt: Date;
+}
+
+export const ProductTypePriceHistoryEntrySchema = SchemaFactory.createForClass(
+  ProductTypePriceHistoryEntryDocument,
+);
+
+@Schema({ _id: false, versionKey: false })
 export class ProductTypeShoppingMetadataDocument {
   @Prop({ required: false, trim: true, maxlength: 80 })
   storageLocation?: string;
@@ -67,6 +89,13 @@ export class ProductTypeShoppingMetadataDocument {
 
   @Prop({ required: false, min: 0.01, max: 1000000 })
   estimatedUnitPrice?: number;
+
+  @Prop({
+    type: [ProductTypePriceHistoryEntrySchema],
+    required: false,
+    default: undefined,
+  })
+  priceHistory?: ProductTypePriceHistoryEntryDocument[];
 
   @Prop({ required: true, default: false })
   householdStaple: boolean;
