@@ -3,9 +3,11 @@ import { ConfigService } from '@nestjs/config';
 import { DeleteCommand, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import {
   DepletionRulePrimitives,
+  ProductTypePriceHistoryEntryPrimitives,
   ProductType,
   ProductTypePlanningSettingsPrimitives,
   ProductTypePrimitives,
+  ProductTypeShoppingMetadataPrimitives,
 } from '../../../domain/entities/product-type.entity';
 import { ProductTypeRepository } from '../../../domain/repositories/product-type.repository';
 import { ProductTypeId } from '../../../domain/value-objects/product-type-id.vo';
@@ -14,12 +16,17 @@ import { DynamoDbDocumentClientService } from './dynamodb-document-client.servic
 
 type ProductTypeItem = Omit<
   ProductTypePrimitives,
-  'defaultDepletionRule' | 'archivedAt' | 'createdAt' | 'updatedAt'
+  | 'defaultDepletionRule'
+  | 'shoppingMetadata'
+  | 'archivedAt'
+  | 'createdAt'
+  | 'updatedAt'
 > & {
   entityType: 'PRODUCT_TYPE';
   normalizedBaseName: string;
   defaultDepletionRule?: PersistedDepletionRule;
   planningSettings?: ProductTypePlanningSettingsPrimitives;
+  shoppingMetadata?: PersistedShoppingMetadata;
   archivedAt?: string;
   createdAt: string;
   updatedAt: string;
@@ -27,6 +34,20 @@ type ProductTypeItem = Omit<
 
 type PersistedDepletionRule = Omit<DepletionRulePrimitives, 'anchorDate'> & {
   anchorDate: string;
+};
+
+type PersistedPriceHistoryEntry = Omit<
+  ProductTypePriceHistoryEntryPrimitives,
+  'recordedAt'
+> & {
+  recordedAt: string;
+};
+
+type PersistedShoppingMetadata = Omit<
+  ProductTypeShoppingMetadataPrimitives,
+  'priceHistory'
+> & {
+  priceHistory?: PersistedPriceHistoryEntry[];
 };
 
 @Injectable()
@@ -218,7 +239,7 @@ export class DynamoDbProductTypeRepository implements ProductTypeRepository {
           }
         : undefined,
       planningSettings: primitives.planningSettings,
-      shoppingMetadata: primitives.shoppingMetadata,
+      shoppingMetadata: serializeShoppingMetadata(primitives.shoppingMetadata),
       archivedAt: primitives.archivedAt?.toISOString(),
       archivedReason: primitives.archivedReason,
       createdAt: primitives.createdAt.toISOString(),
@@ -240,7 +261,7 @@ export class DynamoDbProductTypeRepository implements ProductTypeRepository {
           }
         : undefined,
       planningSettings: item.planningSettings,
-      shoppingMetadata: item.shoppingMetadata,
+      shoppingMetadata: deserializeShoppingMetadata(item.shoppingMetadata),
       archivedAt: item.archivedAt ? new Date(item.archivedAt) : undefined,
       archivedReason: item.archivedReason,
       createdAt: new Date(item.createdAt),
@@ -251,4 +272,36 @@ export class DynamoDbProductTypeRepository implements ProductTypeRepository {
 
 function normalizeBaseName(value: string): string {
   return value.trim().toLocaleLowerCase('es');
+}
+
+function serializeShoppingMetadata(
+  metadata: ProductTypeShoppingMetadataPrimitives | undefined,
+): PersistedShoppingMetadata | undefined {
+  if (!metadata) {
+    return undefined;
+  }
+
+  return {
+    ...metadata,
+    priceHistory: metadata.priceHistory?.map((entry) => ({
+      ...entry,
+      recordedAt: entry.recordedAt.toISOString(),
+    })),
+  };
+}
+
+function deserializeShoppingMetadata(
+  metadata: PersistedShoppingMetadata | undefined,
+): ProductTypeShoppingMetadataPrimitives | undefined {
+  if (!metadata) {
+    return undefined;
+  }
+
+  return {
+    ...metadata,
+    priceHistory: metadata.priceHistory?.map((entry) => ({
+      ...entry,
+      recordedAt: new Date(entry.recordedAt),
+    })),
+  };
 }
