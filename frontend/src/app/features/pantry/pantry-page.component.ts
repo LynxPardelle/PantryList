@@ -76,6 +76,13 @@ interface DeleteConfirmationTarget {
   expectedText: string;
 }
 
+interface ArchiveConfirmationTarget {
+  kind: 'productType' | 'inventoryLot';
+  id: string;
+  label: string;
+  message: string;
+}
+
 interface QuickCaptureItem {
   name: string;
   quantity: number;
@@ -296,6 +303,7 @@ export class PantryPageComponent implements OnInit {
   archivedError: string | null = null;
   archivedItems: ArchivedPantryItems | null = null;
   mutationBusyKey: string | null = null;
+  archiveConfirmationTarget: ArchiveConfirmationTarget | null = null;
   deleteConfirmationTarget: DeleteConfirmationTarget | null = null;
   deleteConfirmationInput = '';
   deleteConfirmationError: string | null = null;
@@ -716,39 +724,65 @@ export class PantryPageComponent implements OnInit {
   }
 
   archiveProductType(group: PantryOverviewItem): void {
-    if (
-      !this.confirmAction(
-        `Archivar "${group.baseName}" lo quitara de la despensa activa, busquedas y compras sugeridas. Sus lotes activos tambien dejaran de contarse. Continuar?`,
-      )
-    ) {
-      return;
-    }
-
-    this.runMutation(
-      `archive-type-${group.productTypeId}`,
-      this.pantryService.archiveProductType(group.productTypeId, {
-        reason: 'Archivado desde la despensa',
-      }),
-      { refreshArchived: true },
-    );
+    this.startArchiveConfirmation({
+      kind: 'productType',
+      id: group.productTypeId,
+      label: group.baseName,
+      message:
+        'Se quitara de la despensa activa, busquedas y compras sugeridas. Sus lotes activos tambien dejaran de contarse.',
+    });
   }
 
   archiveLot(lot: PantryLotSummary): void {
     const lotName = this.getLotDisplayName(lot);
 
-    if (
-      !this.confirmAction(
-        `Archivar "${lotName}" lo quitara del inventario activo y de los calculos. Continuar?`,
-      )
-    ) {
+    this.startArchiveConfirmation({
+      kind: 'inventoryLot',
+      id: lot.lotId,
+      label: lotName,
+      message: 'Se quitara del inventario activo y de los calculos.',
+    });
+  }
+
+  cancelArchiveConfirmation(): void {
+    this.clearArchiveConfirmation();
+  }
+
+  isArchiveConfirmationOpen(
+    kind: ArchiveConfirmationTarget['kind'],
+    id: string,
+  ): boolean {
+    return (
+      this.archiveConfirmationTarget?.kind === kind &&
+      this.archiveConfirmationTarget.id === id
+    );
+  }
+
+  confirmArchiveConfirmation(): void {
+    const target = this.archiveConfirmationTarget;
+
+    if (!target) {
       return;
     }
 
+    const request =
+      target.kind === 'productType'
+        ? this.pantryService.archiveProductType(target.id, {
+            reason: 'Archivado desde la despensa',
+          })
+        : this.pantryService.archiveInventoryLot(target.id, {
+            reason: 'Archivado desde la despensa',
+          });
+    const busyKey =
+      target.kind === 'productType'
+        ? `archive-type-${target.id}`
+        : `archive-lot-${target.id}`;
+
+    this.clearArchiveConfirmation();
+
     this.runMutation(
-      `archive-lot-${lot.lotId}`,
-      this.pantryService.archiveInventoryLot(lot.lotId, {
-        reason: 'Archivado desde la despensa',
-      }),
+      busyKey,
+      request,
       { refreshArchived: true },
     );
   }
@@ -1890,12 +1924,13 @@ export class PantryPageComponent implements OnInit {
       });
   }
 
-  private confirmAction(message: string): boolean {
-    if (!isPlatformBrowser(this.platformId)) {
-      return false;
-    }
+  private startArchiveConfirmation(target: ArchiveConfirmationTarget): void {
+    this.archiveConfirmationTarget = target;
+    this.archivedError = null;
+  }
 
-    return window.confirm(message);
+  private clearArchiveConfirmation(): void {
+    this.archiveConfirmationTarget = null;
   }
 
   private startDeleteConfirmation(target: DeleteConfirmationTarget): void {
