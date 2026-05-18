@@ -1081,6 +1081,37 @@
                         </div>
                       </section>
 
+                      @if (isArchiveConfirmationOpen('productType', group.productTypeId)) {
+                        <div
+                          class="selection-card"
+                          role="group"
+                          [attr.aria-label]="'Confirmar archivo de ' + group.baseName"
+                        >
+                          <p>
+                            <strong>Archivar {{ group.baseName }}</strong>
+                          </p>
+                          <p>{{ archiveConfirmationTarget?.message }}</p>
+                          <div class="lot-actions">
+                            <button
+                              type="button"
+                              class="secondary-button"
+                              [disabled]="mutationBusyKey !== null"
+                              (click)="cancelArchiveConfirmation()"
+                            >
+                              Cancelar
+                            </button>
+                            <button
+                              type="button"
+                              class="danger-button"
+                              [disabled]="mutationBusyKey !== null"
+                              (click)="confirmArchiveConfirmation()"
+                            >
+                              Confirmar archivo
+                            </button>
+                          </div>
+                        </div>
+                      }
+
                       @if (editingDepletionProductTypeId === group.productTypeId) {
                         <form
                           class="depletion-editor"
@@ -1469,6 +1500,37 @@
                               Archivar lote
                             </button>
                           </div>
+
+                          @if (isArchiveConfirmationOpen('inventoryLot', lot.lotId)) {
+                            <div
+                              class="selection-card"
+                              role="group"
+                              [attr.aria-label]="'Confirmar archivo de ' + getLotDisplayName(lot)"
+                            >
+                              <p>
+                                <strong>Archivar {{ getLotDisplayName(lot) }}</strong>
+                              </p>
+                              <p>{{ archiveConfirmationTarget?.message }}</p>
+                              <div class="lot-actions">
+                                <button
+                                  type="button"
+                                  class="secondary-button"
+                                  [disabled]="mutationBusyKey !== null"
+                                  (click)="cancelArchiveConfirmation()"
+                                >
+                                  Cancelar
+                                </button>
+                                <button
+                                  type="button"
+                                  class="danger-button"
+                                  [disabled]="mutationBusyKey !== null"
+                                  (click)="confirmArchiveConfirmation()"
+                                >
+                                  Confirmar archivo
+                                </button>
+                              </div>
+                            </div>
+                          }
 
                           @if (consumeErrors[lot.lotId]) {
                             <p class="field-error lot-error">{{ consumeErrors[lot.lotId] }}</p>

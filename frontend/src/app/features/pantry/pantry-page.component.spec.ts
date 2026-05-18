@@ -9,6 +9,7 @@ import { PantryPageComponent } from './pantry-page.component';
 import { PantryService } from '../../core/services/pantry.service';
 import {
   InventoryLot,
+  PantryLotSummary,
   PantryOverviewItem,
   PantryStapleItem,
   ProductType,
@@ -590,6 +591,41 @@ describe('PantryPageComponent', () => {
     });
   });
 
+  it('requires inline confirmation before archiving a product type', () => {
+    const group = makePantryGroup();
+
+    component.archiveProductType(group);
+
+    expect(component.archiveConfirmationTarget).toEqual({
+      kind: 'productType',
+      id: 'type-detergent',
+      label: 'Detergente',
+      message:
+        'Se quitara de la despensa activa, busquedas y compras sugeridas. Sus lotes activos tambien dejaran de contarse.',
+    });
+    expect(pantryService.archiveProductType).not.toHaveBeenCalled();
+
+    component.confirmArchiveConfirmation();
+
+    expect(pantryService.archiveProductType).toHaveBeenCalledWith(
+      'type-detergent',
+      { reason: 'Archivado desde la despensa' },
+    );
+    expect(component.archiveConfirmationTarget).toBeNull();
+  });
+
+  it('requires inline confirmation before archiving an inventory lot', () => {
+    const lot = makePantryLotSummary();
+
+    component.archiveLot(lot);
+    component.confirmArchiveConfirmation();
+
+    expect(pantryService.archiveInventoryLot).toHaveBeenCalledWith('lot-1', {
+      reason: 'Archivado desde la despensa',
+    });
+    expect(component.archiveConfirmationTarget).toBeNull();
+  });
+
   it('requires inline confirmation before permanently deleting an archived product type', () => {
     const productType = makeProductType();
 
@@ -664,6 +700,22 @@ function makePantryGroup(
     },
     variants: [],
     lots: [],
+    ...overrides,
+  };
+}
+
+function makePantryLotSummary(
+  overrides: Partial<PantryLotSummary> = {},
+): PantryLotSummary {
+  return {
+    lotId: 'lot-1',
+    variantName: 'Lote familiar',
+    quantity: 1,
+    unit: 'piezas',
+    expiresAt: null,
+    purchaseDate: null,
+    expirationStatus: 'none',
+    updatedAt: new Date('2026-05-16T12:00:00.000Z'),
     ...overrides,
   };
 }
