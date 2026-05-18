@@ -66,7 +66,8 @@ export class DynamoDbProductRepository implements ProductRepository {
         Limit: 1,
       }),
     );
-    const item = result.Items?.[0] as ProductItem | undefined;
+    const items = (result.Items ?? []) as ProductItem[];
+    const item = items[0];
 
     return item ? this.toDomain(item) : null;
   }
@@ -129,8 +130,10 @@ export class DynamoDbProductRepository implements ProductRepository {
       }),
     );
 
-    return (result.Items ?? [])
-      .map((item) => this.toDomain(item as ProductItem))
+    const items = (result.Items ?? []) as ProductItem[];
+
+    return items
+      .map((item) => this.toDomain(item))
       .filter((product) => matchesFilter(product, filter))
       .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
   }
@@ -148,9 +151,9 @@ export class DynamoDbProductRepository implements ProductRepository {
       }),
     );
 
-    return (result.Items ?? []).map((item) =>
-      this.toDomain(item as ProductItem),
-    );
+    const items = (result.Items ?? []) as ProductItem[];
+
+    return items.map((item) => this.toDomain(item));
   }
 
   private toItem(primitives: ProductPrimitives): ProductItem {

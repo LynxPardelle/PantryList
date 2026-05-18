@@ -190,12 +190,13 @@ export class AuthController {
   @Post('logout')
   @HttpCode(200)
   @ApiOperation({ summary: 'Logout the current Cognito-backed session' })
-  logout(
+  async logout(
     @Req() request: FastifyRequest,
     @Res({ passthrough: true }) reply: FastifyReply,
-  ): { logoutUrl: string } {
+  ): Promise<{ logoutUrl: string }> {
     this.ensureCognitoEnabled();
     this.authCookieService.ensureXsrfForRequest(request);
+    await this.revokeRefreshTokenIfPresent(request);
     this.authCookieService.clearSessionCookies(reply);
 
     return { logoutUrl: this.authUrlBuilder.buildLogoutUrl() };
@@ -203,10 +204,31 @@ export class AuthController {
 
   @Post('logout/browser')
   @ApiOperation({ summary: 'Logout from a browser form and redirect' })
-  logoutFromBrowser(@Res() reply: FastifyReply): void {
+  async logoutFromBrowser(
+    @Req() request: FastifyRequest,
+    @Res() reply: FastifyReply,
+  ): Promise<void> {
     this.ensureCognitoEnabled();
+    await this.revokeRefreshTokenIfPresent(request);
     this.authCookieService.clearSessionCookies(reply);
     reply.redirect(this.authUrlBuilder.buildLogoutUrl(), 302);
+  }
+
+  private async revokeRefreshTokenIfPresent(
+    request: FastifyRequest,
+  ): Promise<void> {
+    const refreshToken =
+      this.authCookieService.getRefreshTokenFromRequest(request);
+
+    if (!refreshToken) {
+      return;
+    }
+
+    try {
+      await this.tokenClient.revoke({ refreshToken });
+    } catch {
+      // Local logout must still clear cookies if Cognito revocation is degraded.
+    }
   }
 
   private ensureCognitoEnabled(): void {

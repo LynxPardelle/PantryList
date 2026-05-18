@@ -3,10 +3,11 @@ import { ConfigService } from '@nestjs/config';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import {
   DynamoDBDocumentClient,
+  DynamoDBDocumentClientResolvedConfig,
   ServiceInputTypes,
   ServiceOutputTypes,
 } from '@aws-sdk/lib-dynamodb';
-import { Command } from '@smithy/smithy-client';
+import type { Command } from '@smithy/types';
 
 @Injectable()
 export class DynamoDbDocumentClientService {
@@ -33,8 +34,14 @@ export class DynamoDbDocumentClientService {
     );
   }
 
-  send<TOutput extends ServiceOutputTypes>(
-    command: Command<ServiceInputTypes, TOutput, object, object>,
+  send<TInput extends ServiceInputTypes, TOutput extends ServiceOutputTypes>(
+    command: Command<
+      ServiceInputTypes,
+      TInput,
+      ServiceOutputTypes,
+      TOutput,
+      DynamoDBDocumentClientResolvedConfig
+    >,
   ): Promise<TOutput> {
     return this.client.send(command);
   }

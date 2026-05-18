@@ -60,7 +60,8 @@ export class DynamoDbInventoryLotRepository implements InventoryLotRepository {
         Limit: 1,
       }),
     );
-    const item = result.Items?.[0] as InventoryLotItem | undefined;
+    const items = (result.Items ?? []) as InventoryLotItem[];
+    const item = items[0];
 
     return item ? this.toDomain(item) : null;
   }
@@ -148,8 +149,10 @@ export class DynamoDbInventoryLotRepository implements InventoryLotRepository {
       }),
     );
 
-    return (result.Items ?? [])
-      .map((item) => this.toDomain(item as InventoryLotItem))
+    const items = (result.Items ?? []) as InventoryLotItem[];
+
+    return items
+      .map((item) => this.toDomain(item))
       .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
   }
 
@@ -166,9 +169,9 @@ export class DynamoDbInventoryLotRepository implements InventoryLotRepository {
       }),
     );
 
-    return (result.Items ?? []).map((item) =>
-      this.toDomain(item as InventoryLotItem),
-    );
+    const items = (result.Items ?? []) as InventoryLotItem[];
+
+    return items.map((item) => this.toDomain(item));
   }
 
   private toItem(primitives: InventoryLotPrimitives): InventoryLotItem {

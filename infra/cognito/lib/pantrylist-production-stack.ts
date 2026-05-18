@@ -50,6 +50,10 @@ export class PantryListProductionStack extends cdk.Stack {
     const originVerifyHeaderValue = this.readOptionalContext(
       "originVerifyHeaderValue"
     );
+    this.assertOriginVerificationHeaderConfig(
+      originVerifyHeaderName,
+      originVerifyHeaderValue
+    );
     const originCustomHeaders =
       originVerifyHeaderName && originVerifyHeaderValue
         ? { [originVerifyHeaderName]: originVerifyHeaderValue }
@@ -60,6 +64,10 @@ export class PantryListProductionStack extends cdk.Stack {
       "EC2TraefikRoute53DNS01Role"
     );
     const recordName = toRecordName(domainName, hostedZoneName);
+    const responseHeadersPolicy = this.createResponseHeadersPolicy(
+      projectName,
+      stage
+    );
 
     const zone = route53.HostedZone.fromHostedZoneAttributes(
       this,
@@ -109,6 +117,7 @@ export class PantryListProductionStack extends cdk.Stack {
         cachedMethods: cloudfront.CachedMethods.CACHE_GET_HEAD_OPTIONS,
         cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
         originRequestPolicy,
+        responseHeadersPolicy,
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         compress: true,
       },
@@ -294,7 +303,15 @@ export class PantryListProductionStack extends cdk.Stack {
   }
 
   private readOriginProtocolPolicy(): cloudfront.OriginProtocolPolicy {
-    const value = this.readContext("originProtocolPolicy", "http-only")
+    const rawValue = this.readOptionalContext("originProtocolPolicy");
+
+    if (!rawValue) {
+      throw new Error(
+        "originProtocolPolicy is required for the production stack. Use https-only unless a documented exception is approved."
+      );
+    }
+
+    const value = rawValue
       .toLowerCase()
       .replace(/_/g, "-");
 
@@ -304,12 +321,83 @@ export class PantryListProductionStack extends cdk.Stack {
       case "match-viewer":
         return cloudfront.OriginProtocolPolicy.MATCH_VIEWER;
       case "http-only":
-        return cloudfront.OriginProtocolPolicy.HTTP_ONLY;
+        if (this.readBooleanContext("allowInsecureOriginProtocol", false)) {
+          return cloudfront.OriginProtocolPolicy.HTTP_ONLY;
+        }
+
+        throw new Error(
+          "originProtocolPolicy http-only requires allowInsecureOriginProtocol=true."
+        );
       default:
         throw new Error(
           `Unsupported originProtocolPolicy "${value}". Use http-only, https-only, or match-viewer.`
         );
     }
+  }
+
+  private assertOriginVerificationHeaderConfig(
+    headerName: string | undefined,
+    headerValue: string | undefined
+  ): void {
+    if ((headerName && !headerValue) || (!headerName && headerValue)) {
+      throw new Error(
+        "originVerifyHeaderName and originVerifyHeaderValue must be configured together."
+      );
+    }
+  }
+
+  private createResponseHeadersPolicy(
+    projectName: string,
+    stage: string
+  ): cloudfront.ResponseHeadersPolicy {
+    return new cloudfront.ResponseHeadersPolicy(this, "SecurityHeadersPolicy", {
+      responseHeadersPolicyName: `${projectName}-${stage}-security-headers`,
+      securityHeadersBehavior: {
+        contentSecurityPolicy: {
+          contentSecurityPolicy: [
+            "default-src 'self'",
+            "base-uri 'self'",
+            "object-src 'none'",
+            "frame-ancestors 'self'",
+            "img-src 'self' data: https:",
+            "font-src 'self' data:",
+            "style-src 'self' 'unsafe-inline'",
+            "script-src 'self' 'unsafe-inline'",
+            "connect-src 'self'",
+            "form-action 'self' https://*.amazoncognito.com",
+          ].join("; "),
+          override: true,
+        },
+        contentTypeOptions: { override: true },
+        frameOptions: {
+          frameOption: cloudfront.HeadersFrameOption.SAMEORIGIN,
+          override: true,
+        },
+        referrerPolicy: {
+          referrerPolicy:
+            cloudfront.HeadersReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN,
+          override: true,
+        },
+        strictTransportSecurity: {
+          accessControlMaxAge: cdk.Duration.days(365),
+          includeSubdomains: true,
+          override: true,
+        },
+        xssProtection: {
+          protection: false,
+          override: true,
+        },
+      },
+      customHeadersBehavior: {
+        customHeaders: [
+          {
+            header: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=()",
+            override: true,
+          },
+        ],
+      },
+    });
   }
 
   private readBooleanContext(key: string, fallback: boolean): boolean {

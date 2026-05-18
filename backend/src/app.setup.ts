@@ -6,6 +6,8 @@ import { ConfigService } from '@nestjs/config';
 import { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import type { FastifyRequest } from 'fastify';
+import { ApiExceptionFilter } from './infrastructure/http/filters/api-exception.filter';
+import { registerRequestIdHook } from './infrastructure/http/request-id';
 
 export async function configureApp(
   app: NestFastifyApplication,
@@ -25,6 +27,7 @@ export async function configureApp(
 
   app.setGlobalPrefix(apiPrefix);
   app.enableCors({ origin: corsOrigin, credentials: true });
+  registerRequestIdHook(app.getHttpAdapter().getInstance());
   await app.register(fastifyCookie);
 
   if (rateLimitEnabled) {
@@ -47,6 +50,7 @@ export async function configureApp(
       },
     }),
   );
+  app.useGlobalFilters(new ApiExceptionFilter());
 
   if (helmetEnabled) {
     await app.register(fastifyHelmet);

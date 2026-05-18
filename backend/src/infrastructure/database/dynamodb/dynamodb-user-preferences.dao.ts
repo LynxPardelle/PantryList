@@ -35,7 +35,7 @@ export class DynamoDbUserPreferencesDao implements UserPreferencesDao {
         ProjectionExpression: 'preferences',
       }),
     );
-    const item: UserPreferencesProjection | undefined = result.Item;
+    const item = result.Item as UserPreferencesProjection | undefined;
 
     return UserPreferences.resolve(item?.preferences);
   }
@@ -64,7 +64,7 @@ export class DynamoDbUserPreferencesDao implements UserPreferencesDao {
         ReturnValues: 'ALL_NEW',
       }),
     );
-    const item: UserPreferencesProjection | undefined = result.Attributes;
+    const item = result.Attributes as UserPreferencesProjection | undefined;
 
     return UserPreferences.resolve(item?.preferences);
   }

@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   CognitoRefreshInput,
+  CognitoRevokeInput,
   CognitoTokenClient,
   CognitoTokenExchangeInput,
   CognitoTokenSet,
@@ -39,6 +40,21 @@ export class CognitoTokenClientService implements CognitoTokenClient {
     });
   }
 
+  async revoke(input: CognitoRevokeInput): Promise<void> {
+    const response = await fetch(this.getRevokeEndpoint(), {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: new URLSearchParams({
+        token: input.refreshToken,
+        client_id: this.getClientId(),
+      }).toString(),
+    });
+
+    if (!response.ok) {
+      throw new UnauthorizedException('Cognito token revocation failed');
+    }
+  }
+
   private async postTokenRequest(
     params: Record<string, string>,
   ): Promise<CognitoTokenSet> {
@@ -65,6 +81,10 @@ export class CognitoTokenClientService implements CognitoTokenClient {
 
   private getTokenEndpoint(): string {
     return new URL('/oauth2/token', this.getCognitoDomain()).toString();
+  }
+
+  private getRevokeEndpoint(): string {
+    return new URL('/oauth2/revoke', this.getCognitoDomain()).toString();
   }
 
   private getHeaders(): Record<string, string> {

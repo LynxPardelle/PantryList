@@ -91,4 +91,22 @@ describe('CognitoTokenClientService', () => {
     expect(body.get('refresh_token')).toBe('refresh-token');
     expect(body.get('client_id')).toBe('client-123');
   });
+
+  it('revokes Cognito refresh tokens at the revoke endpoint', async () => {
+    const service = new CognitoTokenClientService(makeConfigService());
+
+    await service.revoke({ refreshToken: 'refresh-token' });
+    const [url, init] = (global.fetch as jest.Mock).mock.calls[0] as [
+      string,
+      RequestInit,
+    ];
+    const body = new URLSearchParams(init.body as string);
+
+    expect(url).toBe(
+      'https://pantrylist.auth.us-east-1.amazoncognito.com/oauth2/revoke',
+    );
+    expect(init.method).toBe('POST');
+    expect(body.get('token')).toBe('refresh-token');
+    expect(body.get('client_id')).toBe('client-123');
+  });
 });

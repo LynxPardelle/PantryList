@@ -76,7 +76,8 @@ export class DynamoDbProductTypeRepository implements ProductTypeRepository {
         Limit: 1,
       }),
     );
-    const item = result.Items?.[0] as ProductTypeItem | undefined;
+    const items = (result.Items ?? []) as ProductTypeItem[];
+    const item = items[0];
 
     return item ? this.toDomain(item) : null;
   }
@@ -172,9 +173,9 @@ export class DynamoDbProductTypeRepository implements ProductTypeRepository {
       }),
     );
 
-    return (result.Items ?? []).map((item) =>
-      this.toDomain(item as ProductTypeItem),
-    );
+    const items = (result.Items ?? []) as ProductTypeItem[];
+
+    return items.map((item) => this.toDomain(item));
   }
 
   private async findByUserBaseName(
@@ -194,7 +195,8 @@ export class DynamoDbProductTypeRepository implements ProductTypeRepository {
         Limit: 1,
       }),
     );
-    const item = result.Items?.[0] as ProductTypeItem | undefined;
+    const items = (result.Items ?? []) as ProductTypeItem[];
+    const item = items[0];
 
     return item ? this.toDomain(item) : null;
   }

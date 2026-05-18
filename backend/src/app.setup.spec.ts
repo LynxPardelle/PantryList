@@ -17,6 +17,7 @@ describe('configureApp hardening', () => {
     await configureApp(app, configService);
 
     expect(app.register).toHaveBeenCalledTimes(3);
+    expect(app.useGlobalFilters).toHaveBeenCalledTimes(1);
   });
 
   it('uses the first forwarded address as rate-limit key only when trusted proxy mode is enabled', async () => {
@@ -54,8 +55,14 @@ function makeApp(): NestFastifyApplication {
   return {
     setGlobalPrefix: jest.fn(),
     enableCors: jest.fn(),
+    getHttpAdapter: jest.fn().mockReturnValue({
+      getInstance: jest.fn().mockReturnValue({
+        addHook: jest.fn(),
+      }),
+    }),
     register: jest.fn().mockResolvedValue(undefined),
     useGlobalPipes: jest.fn(),
+    useGlobalFilters: jest.fn(),
   } as unknown as NestFastifyApplication;
 }
 

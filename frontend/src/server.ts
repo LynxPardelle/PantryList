@@ -5,10 +5,16 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import AppServerModule from './main.server';
 import {
+  applyApiCacheHeaders,
+  buildProxyHeaders,
+  isAbortError,
+} from './server-proxy';
+import {
   createRateLimit,
   readPositiveInteger,
   readTrustProxyConfig,
 } from './server-rate-limit';
+import { applySecurityHeaders } from './server-security';
 import { applyStaticAssetCacheHeaders } from './server-static-cache';
 
 const serverDistFolder = dirname(fileURLToPath(import.meta.url));
@@ -22,6 +28,10 @@ const apiRateLimitWindowMs = readPositiveInteger(
 const apiRateLimitMax = readPositiveInteger(
   process.env['API_RATE_LIMIT_MAX'],
   120,
+);
+const proxyTimeoutMs = readPositiveInteger(
+  process.env['API_PROXY_TIMEOUT_MS'],
+  15_000,
 );
 const trustProxy = readTrustProxyConfig(
   process.env['TRUST_PROXY'] ?? process.env['API_TRUST_PROXY'],
@@ -43,23 +53,19 @@ app.get('/healthz', (_req, res) => {
 
 app.use('/api', createRateLimit(apiRateLimitWindowMs, apiRateLimitMax));
 app.use('/api', express.json({ limit: '1mb' }), async (req, res, next) => {
+  const abortController = new AbortController();
+  const timeout = setTimeout(() => abortController.abort(), proxyTimeoutMs);
+
   try {
     const targetPath = req.originalUrl || '/api';
     const targetUrl = new URL(targetPath, backendUrl);
-    const headers = new Headers();
-
-    Object.entries(req.headers).forEach(([key, value]) => {
-      if (!value || key === 'host' || key === 'content-length') {
-        return;
-      }
-
-      headers.set(key, Array.isArray(value) ? value.join(', ') : value);
-    });
+    const headers = buildProxyHeaders(req);
 
     const requestInit: RequestInit = {
       method: req.method,
       headers,
       redirect: 'manual',
+      signal: abortController.signal,
     };
 
     if (
@@ -72,6 +78,7 @@ app.use('/api', express.json({ limit: '1mb' }), async (req, res, next) => {
 
     const response = await fetch(targetUrl, requestInit);
 
+    applyApiCacheHeaders(res);
     res.status(response.status);
     const setCookieHeaders = getSetCookieHeaders(response.headers);
 
@@ -79,6 +86,7 @@ app.use('/api', express.json({ limit: '1mb' }), async (req, res, next) => {
       if (
         key === 'content-length' ||
         key === 'content-encoding' ||
+        key === 'cache-control' ||
         key === 'set-cookie'
       ) {
         return;
@@ -103,7 +111,15 @@ app.use('/api', express.json({ limit: '1mb' }), async (req, res, next) => {
     const payload = Buffer.from(await response.arrayBuffer());
     res.send(payload);
   } catch (error) {
+    if (isAbortError(error)) {
+      applyApiCacheHeaders(res);
+      res.status(504).json({ message: 'Backend request timed out' });
+      return;
+    }
+
     next(error);
+  } finally {
+    clearTimeout(timeout);
   }
 });
 
@@ -149,21 +165,6 @@ if (isMainModule(import.meta.url)) {
 }
 
 export default app;
-
-function applySecurityHeaders(
-  _req: express.Request,
-  res: express.Response,
-  next: express.NextFunction,
-): void {
-  res.setHeader('x-content-type-options', 'nosniff');
-  res.setHeader('x-frame-options', 'SAMEORIGIN');
-  res.setHeader('referrer-policy', 'strict-origin-when-cross-origin');
-  res.setHeader(
-    'permissions-policy',
-    'camera=(), microphone=(), geolocation=()',
-  );
-  next();
-}
 
 function getSetCookieHeaders(headers: Headers): string[] {
   const headersWithSetCookie = headers as Headers & {

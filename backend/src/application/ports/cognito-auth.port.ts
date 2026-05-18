@@ -22,6 +22,10 @@ export interface CognitoRefreshInput {
   refreshToken: string;
 }
 
+export interface CognitoRevokeInput {
+  refreshToken: string;
+}
+
 export interface CognitoTokenSet {
   accessToken: string;
   idToken: string;
@@ -47,6 +51,7 @@ export interface CognitoAuthUrlBuilder {
 export interface CognitoTokenClient {
   exchangeCode(input: CognitoTokenExchangeInput): Promise<CognitoTokenSet>;
   refresh(input: CognitoRefreshInput): Promise<CognitoTokenSet>;
+  revoke(input: CognitoRevokeInput): Promise<void>;
 }
 
 export interface CognitoTokenVerifier {

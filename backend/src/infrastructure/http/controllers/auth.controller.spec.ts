@@ -67,6 +67,7 @@ describe('AuthController Cognito flow', () => {
         expiresIn: 3600,
         tokenType: 'Bearer',
       }),
+      revoke: jest.fn().mockResolvedValue(undefined),
     } as jest.Mocked<CognitoTokenClient>;
     const tokenVerifier = {
       verifyAccessToken: jest
@@ -275,11 +276,27 @@ describe('AuthController Cognito flow', () => {
     expect(response.id).toBe('cognito-sub-123');
   });
 
-  it('clears local cookies and returns Cognito logout URL', () => {
-    const { controller, authCookieService } = makeController();
+  it('revokes refresh token, clears local cookies, and returns Cognito logout URL', async () => {
+    const { controller, authCookieService, tokenClient } = makeController();
     const reply = makeReply();
 
-    const response = controller.logout({} as FastifyRequest, reply);
+    const response = await controller.logout({} as FastifyRequest, reply);
+
+    expect(tokenClient.revoke.mock.calls[0]).toEqual([
+      { refreshToken: 'refresh-token' },
+    ]);
+    expect(authCookieService.clearSessionCookies.mock.calls[0]).toEqual([
+      reply,
+    ]);
+    expect(response).toEqual({ logoutUrl: 'https://cognito.example/logout' });
+  });
+
+  it('clears local cookies even when Cognito revocation fails', async () => {
+    const { controller, authCookieService, tokenClient } = makeController();
+    const reply = makeReply();
+    tokenClient.revoke.mockRejectedValueOnce(new Error('revoke failed'));
+
+    const response = await controller.logout({} as FastifyRequest, reply);
 
     expect(authCookieService.clearSessionCookies.mock.calls[0]).toEqual([
       reply,
@@ -287,12 +304,15 @@ describe('AuthController Cognito flow', () => {
     expect(response).toEqual({ logoutUrl: 'https://cognito.example/logout' });
   });
 
-  it('clears local cookies and redirects for browser logout forms', () => {
-    const { controller, authCookieService } = makeController();
+  it('revokes refresh token, clears local cookies, and redirects for browser logout forms', async () => {
+    const { controller, authCookieService, tokenClient } = makeController();
     const reply = makeReply();
 
-    controller.logoutFromBrowser(reply);
+    await controller.logoutFromBrowser({} as FastifyRequest, reply);
 
+    expect(tokenClient.revoke.mock.calls[0]).toEqual([
+      { refreshToken: 'refresh-token' },
+    ]);
     expect(authCookieService.ensureXsrfForRequest).not.toHaveBeenCalled();
     expect(authCookieService.clearSessionCookies.mock.calls[0]).toEqual([
       reply,
