@@ -67,6 +67,15 @@ export class ProfilePageComponent implements OnInit {
     confirmationText: ['', Validators.required],
   });
 
+  get canDeletePantryData(): boolean {
+    return (
+      !this.loading &&
+      !this.deletingPantryData &&
+      this.deletePantryDataForm.controls.confirmationText.value.trim() ===
+        'ELIMINAR'
+    );
+  }
+
   ngOnInit(): void {
     if (isPlatformBrowser(this.platformId)) {
       this.loadProfile();
