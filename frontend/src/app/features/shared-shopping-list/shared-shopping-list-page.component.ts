@@ -1,7 +1,15 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  OnInit,
+  inject,
+} from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { take } from 'rxjs';
+import { PantryService } from '../../core/services/pantry.service';
 
 interface ShoppingSharePayload {
   version: 1;
@@ -23,8 +31,8 @@ interface ShoppingSharePayload {
         <h1 id="shared-shopping-title">Lista compartida</h1>
         <p>
           Este enlace muestra una lista de compra temporal. No abre acceso a la
-          cuenta ni a la despensa completa. El enlace contiene el texto de la
-          lista recibida.
+          cuenta ni a la despensa completa. El contenido se carga desde
+          PantryList cuando el enlace sigue vigente.
         </p>
       </section>
 
@@ -33,11 +41,16 @@ interface ShoppingSharePayload {
           <strong>{{ errorMessage }}</strong>
           <a class="ghost-button" routerLink="/pantry">Ir a PantryList</a>
         </section>
+      } @else if (loading) {
+        <section class="shared-shopping-card" aria-live="polite">
+          <p class="helper-copy">Cargando lista compartida...</p>
+        </section>
       } @else if (sharedText) {
         <section class="shared-shopping-card">
           @if (expiresAt) {
             <p class="helper-copy">
-              Disponible hasta {{ expiresAt | date:'dd MMM y, HH:mm':'UTC' }} UTC.
+              Disponible hasta
+              {{ expiresAt | date: 'dd MMM y, HH:mm' : 'UTC' }} UTC.
             </p>
           }
 
@@ -100,10 +113,13 @@ interface ShoppingSharePayload {
 })
 export class SharedShoppingListPageComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly pantryService = inject(PantryService);
+  private readonly changeDetector = inject(ChangeDetectorRef);
 
   sharedText: string | null = null;
   expiresAt: Date | null = null;
   errorMessage: string | null = null;
+  loading = false;
 
   ngOnInit(): void {
     this.route.queryParamMap.pipe(take(1)).subscribe((params) => {
@@ -114,32 +130,67 @@ export class SharedShoppingListPageComponent implements OnInit {
         return;
       }
 
-      const payload = this.decodeToken(token);
+      this.loading = true;
+      this.pantryService
+        .resolveShoppingShare(token)
+        .pipe(take(1))
+        .subscribe({
+          next: (share) => {
+            this.loading = false;
+            this.sharedText = share.text;
+            this.expiresAt = share.expiresAt;
+            this.changeDetector.markForCheck();
+          },
+          error: (error) => {
+            this.loading = false;
 
-      if (!payload) {
-        this.errorMessage = 'Enlace inválido.';
-        return;
-      }
+            if (this.tryLoadLegacyToken(token)) {
+              this.changeDetector.markForCheck();
+              return;
+            }
 
-      const expiresAt = new Date(payload.expiresAt);
-
-      if (Number.isNaN(expiresAt.getTime())) {
-        this.errorMessage = 'Enlace inválido.';
-        return;
-      }
-
-      if (expiresAt.getTime() <= Date.now()) {
-        this.errorMessage = 'Este enlace ya caducó.';
-        return;
-      }
-
-      this.sharedText = payload.text;
-      this.expiresAt = expiresAt;
+            this.errorMessage = this.getShareErrorMessage(error);
+            this.changeDetector.markForCheck();
+          },
+        });
     });
   }
 
   getWhatsAppShoppingUrl(exportText: string): string {
     return `https://wa.me/?text=${encodeURIComponent(exportText)}`;
+  }
+
+  private tryLoadLegacyToken(token: string): boolean {
+    const payload = this.decodeToken(token);
+
+    if (!payload) {
+      return false;
+    }
+
+    const expiresAt = new Date(payload.expiresAt);
+
+    if (Number.isNaN(expiresAt.getTime())) {
+      this.errorMessage = 'Enlace inválido.';
+      return true;
+    }
+
+    if (expiresAt.getTime() <= Date.now()) {
+      this.errorMessage = 'Este enlace ya caducó.';
+      return true;
+    }
+
+    this.sharedText = payload.text;
+    this.expiresAt = expiresAt;
+
+    return true;
+  }
+
+  private getShareErrorMessage(error: unknown): string {
+    if (error instanceof HttpErrorResponse && error.status === 410) {
+      return 'Este enlace ya caducó o fue revocado.';
+    }
+
+    return 'Enlace inválido.';
   }
 
   private decodeToken(token: string): ShoppingSharePayload | null {
@@ -151,9 +202,9 @@ export class SharedShoppingListPageComponent implements OnInit {
       );
       const binary = atob(paddedToken);
       const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
-      const parsed = JSON.parse(new TextDecoder().decode(bytes)) as Partial<
-        ShoppingSharePayload
-      >;
+      const parsed = JSON.parse(
+        new TextDecoder().decode(bytes),
+      ) as Partial<ShoppingSharePayload>;
 
       if (
         parsed.version !== 1 ||

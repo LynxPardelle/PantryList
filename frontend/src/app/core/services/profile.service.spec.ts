@@ -81,6 +81,7 @@ describe('ProfileService', () => {
         expect(result).toEqual({
           deletedInventoryLotCount: 5,
           deletedProductTypeCount: 3,
+          deletedShoppingShareCount: 2,
         });
       });
 
@@ -93,6 +94,7 @@ describe('ProfileService', () => {
     request.flush({
       deletedInventoryLotCount: 5,
       deletedProductTypeCount: 3,
+      deletedShoppingShareCount: 2,
     });
   });
 });

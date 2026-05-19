@@ -52,6 +52,7 @@ describe('ProfilePageComponent', () => {
       of({
         deletedInventoryLotCount: 5,
         deletedProductTypeCount: 3,
+        deletedShoppingShareCount: 2,
       }),
     );
     pantryService = jasmine.createSpyObj<PantryService>('PantryService', [
@@ -244,7 +245,7 @@ describe('ProfilePageComponent', () => {
       confirmationText: 'ELIMINAR',
     });
     expect(component.deleteMessage).toBe(
-      'Datos eliminados: 5 lotes y 3 tipos base.',
+      'Datos eliminados: 5 lotes, 3 tipos base y 2 enlaces compartidos.',
     );
   });
 

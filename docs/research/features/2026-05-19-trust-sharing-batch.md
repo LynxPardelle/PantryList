@@ -15,9 +15,9 @@ Status: Implemented batch evidence and remaining backlog source.
 
 ## Security Notes
 
-- Temporary shopping links do not grant account access and only carry the generated shopping-list text.
-- The current temporary link is client-side encoded, not server-side revocable. Anyone with the link can decode or retain the list text. A server-backed, revocable share-token model remains the right next step before calling this full household sharing.
-- The UI now tells users that the link contains list text and should not include sensitive notes.
+- Initial temporary shopping links did not grant account access but carried the generated shopping-list text.
+- This risk was superseded by `docs/research/features/2026-05-19-server-backed-share-tokens.md`, which moved current links to server-backed opaque tokens with owner revocation.
+- The UI now tells users that links can be revoked and should not include sensitive notes.
 
 ## Verification
 
@@ -70,10 +70,9 @@ Status: Implemented batch evidence and remaining backlog source.
 
 ### Technical And Security Backlog
 
-- Server-backed, expiring, revocable share tokens.
 - Account deletion that includes Cognito identity handling, not only PantryList inventory deletion.
 - Retention policy for archived/deleted records.
-- Privacy review checklist for AI, receipt, sharing, and payment features.
+- PR/release gate that requires the privacy checklist for AI, receipt, sharing, and payment changes.
 - CodeQL, secret scanning, runtime `npm audit`, and container scanning in CI.
 - Non-mutating lint in CI.
 - Docker image scanning and optional digest pinning.
@@ -82,10 +81,10 @@ Status: Implemented batch evidence and remaining backlog source.
 
 ## Recommended Next Batch
 
-1. Server-backed revocable shopping share tokens.
-2. Full household workspace foundation: invite, role model, membership table, and read/write policy.
-3. Change notifications for shared shopping lists.
-4. Privacy review checklist wired into docs and PR review for sharing/AI/payment changes.
-5. CI security scanning lane: CodeQL, secrets, runtime audit, and image scan.
+1. Full household workspace foundation: invite, role model, membership table, and read/write policy.
+2. Change notifications for shared shopping lists.
+3. Active share management list for links created in previous sessions.
+4. CI security scanning lane: CodeQL, secrets, runtime audit, and image scan.
+5. Account deletion that includes Cognito identity handling.
 
-This is the best next package because it upgrades the current client-only sharing into a real trust boundary before more collaboration or monetization work depends on it.
+This is the best next package because server-backed sharing is now in place, so the next trust boundary is real household collaboration.

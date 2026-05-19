@@ -334,6 +334,9 @@ export class PantryPageComponent implements OnInit {
   shoppingExportText: string | null = null;
   shoppingShareStatus: string | null = null;
   shoppingShareLink: string | null = null;
+  shoppingShareToken: string | null = null;
+  shoppingShareExpiresAt: Date | null = null;
+  shoppingShareBusy = false;
   shoppingBudget: number | null = null;
   shoppingModeActive = false;
   shoppingTripDraft: Record<string, ShoppingTripDraftItem> = {};
@@ -1143,25 +1146,71 @@ export class PantryPageComponent implements OnInit {
     if (!isPlatformBrowser(this.platformId)) {
       this.shoppingShareStatus = 'Enlace disponible solo en navegador.';
       this.shoppingShareLink = null;
+      this.shoppingShareToken = null;
+      this.shoppingShareExpiresAt = null;
       return;
     }
 
-    const createdAt = new Date();
-    const expiresAt = new Date(
-      createdAt.getTime() + 7 * 24 * 60 * 60 * 1000,
-    );
-    const token = this.encodeShoppingShareToken({
-      version: 1,
-      type: 'shopping-list',
-      createdAt: createdAt.toISOString(),
-      expiresAt: expiresAt.toISOString(),
-      text: exportText,
-    });
+    this.shoppingShareBusy = true;
+    this.shoppingShareStatus = 'Creando enlace temporal...';
+    this.shoppingShareLink = null;
+    this.shoppingShareToken = null;
+    this.shoppingShareExpiresAt = null;
+    this.pantryService
+      .createShoppingShare({ text: exportText })
+      .pipe(
+        timeout(this.lotRegistrationTimeoutMs),
+        finalize(() => {
+          this.shoppingShareBusy = false;
+          this.changeDetector.markForCheck();
+        })
+      )
+      .subscribe({
+        next: (share) => {
+          if (!share.token) {
+            this.shoppingShareStatus = 'No se pudo crear el enlace temporal.';
+            return;
+          }
 
-    this.shoppingShareLink = `${window.location.origin}/shared-shopping-list?token=${token}`;
-    this.shoppingShareStatus =
-      'Enlace temporal creado. No da acceso a tu cuenta.';
-    this.changeDetector.markForCheck();
+          this.shoppingShareToken = share.token;
+          this.shoppingShareExpiresAt = share.expiresAt;
+          this.shoppingShareLink = `${window.location.origin}/shared-shopping-list?token=${encodeURIComponent(share.token)}`;
+          this.shoppingShareStatus =
+            'Enlace temporal creado. Puedes revocarlo cuando termines.';
+        },
+        error: (error) => {
+          this.shoppingShareStatus = this.getErrorMessage(error);
+        },
+      });
+  }
+
+  revokeTemporaryShoppingShare(): void {
+    if (!this.shoppingShareToken || this.shoppingShareBusy) {
+      return;
+    }
+
+    this.shoppingShareBusy = true;
+    this.shoppingShareStatus = 'Revocando enlace temporal...';
+    this.pantryService
+      .revokeShoppingShare(this.shoppingShareToken)
+      .pipe(
+        timeout(this.lotRegistrationTimeoutMs),
+        finalize(() => {
+          this.shoppingShareBusy = false;
+          this.changeDetector.markForCheck();
+        })
+      )
+      .subscribe({
+        next: () => {
+          this.shoppingShareLink = null;
+          this.shoppingShareToken = null;
+          this.shoppingShareExpiresAt = null;
+          this.shoppingShareStatus = 'Enlace temporal revocado.';
+        },
+        error: (error) => {
+          this.shoppingShareStatus = this.getErrorMessage(error);
+        },
+      });
   }
 
   getWhatsAppShoppingUrl(exportText: string): string {
@@ -1209,20 +1258,6 @@ export class PantryPageComponent implements OnInit {
     } finally {
       textarea.remove();
     }
-  }
-
-  private encodeShoppingShareToken(payload: Record<string, string | number>) {
-    const bytes = new TextEncoder().encode(JSON.stringify(payload));
-    let binary = '';
-
-    for (const byte of bytes) {
-      binary += String.fromCharCode(byte);
-    }
-
-    return btoa(binary)
-      .replace(/\+/g, '-')
-      .replace(/\//g, '_')
-      .replace(/=+$/, '');
   }
 
   downloadPantryExport(): void {

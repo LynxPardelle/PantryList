@@ -15,6 +15,7 @@ export interface DeletePantryDataRequest {
 export interface DeletePantryDataResult {
   deletedInventoryLotCount: number;
   deletedProductTypeCount: number;
+  deletedShoppingShareCount: number;
 }
 
 export interface UserProfile {

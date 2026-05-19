@@ -17,7 +17,12 @@ export type ProductUnit =
   | 'cuarto kilo'
   | 'rollo';
 export type ProductCategory = 'food' | 'cleaning' | 'hygiene' | 'other';
-export type ExpirationStatus = 'expired' | 'critical' | 'soon' | 'stable' | 'none';
+export type ExpirationStatus =
+  | 'expired'
+  | 'critical'
+  | 'soon'
+  | 'stable'
+  | 'none';
 export type ProductTypeSelectionMode = 'existing' | 'new';
 export type DepletionPeriod = 'day' | 'week' | 'month';
 export type ShoppingPlanUrgency = 'depleted' | 'critical' | 'upcoming';
@@ -345,6 +350,36 @@ export interface CloseShoppingPurchaseItemRequest {
 
 export interface CloseShoppingPurchaseRequest {
   items: CloseShoppingPurchaseItemRequest[];
+}
+
+export interface CreateShoppingShareRequest {
+  text: string;
+}
+
+export interface ApiShoppingShare {
+  token?: string;
+  createdAt: string;
+  expiresAt: string;
+  revokedAt?: string | null;
+}
+
+export interface ShoppingShare {
+  token?: string;
+  createdAt: Date;
+  expiresAt: Date;
+  revokedAt?: Date | null;
+}
+
+export interface ApiPublicShoppingShare {
+  text: string;
+  createdAt: string;
+  expiresAt: string;
+}
+
+export interface PublicShoppingShare {
+  text: string;
+  createdAt: Date;
+  expiresAt: Date;
 }
 
 export interface ConsumeInventoryLotRequest {

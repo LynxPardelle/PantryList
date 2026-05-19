@@ -213,7 +213,7 @@ export class ProfilePageComponent implements OnInit {
       .subscribe({
         next: (result) => {
           this.deletePantryDataForm.reset({ confirmationText: '' });
-          this.deleteMessage = `Datos eliminados: ${result.deletedInventoryLotCount} lotes y ${result.deletedProductTypeCount} tipos base.`;
+          this.deleteMessage = `Datos eliminados: ${result.deletedInventoryLotCount} lotes, ${result.deletedProductTypeCount} tipos base y ${result.deletedShoppingShareCount} enlaces compartidos.`;
           this.changeDetector.markForCheck();
         },
         error: (error) => {

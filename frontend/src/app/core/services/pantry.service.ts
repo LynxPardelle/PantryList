@@ -11,6 +11,8 @@ import {
   ApiPantryLotSummary,
   ApiPantryOverview,
   ApiPantryOverviewItem,
+  ApiPublicShoppingShare,
+  ApiShoppingShare,
   ApiPantryStapleCatalogGroup,
   ApiPantryStapleItem,
   ApiPriceReferenceItem,
@@ -24,6 +26,7 @@ import {
   CloseShoppingPurchaseRequest,
   ConsumeInventoryLotRequest,
   CreateInventoryLotRequest,
+  CreateShoppingShareRequest,
   CreateProductTypeRequest,
   DeletePantryItemRequest,
   DepletingProductGroup,
@@ -40,7 +43,9 @@ import {
   ProductTypeShoppingMetadata,
   ProductTypeShoppingMetadataRequest,
   ProductType,
+  PublicShoppingShare,
   RegisterLotRequest,
+  ShoppingShare,
   ShoppingPlanItem,
   ShoppingRouteCategoryGroup,
   ShoppingRouteGroup,
@@ -57,6 +62,8 @@ export class PantryService {
   private readonly archivedPantryUrl = `${this.apiUrl}/pantry/archived`;
   private readonly pantryExportUrl = `${this.apiUrl}/pantry/export`;
   private readonly pantryCheckoutUrl = `${this.apiUrl}/pantry/checkout`;
+  private readonly pantryShoppingSharesUrl = `${this.apiUrl}/pantry/shopping-shares`;
+  private readonly publicShoppingSharesUrl = `${this.apiUrl}/shopping-shares`;
 
   constructor(private readonly http: HttpClient) {}
 
@@ -292,6 +299,35 @@ export class PantryService {
       );
   }
 
+  createShoppingShare(
+    request: CreateShoppingShareRequest,
+  ): Observable<ShoppingShare> {
+    return this.http
+      .post<ApiShoppingShare>(this.pantryShoppingSharesUrl, request, {
+        withCredentials: true,
+      })
+      .pipe(map((share) => this.normalizeShoppingShare(share)));
+  }
+
+  resolveShoppingShare(token: string): Observable<PublicShoppingShare> {
+    return this.http
+      .get<ApiPublicShoppingShare>(
+        `${this.publicShoppingSharesUrl}/${encodeURIComponent(token)}`,
+      )
+      .pipe(map((share) => this.normalizePublicShoppingShare(share)));
+  }
+
+  revokeShoppingShare(token: string): Observable<ShoppingShare> {
+    return this.http
+      .delete<ApiShoppingShare>(
+        `${this.pantryShoppingSharesUrl}/${encodeURIComponent(token)}`,
+        {
+          withCredentials: true,
+        },
+      )
+      .pipe(map((share) => this.normalizeShoppingShare(share)));
+  }
+
   private normalizeProductType(productType: ApiProductType): ProductType {
     return {
       ...productType,
@@ -317,6 +353,25 @@ export class PantryService {
       archivedAt: inventoryLot.archivedAt ? new Date(inventoryLot.archivedAt) : null,
       createdAt: new Date(inventoryLot.createdAt),
       updatedAt: new Date(inventoryLot.updatedAt),
+    };
+  }
+
+  private normalizeShoppingShare(share: ApiShoppingShare): ShoppingShare {
+    return {
+      token: share.token,
+      createdAt: new Date(share.createdAt),
+      expiresAt: new Date(share.expiresAt),
+      revokedAt: share.revokedAt ? new Date(share.revokedAt) : null,
+    };
+  }
+
+  private normalizePublicShoppingShare(
+    share: ApiPublicShoppingShare,
+  ): PublicShoppingShare {
+    return {
+      text: share.text,
+      createdAt: new Date(share.createdAt),
+      expiresAt: new Date(share.expiresAt),
     };
   }
 

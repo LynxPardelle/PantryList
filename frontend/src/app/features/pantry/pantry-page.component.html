@@ -652,8 +652,13 @@
               <button type="button" class="secondary-button" (click)="shareShoppingPlan(shoppingPlanItems)">
                 Compartir
               </button>
-              <button type="button" class="secondary-button" (click)="createTemporaryShoppingShare(shoppingPlanItems)">
-                Enlace temporal
+              <button
+                type="button"
+                class="secondary-button"
+                (click)="createTemporaryShoppingShare(shoppingPlanItems)"
+                [disabled]="shoppingShareBusy"
+              >
+                {{ shoppingShareBusy ? 'Procesando...' : 'Enlace temporal' }}
               </button>
               <button type="button" class="primary-button" (click)="shoppingModeActive ? exitShoppingMode() : enterShoppingMode(shoppingPlanItems)">
                 {{ shoppingModeActive ? 'Salir de compra' : 'Modo compra' }}
@@ -704,9 +709,22 @@
                 >
                   Abrir enlace
                 </a>
+                <button
+                  type="button"
+                  class="ghost-button"
+                  (click)="revokeTemporaryShoppingShare()"
+                  [disabled]="shoppingShareBusy"
+                >
+                  Revocar enlace
+                </button>
+                @if (shoppingShareExpiresAt) {
+                  <p class="helper-copy">
+                    Disponible hasta {{ shoppingShareExpiresAt | date:'dd MMM y, HH:mm':'UTC' }} UTC.
+                  </p>
+                }
                 <p class="helper-copy">
                   Quien tenga el enlace puede ver esta lista hasta que caduque, pero no puede entrar a tu cuenta.
-                  El enlace contiene el texto de la lista; evita incluir notas sensibles.
+                  Puedes revocarlo desde esta pantalla; evita incluir notas sensibles.
                 </p>
               </div>
             }

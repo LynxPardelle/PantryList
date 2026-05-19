@@ -1,9 +1,14 @@
 import {
   Body,
   Controller,
+  Delete,
+  ForbiddenException,
+  GoneException,
   Get,
   Header,
   Logger,
+  NotFoundException,
+  Param,
   Post,
   Req,
   UseGuards,
@@ -14,6 +19,11 @@ import { CloseShoppingPurchaseUseCase } from '../../../application/use-cases/clo
 import { GetArchivedPantryItemsUseCase } from '../../../application/use-cases/get-archived-pantry-items.use-case';
 import { GetPantryOverviewUseCase } from '../../../application/use-cases/get-pantry-overview.use-case';
 import { GetUserProfileUseCase } from '../../../application/use-cases/get-user-profile.use-case';
+import {
+  CreateShoppingShareUseCase,
+  RevokeShoppingShareUseCase,
+} from '../../../application/use-cases/shopping-share.use-cases';
+import { ShoppingShareNotFoundError } from '../../../application/use-cases/shopping-share.errors';
 import {
   MAX_ACTIVE_INVENTORY_LOTS_PER_USER,
   MAX_ACTIVE_PRODUCT_TYPES_PER_USER,
@@ -29,12 +39,14 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
 import { ArchivedPantryItemsResponseDto } from '../dtos/archived-pantry-items-response.dto';
 import { CheckoutPantryDto } from '../dtos/checkout-pantry.dto';
+import { CreateShoppingShareDto } from '../dtos/create-shopping-share.dto';
 import { InventoryLotResponseDto } from '../dtos/inventory-lot-response.dto';
 import {
   PantryDataLimitsResponseDto,
   PantryExportResponseDto,
 } from '../dtos/pantry-export-response.dto';
 import { PantryOverviewResponseDto } from '../dtos/pantry-overview-response.dto';
+import { ShoppingShareResponseDto } from '../dtos/shopping-share-response.dto';
 import { getRequestId } from '../request-id';
 import { InventoryLotMapper } from '../mappers/inventory-lot.mapper';
 import { PantryOverviewMapper } from '../mappers/pantry-overview.mapper';
@@ -55,6 +67,8 @@ export class PantryController {
     private readonly getArchivedPantryItemsUseCase: GetArchivedPantryItemsUseCase,
     private readonly getUserProfileUseCase: GetUserProfileUseCase,
     private readonly closeShoppingPurchaseUseCase: CloseShoppingPurchaseUseCase,
+    private readonly createShoppingShareUseCase: CreateShoppingShareUseCase,
+    private readonly revokeShoppingShareUseCase: RevokeShoppingShareUseCase,
     private readonly authCookieService: AuthCookieService,
   ) {}
 
@@ -154,6 +168,59 @@ export class PantryController {
     return inventoryLots.map((lot) => InventoryLotMapper.toResponse(lot));
   }
 
+  @Post('shopping-shares')
+  @ApiOperation({ summary: 'Crear enlace temporal de lista de compra' })
+  async createShoppingShare(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Body() dto: CreateShoppingShareDto,
+    @Req() request: FastifyRequest,
+  ): Promise<ShoppingShareResponseDto> {
+    this.authCookieService.ensureXsrfForRequest(request);
+    const requestId = getRequestId(request) ?? 'none';
+    this.logger.log(
+      `shopping_share_create_requested requestId=${requestId} userId=${currentUser.userId} textLength=${dto.text.length}`,
+    );
+
+    const result = await this.createShoppingShareUseCase.execute({
+      ownerUserId: currentUser.userId,
+      text: dto.text,
+    });
+    const response = this.toShoppingShareResponse(result.share, result.token);
+    this.logger.log(
+      `shopping_share_create_completed requestId=${requestId} userId=${currentUser.userId}`,
+    );
+
+    return response;
+  }
+
+  @Delete('shopping-shares/:token')
+  @ApiOperation({ summary: 'Revocar enlace temporal de lista de compra' })
+  async revokeShoppingShare(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('token') token: string,
+    @Req() request: FastifyRequest,
+  ): Promise<ShoppingShareResponseDto> {
+    this.authCookieService.ensureXsrfForRequest(request);
+    const requestId = getRequestId(request) ?? 'none';
+    this.logger.log(
+      `shopping_share_revoke_requested requestId=${requestId} userId=${currentUser.userId}`,
+    );
+
+    try {
+      const share = await this.revokeShoppingShareUseCase.execute({
+        ownerUserId: currentUser.userId,
+        token,
+      });
+      this.logger.log(
+        `shopping_share_revoke_completed requestId=${requestId} userId=${currentUser.userId}`,
+      );
+
+      return this.toShoppingShareResponse(share);
+    } catch (error) {
+      throw mapShoppingShareMutationError(error);
+    }
+  }
+
   private toArchivedResponse(
     archivedItems: ArchivedPantryItems,
   ): ArchivedPantryItemsResponseDto {
@@ -178,4 +245,42 @@ export class PantryController {
       shoppingCheckoutItems: MAX_SHOPPING_CHECKOUT_ITEMS,
     };
   }
+
+  private toShoppingShareResponse(
+    share: {
+      toPrimitives: () => {
+        createdAt: Date;
+        expiresAt: Date;
+        revokedAt?: Date;
+      };
+    },
+    token?: string,
+  ): ShoppingShareResponseDto {
+    const primitives = share.toPrimitives();
+
+    return {
+      token,
+      createdAt: primitives.createdAt,
+      expiresAt: primitives.expiresAt,
+      revokedAt: primitives.revokedAt,
+    };
+  }
+}
+
+function mapShoppingShareMutationError(error: unknown): Error {
+  if (error instanceof ShoppingShareNotFoundError) {
+    return new NotFoundException('Shopping share not found');
+  }
+
+  if (error instanceof Error && /not owned/i.test(error.message)) {
+    return new ForbiddenException(
+      'Shopping share is not owned by current user',
+    );
+  }
+
+  if (error instanceof Error && /expired|revoked/i.test(error.message)) {
+    return new GoneException('Shopping share expired or revoked');
+  }
+
+  return error instanceof Error ? error : new Error('Shopping share failed');
 }
