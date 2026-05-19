@@ -50,16 +50,18 @@ describe('PantryPageComponent', () => {
       'deleteInventoryLot',
       'getArchivedPantryItems',
       'closeShoppingPurchase',
+      'createShoppingShare',
+      'revokeShoppingShare',
     ]);
     pantryService.searchProductTypes.and.returnValue(of([]));
     pantryService.registerLot.and.returnValue(of({} as any));
     pantryService.consumeInventoryLot.and.returnValue(of(null));
     pantryService.updateProductTypeDepletionRule.and.returnValue(of({} as any));
     pantryService.updateProductTypePlanningSettings.and.returnValue(
-      of({} as any)
+      of({} as any),
     );
     pantryService.updateProductTypeShoppingMetadata.and.returnValue(
-      of({} as any)
+      of({} as any),
     );
     pantryService.archiveProductType.and.returnValue(of({} as any));
     pantryService.restoreProductType.and.returnValue(of({} as any));
@@ -68,9 +70,24 @@ describe('PantryPageComponent', () => {
     pantryService.restoreInventoryLot.and.returnValue(of({} as any));
     pantryService.deleteInventoryLot.and.returnValue(of(undefined));
     pantryService.getArchivedPantryItems.and.returnValue(
-      of({ productTypes: [], inventoryLots: [] })
+      of({ productTypes: [], inventoryLots: [] }),
     );
     pantryService.closeShoppingPurchase.and.returnValue(of([]));
+    pantryService.createShoppingShare.and.returnValue(
+      of({
+        token: 'opaque-token',
+        createdAt: new Date('2026-05-19T00:00:00.000Z'),
+        expiresAt: new Date('2026-05-26T00:00:00.000Z'),
+        revokedAt: null,
+      }),
+    );
+    pantryService.revokeShoppingShare.and.returnValue(
+      of({
+        createdAt: new Date('2026-05-19T00:00:00.000Z'),
+        expiresAt: new Date('2026-05-26T00:00:00.000Z'),
+        revokedAt: new Date('2026-05-20T00:00:00.000Z'),
+      }),
+    );
     authFacade = new AuthFacadeStub();
     store = {
       select: jasmine.createSpy('select').and.returnValue(of(null)),
@@ -147,7 +164,7 @@ describe('PantryPageComponent', () => {
     const compiled = fixture.nativeElement as HTMLElement;
     const label = compiled.querySelector('label[for="existingTypeSearch"]');
     const input = compiled.querySelector<HTMLInputElement>(
-      '#existingTypeSearch'
+      '#existingTypeSearch',
     );
 
     expect(label?.textContent).toContain('Busca el tipo base');
@@ -214,7 +231,7 @@ describe('PantryPageComponent', () => {
             anchorDate: '2026-04-24',
           },
         }),
-      })
+      }),
     );
   });
 
@@ -251,7 +268,7 @@ describe('PantryPageComponent', () => {
             estimatedUnitPrice: 36.5,
           },
         }),
-      })
+      }),
     );
   });
 
@@ -273,7 +290,7 @@ describe('PantryPageComponent', () => {
 
     expect(component.submittingLot).toBeFalse();
     expect(component.registerError).toBe(
-      'La solicitud tardo demasiado. Revisa tu conexion e intenta de nuevo.'
+      'La solicitud tardo demasiado. Revisa tu conexion e intenta de nuevo.',
     );
   }));
 
@@ -324,7 +341,7 @@ describe('PantryPageComponent', () => {
         everyAmount: 3,
         everyPeriod: 'week',
         anchorDate: '2026-05-01',
-      }
+      },
     );
     expect(component.editingDepletionProductTypeId).toBeNull();
     expect(store.dispatch).toHaveBeenCalled();
@@ -358,7 +375,7 @@ describe('PantryPageComponent', () => {
     compiled = fixture.nativeElement as HTMLElement;
 
     expect(
-      compiled.querySelector('[data-testid="expired-entry-alert"]')
+      compiled.querySelector('[data-testid="expired-entry-alert"]'),
     ).toBeNull();
   });
 
@@ -407,7 +424,7 @@ describe('PantryPageComponent', () => {
   it('uses action-oriented shopping labels', () => {
     expect(component.shoppingPlanUrgencyLabels.depleted).toBe('Comprar ya');
     expect(component.shoppingPlanUrgencyLabels.critical).toBe(
-      'Comprar esta semana'
+      'Comprar esta semana',
     );
     expect(component.shoppingPlanUrgencyLabels.upcoming).toBe('Comprar pronto');
   });
@@ -459,7 +476,7 @@ describe('PantryPageComponent', () => {
     expect(exportText).toContain('Solo promo');
     expect(exportText).toContain('Nota: Comprar solo si hay promo');
     expect((component as any).getWhatsAppShoppingUrl(exportText)).toBe(
-      `https://wa.me/?text=${encodeURIComponent(exportText)}`
+      `https://wa.me/?text=${encodeURIComponent(exportText)}`,
     );
   });
 
@@ -468,16 +485,16 @@ describe('PantryPageComponent', () => {
 
     expect((component as any).shoppingBudget).toBe(800);
     expect((component as any).getBudgetStatusLabel(650)).toBe(
-      'Dentro del presupuesto: quedan 150.00 moneda local'
+      'Dentro del presupuesto: quedan 150.00 moneda local',
     );
     expect((component as any).getBudgetStatusLabel(925)).toBe(
-      'Sobre presupuesto por 125.00 moneda local'
+      'Sobre presupuesto por 125.00 moneda local',
     );
   });
 
   it('parses quick capture lines for offline purchase drafts', () => {
     const parsed = (component as any).parseQuickCaptureText(
-      'Arroz | 2 kg | Mercado | 35\nShampoo | 1 botella | Farmacia'
+      'Arroz | 2 kg | Mercado | 35\nShampoo | 1 botella | Farmacia',
     );
 
     expect(parsed).toEqual([
@@ -522,10 +539,10 @@ describe('PantryPageComponent', () => {
     ];
 
     expect(component.getStapleAttentionSummary([...stapleItems])).toBe(
-      '1 de 2 básicos por revisar'
+      '1 de 2 básicos por revisar',
     );
     expect(component.getStapleRestockSummary([...stapleItems])).toBe(
-      'Reposición estimada: 60.00 moneda local'
+      'Reposición estimada: 60.00 moneda local',
     );
   });
 
@@ -544,7 +561,7 @@ describe('PantryPageComponent', () => {
     };
 
     expect(component.getWasteSavingsSummary(insights)).toBe(
-      'Riesgo desperdicio: 56.00 moneda local · 2 con precio · 1 sin precio · 1 solo promo'
+      'Riesgo desperdicio: 56.00 moneda local · 2 con precio · 1 sin precio · 1 solo promo',
     );
   });
 
@@ -571,7 +588,7 @@ describe('PantryPageComponent', () => {
           productTypeId: 'type-rice',
           estimatedLineTotal: undefined,
         }),
-      ])
+      ]),
     ).toBe('Total parcial estimado');
     expect(exportText).toContain('Total parcial estimado: 42.50 moneda local');
   });
@@ -583,7 +600,7 @@ describe('PantryPageComponent', () => {
           estimatedUnitPrice: undefined,
           estimatedLineTotal: undefined,
         }),
-      ])
+      ]),
     ).toBe('Sin precios estimados');
   });
 
@@ -603,11 +620,11 @@ describe('PantryPageComponent', () => {
 
     const compiled = fixture.nativeElement as HTMLElement;
     const textarea = compiled.querySelector<HTMLTextAreaElement>(
-      '.shopping-export-text'
+      '.shopping-export-text',
     );
 
     expect(textarea?.getAttribute('aria-label')).toBe(
-      'Lista de compras generada'
+      'Lista de compras generada',
     );
   });
 
@@ -647,7 +664,7 @@ describe('PantryPageComponent', () => {
     }
   });
 
-  it('creates a view-only temporary shopping list link without account access', () => {
+  it('creates a server-backed view-only temporary shopping list link without account access', () => {
     component.createTemporaryShoppingShare([
       makeShoppingPlanItem({
         baseName: 'Arroz',
@@ -660,29 +677,32 @@ describe('PantryPageComponent', () => {
     ]);
 
     expect(component.shoppingShareLink).toContain(
-      '/shared-shopping-list?token=',
+      '/shared-shopping-list?token=opaque-token',
     );
+    expect(pantryService.createShoppingShare).toHaveBeenCalledWith({
+      text: jasmine.stringContaining('Arroz'),
+    });
     expect(component.shoppingShareStatus).toBe(
-      'Enlace temporal creado. No da acceso a tu cuenta.',
+      'Enlace temporal creado. Puedes revocarlo cuando termines.',
+    );
+    expect(component.shoppingShareExpiresAt).toEqual(
+      new Date('2026-05-26T00:00:00.000Z'),
     );
 
-    const url = new URL(component.shoppingShareLink ?? '');
-    const token = url.searchParams.get('token') ?? '';
-    const normalizedToken = token.replace(/-/g, '+').replace(/_/g, '/');
-    const paddedToken = normalizedToken.padEnd(
-      Math.ceil(normalizedToken.length / 4) * 4,
-      '=',
-    );
-    const payload = JSON.parse(atob(paddedToken));
+    expect(component.shoppingShareLink).not.toContain('Arroz');
+  });
 
-    expect(payload).toEqual(
-      jasmine.objectContaining({
-        version: 1,
-        type: 'shopping-list',
-      }),
+  it('revokes a server-backed temporary shopping list link', () => {
+    component.createTemporaryShoppingShare([makeShoppingPlanItem()]);
+
+    component.revokeTemporaryShoppingShare();
+
+    expect(pantryService.revokeShoppingShare).toHaveBeenCalledWith(
+      'opaque-token',
     );
-    expect(payload.text).toContain('Arroz');
-    expect(payload.accountAccess).toBeUndefined();
+    expect(component.shoppingShareLink).toBeNull();
+    expect(component.shoppingShareToken).toBeNull();
+    expect(component.shoppingShareStatus).toBe('Enlace temporal revocado.');
   });
 
   it('saves product type planning overrides and reloads the pantry overview', () => {
@@ -698,7 +718,7 @@ describe('PantryPageComponent', () => {
     component.savePlanningSettings(group);
 
     expect(
-      pantryService.updateProductTypePlanningSettings
+      pantryService.updateProductTypePlanningSettings,
     ).toHaveBeenCalledWith('type-detergent', {
       planningEnabled: true,
       expirationWarningDaysOverride: 14,
@@ -738,7 +758,7 @@ describe('PantryPageComponent', () => {
 
     expect(pantryService.archiveProductType).toHaveBeenCalledWith(
       'type-detergent',
-      { reason: 'Archivado desde la despensa' }
+      { reason: 'Archivado desde la despensa' },
     );
     expect(component.archiveConfirmationTarget).toBeNull();
   });
@@ -778,7 +798,7 @@ describe('PantryPageComponent', () => {
 
     expect(pantryService.deleteProductType).toHaveBeenCalledWith(
       'type-detergent',
-      { confirmationText: 'Detergente' }
+      { confirmationText: 'Detergente' },
     );
     expect(component.deleteConfirmationTarget).toBeNull();
   });
@@ -812,14 +832,14 @@ describe('PantryPageComponent', () => {
     expect(component.shoppingModeActive).toBeFalse();
     expect(
       JSON.parse(
-        localStorage.getItem('pantrylist.pendingShoppingCheckouts') ?? '[]'
-      )[0].items[0]
+        localStorage.getItem('pantrylist.pendingShoppingCheckouts') ?? '[]',
+      )[0].items[0],
     ).toEqual(
       jasmine.objectContaining({
         productTypeId: 'type-detergent',
         quantity: 1,
         unit: 'lt',
-      })
+      }),
     );
 
     component.isOffline = false;
@@ -853,7 +873,7 @@ describe('PantryPageComponent', () => {
             },
           ],
         },
-      ])
+      ]),
     );
 
     component.isOffline = false;
@@ -866,7 +886,7 @@ describe('PantryPageComponent', () => {
     pendingRequest.complete();
 
     expect(
-      localStorage.getItem('pantrylist.pendingShoppingCheckouts')
+      localStorage.getItem('pantrylist.pendingShoppingCheckouts'),
     ).toBeNull();
   });
 });
@@ -880,7 +900,7 @@ class AuthFacadeStub {
 }
 
 function makePantryGroup(
-  overrides: Partial<PantryOverviewItem> = {}
+  overrides: Partial<PantryOverviewItem> = {},
 ): PantryOverviewItem {
   return {
     productTypeId: 'type-detergent',
@@ -908,7 +928,7 @@ function makePantryGroup(
 }
 
 function makePantryLotSummary(
-  overrides: Partial<PantryLotSummary> = {}
+  overrides: Partial<PantryLotSummary> = {},
 ): PantryLotSummary {
   return {
     lotId: 'lot-1',
@@ -959,7 +979,7 @@ function makeInventoryLot(overrides: Partial<InventoryLot> = {}): InventoryLot {
 }
 
 function makeShoppingPlanItem(
-  overrides: Partial<ShoppingPlanItem> = {}
+  overrides: Partial<ShoppingPlanItem> = {},
 ): ShoppingPlanItem {
   return {
     productTypeId: 'type-detergent',

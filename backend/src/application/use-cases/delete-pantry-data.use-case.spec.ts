@@ -1,13 +1,18 @@
 import { BadRequestException } from '@nestjs/common';
 import { ProductTypeRepository } from '../../domain/repositories/product-type.repository';
 import { InventoryLotRepository } from '../../domain/repositories/inventory-lot.repository';
+import { ShoppingShareRepository } from '../../domain/repositories/shopping-share.repository';
 import { UserId } from '../../domain/value-objects/user-id.vo';
 import { DeletePantryDataUseCase } from './delete-pantry-data.use-case';
 
 describe('DeletePantryDataUseCase', () => {
   it('requires explicit confirmation before deleting all pantry data for a user', async () => {
-    const { useCase, productTypeRepository, inventoryLotRepository } =
-      makeUseCase();
+    const {
+      useCase,
+      productTypeRepository,
+      inventoryLotRepository,
+      shoppingShareRepository,
+    } = makeUseCase();
 
     await expect(
       useCase.execute({
@@ -17,14 +22,20 @@ describe('DeletePantryDataUseCase', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(productTypeRepository.deleteByUserId).not.toHaveBeenCalled();
     expect(inventoryLotRepository.deleteByUserId).not.toHaveBeenCalled();
+    expect(shoppingShareRepository.deleteByOwnerUserId).not.toHaveBeenCalled();
   });
 
-  it('deletes inventory lots before product types and returns deleted counts', async () => {
-    const { useCase, productTypeRepository, inventoryLotRepository } =
-      makeUseCase({
-        deletedInventoryLotCount: 5,
-        deletedProductTypeCount: 3,
-      });
+  it('deletes share links before inventory lots and product types', async () => {
+    const {
+      useCase,
+      productTypeRepository,
+      inventoryLotRepository,
+      shoppingShareRepository,
+    } = makeUseCase({
+      deletedShoppingShareCount: 2,
+      deletedInventoryLotCount: 5,
+      deletedProductTypeCount: 3,
+    });
 
     await expect(
       useCase.execute({
@@ -34,12 +45,21 @@ describe('DeletePantryDataUseCase', () => {
     ).resolves.toEqual({
       deletedInventoryLotCount: 5,
       deletedProductTypeCount: 3,
+      deletedShoppingShareCount: 2,
     });
+    expect(shoppingShareRepository.deleteByOwnerUserId).toHaveBeenCalledWith(
+      UserId.fromString('user-1'),
+    );
     expect(inventoryLotRepository.deleteByUserId).toHaveBeenCalledWith(
       UserId.fromString('user-1'),
     );
     expect(productTypeRepository.deleteByUserId).toHaveBeenCalledWith(
       UserId.fromString('user-1'),
+    );
+    expect(
+      invocationOrder(shoppingShareRepository.deleteByOwnerUserId as jest.Mock),
+    ).toBeLessThan(
+      invocationOrder(inventoryLotRepository.deleteByUserId as jest.Mock),
     );
     expect(
       invocationOrder(inventoryLotRepository.deleteByUserId as jest.Mock),
@@ -51,9 +71,11 @@ describe('DeletePantryDataUseCase', () => {
 
 function makeUseCase(
   counts: {
+    deletedShoppingShareCount: number;
     deletedInventoryLotCount: number;
     deletedProductTypeCount: number;
   } = {
+    deletedShoppingShareCount: 0,
     deletedInventoryLotCount: 0,
     deletedProductTypeCount: 0,
   },
@@ -66,15 +88,22 @@ function makeUseCase(
       .fn()
       .mockResolvedValue(counts.deletedInventoryLotCount),
   } as unknown as jest.Mocked<InventoryLotRepository>;
+  const shoppingShareRepository = {
+    deleteByOwnerUserId: jest
+      .fn()
+      .mockResolvedValue(counts.deletedShoppingShareCount),
+  } as unknown as jest.Mocked<ShoppingShareRepository>;
   const useCase = new DeletePantryDataUseCase(
     productTypeRepository,
     inventoryLotRepository,
+    shoppingShareRepository,
   );
 
   return {
     useCase,
     productTypeRepository,
     inventoryLotRepository,
+    shoppingShareRepository,
   };
 }
 

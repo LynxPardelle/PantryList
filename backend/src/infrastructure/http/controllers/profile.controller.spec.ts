@@ -66,6 +66,7 @@ describe('ProfileController', () => {
     expect(result).toEqual({
       deletedInventoryLotCount: 5,
       deletedProductTypeCount: 3,
+      deletedShoppingShareCount: 2,
     });
   });
 });
@@ -100,6 +101,7 @@ function makeController(): {
     execute: jest.fn().mockResolvedValue({
       deletedInventoryLotCount: 5,
       deletedProductTypeCount: 3,
+      deletedShoppingShareCount: 2,
     }),
   } as unknown as jest.Mocked<DeletePantryDataUseCase>;
   const authCookieService = {

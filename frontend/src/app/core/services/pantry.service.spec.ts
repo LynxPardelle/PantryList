@@ -65,12 +65,15 @@ describe('PantryService', () => {
           nextRecommendedPurchaseAt: new Date('2026-04-28T00:00:00.000Z'),
         }),
       );
-      expect((overview as any).shoppingRouteGroups[0].categoryBreakdown[0])
-        .toEqual(jasmine.objectContaining({
+      expect(
+        (overview as any).shoppingRouteGroups[0].categoryBreakdown[0],
+      ).toEqual(
+        jasmine.objectContaining({
           category: 'cleaning',
           itemCount: 1,
           estimatedTotal: 42.5,
-        }));
+        }),
+      );
       expect(
         (overview as any).shoppingRouteGroups[0].categoryBreakdown[0].items[0]
           .recommendedPurchaseAt,
@@ -98,7 +101,9 @@ describe('PantryService', () => {
           updatedAt: new Date('2026-04-24T00:00:00.000Z'),
         }),
       );
-      expect((overview.shoppingPlanItems[0] as any).estimatedLineTotal).toBe(42.5);
+      expect((overview.shoppingPlanItems[0] as any).estimatedLineTotal).toBe(
+        42.5,
+      );
       expect(overview.shoppingPlanItems[0].recommendedPurchaseAt).toEqual(
         new Date('2026-04-28T00:00:00.000Z'),
       );
@@ -435,7 +440,9 @@ describe('PantryService', () => {
       },
     });
 
-    const inventoryLotRequest = httpMock.expectOne(`${environment.apiUrl}/inventory-lots`);
+    const inventoryLotRequest = httpMock.expectOne(
+      `${environment.apiUrl}/inventory-lots`,
+    );
     expect(inventoryLotRequest.request.withCredentials).toBeTrue();
     inventoryLotRequest.flush({
       id: 'lot-1',
@@ -486,7 +493,9 @@ describe('PantryService', () => {
   });
 
   it('calls archive, restore, delete, and archived item endpoints', () => {
-    service.archiveProductType('type-1', { reason: 'No comprar mas' }).subscribe();
+    service
+      .archiveProductType('type-1', { reason: 'No comprar mas' })
+      .subscribe();
     const archiveProductTypeRequest = httpMock.expectOne(
       `${environment.apiUrl}/product-types/type-1/archive`,
     );
@@ -519,7 +528,9 @@ describe('PantryService', () => {
         new Date('2026-04-01T00:00:00.000Z'),
       );
     });
-    const archivedItemsRequest = httpMock.expectOne(`${environment.apiUrl}/pantry/archived`);
+    const archivedItemsRequest = httpMock.expectOne(
+      `${environment.apiUrl}/pantry/archived`,
+    );
     expect(archivedItemsRequest.request.withCredentials).toBeTrue();
     archivedItemsRequest.flush({
       productTypes: [makeApiProductType()],
@@ -589,6 +600,61 @@ describe('PantryService', () => {
         productTypes: [],
         inventoryLots: [],
       },
+    });
+  });
+
+  it('creates, resolves, and revokes server-backed shopping share tokens', () => {
+    service
+      .createShoppingShare({ text: 'Lista de compras\n- Arroz' })
+      .subscribe((share) => {
+        expect(share.token).toBe('opaque-token');
+        expect(share.createdAt).toEqual(new Date('2026-05-19T00:00:00.000Z'));
+        expect(share.expiresAt).toEqual(new Date('2026-05-26T00:00:00.000Z'));
+      });
+
+    const createRequest = httpMock.expectOne(
+      `${environment.apiUrl}/pantry/shopping-shares`,
+    );
+    expect(createRequest.request.method).toBe('POST');
+    expect(createRequest.request.withCredentials).toBeTrue();
+    expect(createRequest.request.body).toEqual({
+      text: 'Lista de compras\n- Arroz',
+    });
+    createRequest.flush({
+      token: 'opaque-token',
+      createdAt: '2026-05-19T00:00:00.000Z',
+      expiresAt: '2026-05-26T00:00:00.000Z',
+    });
+
+    service.resolveShoppingShare('opaque-token').subscribe((share) => {
+      expect(share.text).toContain('Arroz');
+      expect(share.expiresAt).toEqual(new Date('2026-05-26T00:00:00.000Z'));
+    });
+
+    const resolveRequest = httpMock.expectOne(
+      `${environment.apiUrl}/shopping-shares/opaque-token`,
+    );
+    expect(resolveRequest.request.method).toBe('GET');
+    expect(resolveRequest.request.withCredentials).toBeFalse();
+    resolveRequest.flush({
+      text: 'Lista de compras\n- Arroz',
+      createdAt: '2026-05-19T00:00:00.000Z',
+      expiresAt: '2026-05-26T00:00:00.000Z',
+    });
+
+    service.revokeShoppingShare('opaque-token').subscribe((share) => {
+      expect(share.revokedAt).toEqual(new Date('2026-05-20T00:00:00.000Z'));
+    });
+
+    const revokeRequest = httpMock.expectOne(
+      `${environment.apiUrl}/pantry/shopping-shares/opaque-token`,
+    );
+    expect(revokeRequest.request.method).toBe('DELETE');
+    expect(revokeRequest.request.withCredentials).toBeTrue();
+    revokeRequest.flush({
+      createdAt: '2026-05-19T00:00:00.000Z',
+      expiresAt: '2026-05-26T00:00:00.000Z',
+      revokedAt: '2026-05-20T00:00:00.000Z',
     });
   });
 });

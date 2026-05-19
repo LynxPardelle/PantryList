@@ -4,6 +4,11 @@ import { CloseShoppingPurchaseUseCase } from '../../../application/use-cases/clo
 import { GetArchivedPantryItemsUseCase } from '../../../application/use-cases/get-archived-pantry-items.use-case';
 import { GetPantryOverviewUseCase } from '../../../application/use-cases/get-pantry-overview.use-case';
 import { GetUserProfileUseCase } from '../../../application/use-cases/get-user-profile.use-case';
+import {
+  CreateShoppingShareUseCase,
+  RevokeShoppingShareUseCase,
+} from '../../../application/use-cases/shopping-share.use-cases';
+import { ShoppingShare } from '../../../domain/entities/shopping-share.entity';
 import { InventoryLot } from '../../../domain/entities/inventory-lot.entity';
 import { QuantityUnit } from '../../../domain/enums';
 import { PantryController } from './pantry.controller';
@@ -14,6 +19,8 @@ describe('PantryController', () => {
   let getArchivedPantryItemsUseCase: jest.Mocked<GetArchivedPantryItemsUseCase>;
   let getUserProfileUseCase: jest.Mocked<GetUserProfileUseCase>;
   let closeShoppingPurchaseUseCase: jest.Mocked<CloseShoppingPurchaseUseCase>;
+  let createShoppingShareUseCase: jest.Mocked<CreateShoppingShareUseCase>;
+  let revokeShoppingShareUseCase: jest.Mocked<RevokeShoppingShareUseCase>;
   let authCookieService: jest.Mocked<AuthCookieService>;
 
   beforeEach(() => {
@@ -29,6 +36,20 @@ describe('PantryController', () => {
     closeShoppingPurchaseUseCase = {
       execute: jest.fn().mockResolvedValue([makeInventoryLot()]),
     } as unknown as jest.Mocked<CloseShoppingPurchaseUseCase>;
+    createShoppingShareUseCase = {
+      execute: jest.fn().mockResolvedValue({
+        share: makeShoppingShare(),
+        token: 'opaque-token',
+      }),
+    } as unknown as jest.Mocked<CreateShoppingShareUseCase>;
+    revokeShoppingShareUseCase = {
+      execute: jest.fn().mockResolvedValue(
+        makeShoppingShare({
+          revokedAt: new Date('2026-05-20T00:00:00.000Z'),
+          updatedAt: new Date('2026-05-20T00:00:00.000Z'),
+        }),
+      ),
+    } as unknown as jest.Mocked<RevokeShoppingShareUseCase>;
     authCookieService = {
       ensureXsrfForRequest: jest.fn(),
     } as unknown as jest.Mocked<AuthCookieService>;
@@ -38,6 +59,8 @@ describe('PantryController', () => {
       getArchivedPantryItemsUseCase,
       getUserProfileUseCase,
       closeShoppingPurchaseUseCase,
+      createShoppingShareUseCase,
+      revokeShoppingShareUseCase,
       authCookieService,
     );
   });
@@ -170,6 +193,56 @@ describe('PantryController', () => {
       expect.stringContaining('requestId=req-checkout-1'),
     );
   });
+
+  it('creates a server-backed temporary shopping share for the current user', async () => {
+    const request = {
+      method: 'POST',
+      headers: {
+        'x-request-id': 'req-share-1',
+      },
+    } as unknown as FastifyRequest;
+
+    const response = await controller.createShoppingShare(
+      { userId: 'user-1' },
+      { text: 'Lista de compras\n- Arroz' },
+      request,
+    );
+
+    expect(authCookieService.ensureXsrfForRequest).toHaveBeenCalledWith(
+      request,
+    );
+    expect(createShoppingShareUseCase.execute).toHaveBeenCalledWith({
+      ownerUserId: 'user-1',
+      text: 'Lista de compras\n- Arroz',
+    });
+    expect(response.token).toBe('opaque-token');
+    expect(response.expiresAt).toEqual(new Date('2026-05-26T00:00:00.000Z'));
+  });
+
+  it('revokes a temporary shopping share for the current user', async () => {
+    const request = {
+      method: 'DELETE',
+      headers: {
+        'x-request-id': 'req-share-2',
+      },
+    } as unknown as FastifyRequest;
+
+    const response = await controller.revokeShoppingShare(
+      { userId: 'user-1' },
+      'opaque-token',
+      request,
+    );
+
+    expect(authCookieService.ensureXsrfForRequest).toHaveBeenCalledWith(
+      request,
+    );
+    expect(revokeShoppingShareUseCase.execute).toHaveBeenCalledWith({
+      ownerUserId: 'user-1',
+      token: 'opaque-token',
+    });
+    expect(response.token).toBeUndefined();
+    expect(response.revokedAt).toEqual(new Date('2026-05-20T00:00:00.000Z'));
+  });
 });
 
 function makeProfile() {
@@ -263,6 +336,22 @@ function makeInventoryLot(): InventoryLot {
     purchaseDate: new Date('2026-05-18T00:00:00.000Z'),
     createdAt: new Date('2026-05-18T00:00:00.000Z'),
     updatedAt: new Date('2026-05-18T00:00:00.000Z'),
+  });
+}
+
+function makeShoppingShare(
+  overrides: Partial<ReturnType<ShoppingShare['toPrimitives']>> = {},
+): ShoppingShare {
+  return ShoppingShare.fromPrimitives({
+    id: 'share-1',
+    ownerUserId: 'user-1',
+    tokenHash:
+      '43d7c60747d45779d55e1dfb8a6f3a88decf9b9830fdd308395650c9b67bb7ea',
+    text: 'Lista de compras\n- Arroz',
+    createdAt: new Date('2026-05-19T00:00:00.000Z'),
+    expiresAt: new Date('2026-05-26T00:00:00.000Z'),
+    updatedAt: new Date('2026-05-19T00:00:00.000Z'),
+    ...overrides,
   });
 }
 
