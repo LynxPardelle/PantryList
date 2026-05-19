@@ -43,7 +43,12 @@ describe('PantryController', () => {
   });
 
   it('exports profile, overview, and archived pantry data', async () => {
-    const exported = await controller.exportData({ userId: 'user-1' });
+    const exported = await controller.exportData({ userId: 'user-1' }, {
+      method: 'GET',
+      headers: {
+        'x-request-id': 'req-export-1',
+      },
+    } as unknown as FastifyRequest);
 
     expect(exported.formatVersion).toBe(1);
     expect(exported.profile.email).toBe('chef@example.com');
@@ -54,6 +59,62 @@ describe('PantryController', () => {
     expect(getPantryOverviewUseCase.execute).toHaveBeenCalledWith('user-1');
     expect(getArchivedPantryItemsUseCase.execute).toHaveBeenCalledWith(
       'user-1',
+    );
+  });
+
+  it('exports query limit metadata for the current data set boundaries', async () => {
+    const exported = await controller.exportData({ userId: 'user-1' }, {
+      method: 'GET',
+      headers: {},
+    } as unknown as FastifyRequest);
+
+    expect(exported.limits).toEqual({
+      activeProductTypesPerUser: 500,
+      archivedProductTypesPerUser: 250,
+      productTypeSearchResults: 25,
+      activeInventoryLotsPerUser: 1000,
+      archivedInventoryLotsPerUser: 250,
+      inventoryLotsPerProductType: 500,
+      shoppingCheckoutItems: 50,
+    });
+  });
+
+  it('logs request ids for overview and export reads', async () => {
+    const logSpy = jest
+      .spyOn(
+        (controller as unknown as { logger: { log: jest.Mock } }).logger,
+        'log',
+      )
+      .mockImplementation();
+
+    await controller.overview({ userId: 'user-1' }, {
+      method: 'GET',
+      headers: {
+        'x-request-id': 'req-overview-1',
+      },
+    } as unknown as FastifyRequest);
+    await controller.exportData({ userId: 'user-1' }, {
+      method: 'GET',
+      headers: {
+        'x-request-id': 'req-export-2',
+      },
+    } as unknown as FastifyRequest);
+
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'pantry_overview_requested requestId=req-overview-1',
+      ),
+    );
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'pantry_overview_completed requestId=req-overview-1',
+      ),
+    );
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.stringContaining('pantry_export_requested requestId=req-export-2'),
+    );
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.stringContaining('pantry_export_completed requestId=req-export-2'),
     );
   });
 

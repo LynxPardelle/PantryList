@@ -13,11 +13,13 @@ export const pantryReducer = createReducer(
     ...state,
     overview,
     loading: false,
+    loaded: true,
     error: null,
   })),
   on(PantryActions.loadPantryOverviewFailure, (state, { error }) => ({
     ...state,
     loading: false,
+    loaded: true,
     error,
   })),
   on(PantryActions.resetPantry, () => ({

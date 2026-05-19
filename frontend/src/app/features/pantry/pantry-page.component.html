@@ -87,6 +87,27 @@
     </section>
   }
 
+  @if (initialLoading$ | async) {
+    <section
+      class="guidance-card"
+      aria-live="polite"
+      aria-label="Cargando despensa"
+    >
+      <div>
+        <p class="panel-kicker">Sincronizando</p>
+        <h2>Cargando despensa</h2>
+        <p class="helper-copy">
+          Estamos trayendo tus lotes, reglas y compras sugeridas antes de mostrar estados vac&iacute;os.
+        </p>
+      </div>
+      <div class="summary-grid" aria-hidden="true">
+        @for (item of [1, 2, 3, 4]; track item) {
+          <span class="summary-card"></span>
+        }
+      </div>
+    </section>
+  } @else {
+
   @if (summary$ | async; as summary) {
     <section class="summary-grid" aria-label="Resumen de despensa">
       <article class="summary-card">
@@ -631,6 +652,9 @@
               <button type="button" class="secondary-button" (click)="shareShoppingPlan(shoppingPlanItems)">
                 Compartir
               </button>
+              <button type="button" class="secondary-button" (click)="createTemporaryShoppingShare(shoppingPlanItems)">
+                Enlace temporal
+              </button>
               <button type="button" class="primary-button" (click)="shoppingModeActive ? exitShoppingMode() : enterShoppingMode(shoppingPlanItems)">
                 {{ shoppingModeActive ? 'Salir de compra' : 'Modo compra' }}
               </button>
@@ -655,6 +679,36 @@
               >
                 Abrir en WhatsApp
               </a>
+            }
+
+            @if (shoppingShareStatus) {
+              <p class="helper-copy" aria-live="polite">{{ shoppingShareStatus }}</p>
+            }
+
+            @if (shoppingShareLink) {
+              <div class="selection-card">
+                <label class="field" for="temporaryShoppingShareLink">
+                  <span>Enlace temporal de compra</span>
+                  <input
+                    id="temporaryShoppingShareLink"
+                    type="text"
+                    [value]="shoppingShareLink"
+                    readonly
+                  />
+                </label>
+                <a
+                  class="ghost-button"
+                  [href]="shoppingShareLink"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Abrir enlace
+                </a>
+                <p class="helper-copy">
+                  Quien tenga el enlace puede ver esta lista hasta que caduque, pero no puede entrar a tu cuenta.
+                  El enlace contiene el texto de la lista; evita incluir notas sensibles.
+                </p>
+              </div>
             }
 
             @if (shoppingCheckoutStatus) {
@@ -1758,4 +1812,5 @@
       </article>
     </section>
   </section>
+  }
 </main>

@@ -97,6 +97,15 @@ describe('ProfilePageComponent', () => {
           productTypes: [],
           inventoryLots: [],
         },
+        limits: {
+          activeProductTypesPerUser: 500,
+          archivedProductTypesPerUser: 250,
+          productTypeSearchResults: 25,
+          activeInventoryLotsPerUser: 1000,
+          archivedInventoryLotsPerUser: 250,
+          inventoryLotsPerProductType: 500,
+          shoppingCheckoutItems: 50,
+        },
       }),
     );
 
@@ -134,6 +143,18 @@ describe('ProfilePageComponent', () => {
       shoppingPlanLeadDays: 5,
       showGuidanceTips: false,
     });
+  });
+
+  it('renders clear privacy and data lifecycle boundaries', () => {
+    const compiled = fixture.nativeElement as HTMLElement;
+
+    expect(compiled.textContent).toContain('Ciclo de vida de datos');
+    expect(compiled.textContent).toContain(
+      'La identidad Cognito se gestiona por separado',
+    );
+    expect(compiled.textContent).toContain(
+      'Exportar datos no crea permisos compartidos',
+    );
   });
 
   it('prevents saving invalid preference ranges', () => {
