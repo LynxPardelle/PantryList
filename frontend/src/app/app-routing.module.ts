@@ -29,6 +29,13 @@ const routes: Routes = [
     redirectTo: 'login',
   },
   {
+    path: 'shared-shopping-list',
+    loadComponent: () =>
+      import(
+        './features/shared-shopping-list/shared-shopping-list-page.component'
+      ).then((module) => module.SharedShoppingListPageComponent),
+  },
+  {
     path: 'pantry',
     loadChildren: () =>
       import('./features/pantry/pantry.module').then(

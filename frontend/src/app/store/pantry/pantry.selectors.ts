@@ -37,6 +37,11 @@ export const selectPantryError = createSelector(
   (state) => state.error,
 );
 
+export const selectPantryInitialLoading = createSelector(
+  selectPantryState,
+  (state) => state.loading && !state.loaded && state.overview === null,
+);
+
 export const selectPantryGroups = createSelector(
   selectPantryOverview,
   (overview) => overview?.items ?? [],

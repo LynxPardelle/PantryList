@@ -586,10 +586,21 @@ export interface ApiArchivedPantryItems {
   inventoryLots: ApiInventoryLot[];
 }
 
+export interface PantryDataLimits {
+  activeProductTypesPerUser: number;
+  archivedProductTypesPerUser: number;
+  productTypeSearchResults: number;
+  activeInventoryLotsPerUser: number;
+  archivedInventoryLotsPerUser: number;
+  inventoryLotsPerProductType: number;
+  shoppingCheckoutItems: number;
+}
+
 export interface ApiPantryExport {
   formatVersion: 1;
   exportedAt: string;
   profile: ApiUserProfile;
   overview: ApiPantryOverview;
   archived: ApiArchivedPantryItems;
+  limits: PantryDataLimits;
 }

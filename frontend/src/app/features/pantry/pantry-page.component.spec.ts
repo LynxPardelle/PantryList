@@ -23,6 +23,7 @@ import {
 } from '../../shared/models/pantry.model';
 import {
   selectExpiredEntryAlert,
+  selectPantryInitialLoading,
   selectShoppingPlanItems,
 } from '../../store/pantry/pantry.selectors';
 
@@ -151,6 +152,27 @@ describe('PantryPageComponent', () => {
 
     expect(label?.textContent).toContain('Busca el tipo base');
     expect(input).not.toBeNull();
+  });
+
+  it('shows an initial loading shell instead of empty pantry states while the overview is loading', () => {
+    store.select.and.callFake((selector) => {
+      if (selector === selectPantryInitialLoading) {
+        return of(true);
+      }
+
+      return of(null);
+    });
+
+    fixture = TestBed.createComponent(PantryPageComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+
+    expect(compiled.textContent).toContain('Cargando despensa');
+    expect(compiled.textContent).not.toContain(
+      'No hay lotes urgentes por ahora.',
+    );
   });
 
   it('shows a neutral lot unit preview until an existing type is selected', () => {
@@ -587,6 +609,80 @@ describe('PantryPageComponent', () => {
     expect(textarea?.getAttribute('aria-label')).toBe(
       'Lista de compras generada'
     );
+  });
+
+  it('uses a legacy copy fallback when the Clipboard API rejects the shopping list', async () => {
+    const clipboardDescriptor = Object.getOwnPropertyDescriptor(
+      navigator,
+      'clipboard',
+    );
+    const originalExecCommand = document.execCommand;
+
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText: jasmine
+          .createSpy('writeText')
+          .and.returnValue(Promise.reject(new Error('denied'))),
+      },
+    });
+    (document as any).execCommand = jasmine
+      .createSpy('execCommand')
+      .and.returnValue(true);
+
+    try {
+      await component.copyShoppingPlan([makeShoppingPlanItem()]);
+
+      expect(document.execCommand).toHaveBeenCalledWith('copy');
+      expect(component.shoppingExportStatus).toBe(
+        'Lista copiada para WhatsApp.',
+      );
+    } finally {
+      if (clipboardDescriptor) {
+        Object.defineProperty(navigator, 'clipboard', clipboardDescriptor);
+      } else {
+        delete (navigator as unknown as { clipboard?: Clipboard }).clipboard;
+      }
+      (document as any).execCommand = originalExecCommand;
+    }
+  });
+
+  it('creates a view-only temporary shopping list link without account access', () => {
+    component.createTemporaryShoppingShare([
+      makeShoppingPlanItem({
+        baseName: 'Arroz',
+        shoppingMetadata: {
+          shoppingLocation: 'Mercado',
+          householdStaple: true,
+          buyOnlyOnPromo: false,
+        },
+      }),
+    ]);
+
+    expect(component.shoppingShareLink).toContain(
+      '/shared-shopping-list?token=',
+    );
+    expect(component.shoppingShareStatus).toBe(
+      'Enlace temporal creado. No da acceso a tu cuenta.',
+    );
+
+    const url = new URL(component.shoppingShareLink ?? '');
+    const token = url.searchParams.get('token') ?? '';
+    const normalizedToken = token.replace(/-/g, '+').replace(/_/g, '/');
+    const paddedToken = normalizedToken.padEnd(
+      Math.ceil(normalizedToken.length / 4) * 4,
+      '=',
+    );
+    const payload = JSON.parse(atob(paddedToken));
+
+    expect(payload).toEqual(
+      jasmine.objectContaining({
+        version: 1,
+        type: 'shopping-list',
+      }),
+    );
+    expect(payload.text).toContain('Arroz');
+    expect(payload.accountAccess).toBeUndefined();
   });
 
   it('saves product type planning overrides and reloads the pantry overview', () => {

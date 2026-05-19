@@ -61,6 +61,7 @@ import {
   selectExpiredEntryAlert,
   selectPantryError,
   selectPantryGroupsSorted,
+  selectPantryInitialLoading,
   selectPantryLoading,
   selectPantrySummary,
   selectPantryValueInsights,
@@ -142,6 +143,7 @@ export class PantryPageComponent implements OnInit {
 
   readonly username$ = this.authFacade.currentUsername$;
   readonly loading$ = this.store.select(selectPantryLoading);
+  readonly initialLoading$ = this.store.select(selectPantryInitialLoading);
   readonly error$ = this.store.select(selectPantryError);
   readonly summary$ = this.store.select(selectPantrySummary);
   readonly expiringGroups$ = this.store.select(selectExpiringGroups);
@@ -330,6 +332,8 @@ export class PantryPageComponent implements OnInit {
   shoppingMetadataError: string | null = null;
   shoppingExportStatus: string | null = null;
   shoppingExportText: string | null = null;
+  shoppingShareStatus: string | null = null;
+  shoppingShareLink: string | null = null;
   shoppingBudget: number | null = null;
   shoppingModeActive = false;
   shoppingTripDraft: Record<string, ShoppingTripDraftItem> = {};
@@ -1089,24 +1093,15 @@ export class PantryPageComponent implements OnInit {
     const exportText = this.buildShoppingPlanExportText(items);
     this.shoppingExportText = exportText;
 
-    if (
-      !isPlatformBrowser(this.platformId) ||
-      !navigator.clipboard?.writeText
-    ) {
+    const copyResult = await this.copyTextToClipboard(exportText);
+
+    if (copyResult === 'native' || copyResult === 'legacy') {
+      this.shoppingExportStatus = 'Lista copiada para WhatsApp.';
+    } else {
       this.shoppingExportStatus = 'Lista generada para copiar manualmente.';
-      this.changeDetector.markForCheck();
-      return;
     }
 
-    try {
-      await navigator.clipboard.writeText(exportText);
-      this.shoppingExportStatus = 'Lista copiada para WhatsApp.';
-    } catch {
-      this.shoppingExportStatus =
-        'No se pudo copiar; lista generada manualmente.';
-    } finally {
-      this.changeDetector.markForCheck();
-    }
+    this.changeDetector.markForCheck();
   }
 
   async shareShoppingPlan(items: ShoppingPlanItem[]): Promise<void> {
@@ -1141,8 +1136,93 @@ export class PantryPageComponent implements OnInit {
     await this.copyShoppingPlan(items);
   }
 
+  createTemporaryShoppingShare(items: ShoppingPlanItem[]): void {
+    const exportText = this.buildShoppingPlanExportText(items);
+    this.shoppingExportText = exportText;
+
+    if (!isPlatformBrowser(this.platformId)) {
+      this.shoppingShareStatus = 'Enlace disponible solo en navegador.';
+      this.shoppingShareLink = null;
+      return;
+    }
+
+    const createdAt = new Date();
+    const expiresAt = new Date(
+      createdAt.getTime() + 7 * 24 * 60 * 60 * 1000,
+    );
+    const token = this.encodeShoppingShareToken({
+      version: 1,
+      type: 'shopping-list',
+      createdAt: createdAt.toISOString(),
+      expiresAt: expiresAt.toISOString(),
+      text: exportText,
+    });
+
+    this.shoppingShareLink = `${window.location.origin}/shared-shopping-list?token=${token}`;
+    this.shoppingShareStatus =
+      'Enlace temporal creado. No da acceso a tu cuenta.';
+    this.changeDetector.markForCheck();
+  }
+
   getWhatsAppShoppingUrl(exportText: string): string {
     return `https://wa.me/?text=${encodeURIComponent(exportText)}`;
+  }
+
+  private async copyTextToClipboard(
+    text: string,
+  ): Promise<'native' | 'legacy' | 'manual'> {
+    if (!isPlatformBrowser(this.platformId)) {
+      return 'manual';
+    }
+
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return 'native';
+      } catch {
+        // Fall through to the legacy browser copy path.
+      }
+    }
+
+    return this.copyTextWithLegacyCommand(text) ? 'legacy' : 'manual';
+  }
+
+  private copyTextWithLegacyCommand(text: string): boolean {
+    if (typeof document.execCommand !== 'function') {
+      return false;
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', 'true');
+    textarea.style.position = 'fixed';
+    textarea.style.top = '0';
+    textarea.style.left = '-9999px';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+
+    try {
+      return document.execCommand('copy');
+    } catch {
+      return false;
+    } finally {
+      textarea.remove();
+    }
+  }
+
+  private encodeShoppingShareToken(payload: Record<string, string | number>) {
+    const bytes = new TextEncoder().encode(JSON.stringify(payload));
+    let binary = '';
+
+    for (const byte of bytes) {
+      binary += String.fromCharCode(byte);
+    }
+
+    return btoa(binary)
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
   }
 
   downloadPantryExport(): void {
