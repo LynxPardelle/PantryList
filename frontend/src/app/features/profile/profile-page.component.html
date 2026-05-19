@@ -207,7 +207,7 @@
           <button
             class="secondary-button"
             type="submit"
-            [disabled]="deletingPantryData || loading"
+            [disabled]="!canDeletePantryData"
           >
             {{ deletingPantryData ? 'Eliminando...' : 'Eliminar datos' }}
           </button>

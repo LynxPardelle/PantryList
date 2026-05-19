@@ -198,9 +198,13 @@ describe('ProfilePageComponent', () => {
   });
 
   it('requires ELIMINAR confirmation before deleting local pantry data', () => {
+    expect(component.canDeletePantryData).toBeFalse();
+
     component.deletePantryDataForm.patchValue({
       confirmationText: 'BORRAR',
     });
+
+    expect(component.canDeletePantryData).toBeFalse();
 
     component.deletePantryData();
 
@@ -211,6 +215,8 @@ describe('ProfilePageComponent', () => {
       confirmationText: 'ELIMINAR',
     });
 
+    expect(component.canDeletePantryData).toBeTrue();
+
     component.deletePantryData();
 
     expect(profileService.deletePantryData).toHaveBeenCalledWith({
@@ -219,5 +225,22 @@ describe('ProfilePageComponent', () => {
     expect(component.deleteMessage).toBe(
       'Datos eliminados: 5 lotes y 3 tipos base.',
     );
+  });
+
+  it('keeps the pantry deletion button disabled until the exact confirmation is entered', () => {
+    fixture.detectChanges();
+
+    const deleteButton = fixture.nativeElement.querySelector(
+      '.danger-panel button[type="submit"]',
+    ) as HTMLButtonElement;
+
+    expect(deleteButton.disabled).toBeTrue();
+
+    component.deletePantryDataForm.patchValue({
+      confirmationText: 'ELIMINAR',
+    });
+    fixture.detectChanges();
+
+    expect(deleteButton.disabled).toBeFalse();
   });
 });
