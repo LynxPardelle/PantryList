@@ -11,11 +11,13 @@ import {
   ApiPantryLotSummary,
   ApiPantryOverview,
   ApiPantryOverviewItem,
+  ApiPantryStapleCatalogGroup,
   ApiPantryStapleItem,
   ApiPriceReferenceItem,
   ApiProductType,
   ApiProductTypeDepletionRule,
   ApiShoppingPlanItem,
+  ApiShoppingRouteCategoryGroup,
   ApiShoppingRouteGroup,
   ArchivedPantryItems,
   ArchivePantryItemRequest,
@@ -29,6 +31,7 @@ import {
   PantryLotSummary,
   PantryOverview,
   PantryOverviewItem,
+  PantryStapleCatalogGroup,
   PantryStapleItem,
   PriceReferenceItem,
   ProductTypeDepletionRule,
@@ -39,6 +42,7 @@ import {
   ProductType,
   RegisterLotRequest,
   ShoppingPlanItem,
+  ShoppingRouteCategoryGroup,
   ShoppingRouteGroup,
 } from '../../shared/models/pantry.model';
 
@@ -354,12 +358,20 @@ export class PantryService {
       stapleItems: (overview.stapleItems ?? []).map((item) =>
         this.normalizeStapleItem(item),
       ),
+      stapleCatalogGroups: (overview.stapleCatalogGroups ?? []).map((group) =>
+        this.normalizeStapleCatalogGroup(group),
+      ),
       valueInsights: overview.valueInsights ?? {
         stapleCount: 0,
         stapleAttentionCount: 0,
         estimatedShoppingTotal: overview.shoppingPlanEstimatedTotal ?? 0,
         estimatedExpiringValue: 0,
+        estimatedWasteAtRisk: 0,
         estimatedStapleRestockTotal: 0,
+        pricedShoppingItemCount: 0,
+        unpricedShoppingItemCount: 0,
+        promoOnlyShoppingItemCount: 0,
+        estimatedPromoOnlyTotal: 0,
       },
     };
   }
@@ -412,6 +424,18 @@ export class PantryService {
     return {
       ...group,
       nextRecommendedPurchaseAt: new Date(group.nextRecommendedPurchaseAt),
+      categoryBreakdown: (group.categoryBreakdown ?? []).map((categoryGroup) =>
+        this.normalizeShoppingRouteCategoryGroup(categoryGroup),
+      ),
+      items: group.items.map((item) => this.normalizeShoppingPlanItem(item)),
+    };
+  }
+
+  private normalizeShoppingRouteCategoryGroup(
+    group: ApiShoppingRouteCategoryGroup,
+  ): ShoppingRouteCategoryGroup {
+    return {
+      ...group,
       items: group.items.map((item) => this.normalizeShoppingPlanItem(item)),
     };
   }
@@ -435,6 +459,15 @@ export class PantryService {
       shoppingMetadata: item.shoppingMetadata
         ? this.normalizeShoppingMetadata(item.shoppingMetadata)
         : undefined,
+    };
+  }
+
+  private normalizeStapleCatalogGroup(
+    group: ApiPantryStapleCatalogGroup,
+  ): PantryStapleCatalogGroup {
+    return {
+      ...group,
+      items: group.items.map((item) => this.normalizeStapleItem(item)),
     };
   }
 

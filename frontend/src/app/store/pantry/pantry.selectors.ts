@@ -80,7 +80,12 @@ export const selectPantryValueInsights = createSelector(
       stapleAttentionCount: 0,
       estimatedShoppingTotal: 0,
       estimatedExpiringValue: 0,
+      estimatedWasteAtRisk: 0,
       estimatedStapleRestockTotal: 0,
+      pricedShoppingItemCount: 0,
+      unpricedShoppingItemCount: 0,
+      promoOnlyShoppingItemCount: 0,
+      estimatedPromoOnlyTotal: 0,
     },
 );
 

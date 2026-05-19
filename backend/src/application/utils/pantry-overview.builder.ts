@@ -3,7 +3,11 @@ import {
   ProductType,
   ProductTypeShoppingMetadataPrimitives,
 } from '../../domain/entities/product-type.entity';
-import { ExpirationStatus, QuantityUnit } from '../../domain/enums';
+import {
+  ExpirationStatus,
+  ProductCategory,
+  QuantityUnit,
+} from '../../domain/enums';
 import {
   UserPreferences,
   UserPreferencesPatch,
@@ -13,18 +17,26 @@ import {
   DepletingProductGroup,
   ExpiringProductGroup,
   PriceReferenceItem,
+  PantryStapleCatalogGroup,
   PantryStapleItem,
   PantryStapleStatus,
   PantryLotSummary,
   PantryOverview,
   PantryOverviewItem,
   ProductTypeEffectivePlanningSettings,
+  ShoppingRouteCategoryGroup,
   ShoppingPlanItem,
   ShoppingRouteGroup,
   ShoppingPlanUrgency,
 } from '../read-models/pantry-overview.read-model';
 
 const DEFAULT_SHOPPING_LOCATION = 'Sin tienda definida';
+const STORE_ROUTE_CATEGORY_ORDER: ProductCategory[] = [
+  ProductCategory.FOOD,
+  ProductCategory.CLEANING,
+  ProductCategory.HYGIENE,
+  ProductCategory.OTHER,
+];
 
 export function buildPantryOverview(
   userId: string,
@@ -308,6 +320,20 @@ export function buildPantryOverview(
       .reduce((sum, item) => sum + (item.estimatedRestockTotal ?? 0), 0)
       .toFixed(2),
   );
+  const stapleCatalogGroups = buildStapleCatalogGroups(stapleItems);
+  const pricedShoppingItemCount = shoppingPlanItems.filter(
+    (item) => item.estimatedLineTotal !== undefined,
+  ).length;
+  const unpricedShoppingItemCount =
+    shoppingPlanItems.length - pricedShoppingItemCount;
+  const promoOnlyShoppingItems = shoppingPlanItems.filter(
+    (item) => item.shoppingMetadata.buyOnlyOnPromo,
+  );
+  const estimatedPromoOnlyTotal = Number(
+    promoOnlyShoppingItems
+      .reduce((sum, item) => sum + (item.estimatedLineTotal ?? 0), 0)
+      .toFixed(2),
+  );
 
   return {
     userId,
@@ -321,6 +347,7 @@ export function buildPantryOverview(
     shoppingRouteGroups,
     priceReferenceItems,
     stapleItems,
+    stapleCatalogGroups,
     valueInsights: {
       stapleCount: stapleItems.length,
       stapleAttentionCount: stapleItems.filter(
@@ -328,7 +355,12 @@ export function buildPantryOverview(
       ).length,
       estimatedShoppingTotal: shoppingPlanEstimatedTotal,
       estimatedExpiringValue,
+      estimatedWasteAtRisk: estimatedExpiringValue,
       estimatedStapleRestockTotal,
+      pricedShoppingItemCount,
+      unpricedShoppingItemCount,
+      promoOnlyShoppingItemCount: promoOnlyShoppingItems.length,
+      estimatedPromoOnlyTotal,
     },
   };
 }
@@ -345,28 +377,86 @@ function buildShoppingRouteGroups(
   }
 
   return Array.from(grouped.entries())
-    .map(([shoppingLocation, items]) => ({
-      shoppingLocation,
-      itemCount: items.length,
-      urgentItemCount: items.filter((item) => item.urgency !== 'upcoming')
-        .length,
-      promoOnlyCount: items.filter(
-        (item) => item.shoppingMetadata.buyOnlyOnPromo,
-      ).length,
-      missingPriceCount: items.filter(
-        (item) => item.estimatedLineTotal === undefined,
-      ).length,
+    .map(([shoppingLocation, items]) => {
+      const orderedItems = [...items].sort(compareShoppingRouteItem);
+
+      return {
+        shoppingLocation,
+        itemCount: orderedItems.length,
+        urgentItemCount: orderedItems.filter(
+          (item) => item.urgency !== 'upcoming',
+        ).length,
+        promoOnlyCount: orderedItems.filter(
+          (item) => item.shoppingMetadata.buyOnlyOnPromo,
+        ).length,
+        missingPriceCount: orderedItems.filter(
+          (item) => item.estimatedLineTotal === undefined,
+        ).length,
+        estimatedTotal: Number(
+          orderedItems
+            .reduce((sum, item) => sum + (item.estimatedLineTotal ?? 0), 0)
+            .toFixed(2),
+        ),
+        nextRecommendedPurchaseAt: orderedItems
+          .map((item) => item.recommendedPurchaseAt)
+          .sort((left, right) => left.getTime() - right.getTime())[0],
+        categoryBreakdown: buildRouteCategoryBreakdown(orderedItems),
+        items: orderedItems,
+      };
+    })
+    .sort(compareShoppingRouteGroup);
+}
+
+function buildRouteCategoryBreakdown(
+  items: ShoppingPlanItem[],
+): ShoppingRouteCategoryGroup[] {
+  const grouped = new Map<ProductCategory, ShoppingPlanItem[]>();
+
+  for (const item of items) {
+    grouped.set(item.category, [...(grouped.get(item.category) ?? []), item]);
+  }
+
+  return Array.from(grouped.entries())
+    .map(([category, categoryItems]) => ({
+      category,
+      itemCount: categoryItems.length,
       estimatedTotal: Number(
-        items
+        categoryItems
           .reduce((sum, item) => sum + (item.estimatedLineTotal ?? 0), 0)
           .toFixed(2),
       ),
-      nextRecommendedPurchaseAt: items
-        .map((item) => item.recommendedPurchaseAt)
-        .sort((left, right) => left.getTime() - right.getTime())[0],
-      items: [...items].sort(compareShoppingPlanItem),
+      items: categoryItems,
     }))
-    .sort(compareShoppingRouteGroup);
+    .sort(
+      (left, right) =>
+        getCategoryRank(left.category) - getCategoryRank(right.category),
+    );
+}
+
+function buildStapleCatalogGroups(
+  stapleItems: PantryStapleItem[],
+): PantryStapleCatalogGroup[] {
+  const grouped = new Map<PantryStapleStatus, PantryStapleItem[]>();
+
+  for (const item of stapleItems) {
+    grouped.set(item.status, [...(grouped.get(item.status) ?? []), item]);
+  }
+
+  return Array.from(grouped.entries())
+    .map(([status, items]) => ({
+      status,
+      itemCount: items.length,
+      estimatedRestockTotal: Number(
+        items
+          .reduce((sum, item) => sum + (item.estimatedRestockTotal ?? 0), 0)
+          .toFixed(2),
+      ),
+      items,
+    }))
+    .sort(
+      (left, right) =>
+        getStapleStatusRank(left.status) - getStapleStatusRank(right.status),
+    );
 }
 
 function buildPriceReferenceItems(
@@ -536,6 +626,20 @@ function compareShoppingPlanItem(
   return compareText(left.baseName, right.baseName);
 }
 
+function compareShoppingRouteItem(
+  left: ShoppingPlanItem,
+  right: ShoppingPlanItem,
+): number {
+  const categoryDifference =
+    getCategoryRank(left.category) - getCategoryRank(right.category);
+
+  if (categoryDifference !== 0) {
+    return categoryDifference;
+  }
+
+  return compareShoppingPlanItem(left, right);
+}
+
 function compareShoppingRouteGroup(
   left: ShoppingRouteGroup,
   right: ShoppingRouteGroup,
@@ -622,6 +726,11 @@ function compareStapleItem(
   }
 
   return compareText(left.baseName, right.baseName);
+}
+
+function getCategoryRank(category: ProductCategory): number {
+  const index = STORE_ROUTE_CATEGORY_ORDER.indexOf(category);
+  return index === -1 ? STORE_ROUTE_CATEGORY_ORDER.length : index;
 }
 
 function getStapleStatusRank(status: PantryStapleStatus): number {

@@ -66,7 +66,12 @@ export interface PantryValueInsights {
   stapleAttentionCount: number;
   estimatedShoppingTotal: number;
   estimatedExpiringValue: number;
+  estimatedWasteAtRisk: number;
   estimatedStapleRestockTotal: number;
+  pricedShoppingItemCount: number;
+  unpricedShoppingItemCount: number;
+  promoOnlyShoppingItemCount: number;
+  estimatedPromoOnlyTotal: number;
 }
 
 export interface ShoppingPlanItem {
@@ -96,7 +101,22 @@ export interface ShoppingRouteGroup {
   missingPriceCount: number;
   estimatedTotal: number;
   nextRecommendedPurchaseAt: Date;
+  categoryBreakdown: ShoppingRouteCategoryGroup[];
   items: ShoppingPlanItem[];
+}
+
+export interface ShoppingRouteCategoryGroup {
+  category: ProductCategory;
+  itemCount: number;
+  estimatedTotal: number;
+  items: ShoppingPlanItem[];
+}
+
+export interface PantryStapleCatalogGroup {
+  status: PantryStapleStatus;
+  itemCount: number;
+  estimatedRestockTotal: number;
+  items: PantryStapleItem[];
 }
 
 export interface PriceHistoryEntry {
@@ -165,5 +185,6 @@ export interface PantryOverview {
   shoppingRouteGroups: ShoppingRouteGroup[];
   priceReferenceItems: PriceReferenceItem[];
   stapleItems: PantryStapleItem[];
+  stapleCatalogGroups: PantryStapleCatalogGroup[];
   valueInsights: PantryValueInsights;
 }

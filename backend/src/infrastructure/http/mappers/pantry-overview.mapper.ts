@@ -2,9 +2,11 @@ import {
   DepletingProductGroup,
   ExpiringProductGroup,
   PriceReferenceItem,
+  PantryStapleCatalogGroup,
   PantryLotSummary,
   PantryOverview,
   PantryStapleItem,
+  ShoppingRouteCategoryGroup,
   ShoppingPlanItem,
   ShoppingRouteGroup,
 } from '../../../application/read-models/pantry-overview.read-model';
@@ -12,9 +14,11 @@ import {
   DepletingProductGroupResponseDto,
   ExpiringProductGroupResponseDto,
   PriceReferenceItemResponseDto,
+  PantryStapleCatalogGroupResponseDto,
   PantryLotSummaryResponseDto,
   PantryOverviewResponseDto,
   PantryStapleItemResponseDto,
+  ShoppingRouteCategoryGroupResponseDto,
   ShoppingPlanItemResponseDto,
   ShoppingRouteGroupResponseDto,
 } from '../dtos/pantry-overview-response.dto';
@@ -62,6 +66,9 @@ export class PantryOverviewMapper {
       ),
       stapleItems: overview.stapleItems.map((item) =>
         this.toStapleItemResponse(item),
+      ),
+      stapleCatalogGroups: overview.stapleCatalogGroups.map((group) =>
+        this.toStapleCatalogGroupResponse(group),
       ),
       valueInsights: overview.valueInsights,
     };
@@ -133,6 +140,20 @@ export class PantryOverviewMapper {
       missingPriceCount: group.missingPriceCount,
       estimatedTotal: group.estimatedTotal,
       nextRecommendedPurchaseAt: group.nextRecommendedPurchaseAt,
+      categoryBreakdown: group.categoryBreakdown.map((categoryGroup) =>
+        this.toShoppingRouteCategoryGroupResponse(categoryGroup),
+      ),
+      items: group.items.map((item) => this.toShoppingPlanItemResponse(item)),
+    };
+  }
+
+  static toShoppingRouteCategoryGroupResponse(
+    group: ShoppingRouteCategoryGroup,
+  ): ShoppingRouteCategoryGroupResponseDto {
+    return {
+      category: group.category,
+      itemCount: group.itemCount,
+      estimatedTotal: group.estimatedTotal,
       items: group.items.map((item) => this.toShoppingPlanItemResponse(item)),
     };
   }
@@ -176,6 +197,17 @@ export class PantryOverviewMapper {
       estimatedRestockTotal: item.estimatedRestockTotal,
       status: item.status,
       shoppingMetadata: item.shoppingMetadata,
+    };
+  }
+
+  static toStapleCatalogGroupResponse(
+    group: PantryStapleCatalogGroup,
+  ): PantryStapleCatalogGroupResponseDto {
+    return {
+      status: group.status,
+      itemCount: group.itemCount,
+      estimatedRestockTotal: group.estimatedRestockTotal,
+      items: group.items.map((item) => this.toStapleItemResponse(item)),
     };
   }
 

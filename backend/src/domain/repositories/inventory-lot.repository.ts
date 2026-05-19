@@ -12,4 +12,5 @@ export interface InventoryLotRepository {
   reassignUserOwnership(fromUserId: UserId, toUserId: UserId): Promise<number>;
   delete(id: InventoryLotId): Promise<void>;
   deleteByProductTypeId(productTypeId: ProductTypeId): Promise<void>;
+  deleteByUserId(userId: UserId): Promise<number>;
 }

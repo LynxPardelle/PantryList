@@ -1,4 +1,5 @@
 import { FastifyRequest } from 'fastify';
+import { DeletePantryDataUseCase } from '../../../application/use-cases/delete-pantry-data.use-case';
 import { GetUserProfileUseCase } from '../../../application/use-cases/get-user-profile.use-case';
 import { UpdateUserPreferencesUseCase } from '../../../application/use-cases/update-user-preferences.use-case';
 import { UserPreferences } from '../../../domain/value-objects/user-preferences.vo';
@@ -39,12 +40,41 @@ describe('ProfileController', () => {
     ]);
     expect(preferences.showExpiredEntryAlert).toBe(false);
   });
+
+  it('requires XSRF and confirmation before deleting local pantry data', async () => {
+    const { controller, authCookieService, deletePantryDataUseCase } =
+      makeController();
+    const request = { method: 'DELETE' } as FastifyRequest;
+
+    const result = await controller.deletePantryData(
+      { userId: 'user-1' },
+      {
+        confirmationText: 'ELIMINAR',
+      },
+      request,
+    );
+
+    expect(authCookieService.ensureXsrfForRequest.mock.calls[0]).toEqual([
+      request,
+    ]);
+    expect(deletePantryDataUseCase.execute.mock.calls[0]).toEqual([
+      {
+        userId: 'user-1',
+        confirmationText: 'ELIMINAR',
+      },
+    ]);
+    expect(result).toEqual({
+      deletedInventoryLotCount: 5,
+      deletedProductTypeCount: 3,
+    });
+  });
 });
 
 function makeController(): {
   controller: ProfileController;
   getUserProfileUseCase: jest.Mocked<GetUserProfileUseCase>;
   updateUserPreferencesUseCase: jest.Mocked<UpdateUserPreferencesUseCase>;
+  deletePantryDataUseCase: jest.Mocked<DeletePantryDataUseCase>;
   authCookieService: jest.Mocked<AuthCookieService>;
 } {
   const getUserProfileUseCase = {
@@ -66,6 +96,12 @@ function makeController(): {
       }),
     ),
   } as unknown as jest.Mocked<UpdateUserPreferencesUseCase>;
+  const deletePantryDataUseCase = {
+    execute: jest.fn().mockResolvedValue({
+      deletedInventoryLotCount: 5,
+      deletedProductTypeCount: 3,
+    }),
+  } as unknown as jest.Mocked<DeletePantryDataUseCase>;
   const authCookieService = {
     ensureXsrfForRequest: jest.fn(),
   } as unknown as jest.Mocked<AuthCookieService>;
@@ -74,10 +110,12 @@ function makeController(): {
     controller: new ProfileController(
       getUserProfileUseCase,
       updateUserPreferencesUseCase,
+      deletePantryDataUseCase,
       authCookieService,
     ),
     getUserProfileUseCase,
     updateUserPreferencesUseCase,
+    deletePantryDataUseCase,
     authCookieService,
   };
 }

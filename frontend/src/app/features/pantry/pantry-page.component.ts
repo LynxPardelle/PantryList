@@ -41,6 +41,7 @@ import {
   PantryOverviewItem,
   PantryStapleItem,
   PantryStapleStatus,
+  PantryValueInsights,
   PriceReferenceItem,
   ProductTypeDepletionRuleRequest,
   ProductTypePlanningSettingsRequest,
@@ -107,6 +108,12 @@ interface ShoppingTripDraftItem {
   shoppingLocation?: string;
 }
 
+interface PendingShoppingCheckout {
+  id: string;
+  createdAt: Date;
+  items: CloseShoppingPurchaseItemRequest[];
+}
+
 interface ScreenWakeLock {
   release: () => Promise<void>;
 }
@@ -130,6 +137,8 @@ export class PantryPageComponent implements OnInit {
   private readonly shoppingBudgetStorageKey = 'pantrylist.shoppingBudget';
   private readonly quickCaptureStorageKey = 'pantrylist.quickCaptureDrafts';
   private readonly shoppingTripStorageKey = 'pantrylist.shoppingTripDraft';
+  private readonly pendingShoppingCheckoutStorageKey =
+    'pantrylist.pendingShoppingCheckouts';
 
   readonly username$ = this.authFacade.currentUsername$;
   readonly loading$ = this.store.select(selectPantryLoading);
@@ -147,7 +156,10 @@ export class PantryPageComponent implements OnInit {
   readonly showGuidanceTips$ = this.store.select(selectShowGuidanceTips);
 
   readonly searchingTypeSuggestions$ = new BehaviorSubject(false);
-  readonly selectionModeOptions: ProductTypeSelectionMode[] = ['existing', 'new'];
+  readonly selectionModeOptions: ProductTypeSelectionMode[] = [
+    'existing',
+    'new',
+  ];
   readonly categoryOptions = PRODUCT_CATEGORIES;
   readonly unitOptions = PRODUCT_UNITS;
   readonly storageLocationOptions = STORAGE_LOCATION_OPTIONS;
@@ -187,7 +199,10 @@ export class PantryPageComponent implements OnInit {
   };
 
   readonly lotForm = this.formBuilder.nonNullable.group({
-    selectionMode: ['existing' as ProductTypeSelectionMode, Validators.required],
+    selectionMode: [
+      'existing' as ProductTypeSelectionMode,
+      Validators.required,
+    ],
     existingTypeSearch: [''],
     existingProductTypeId: [''],
     newBaseName: ['', [Validators.maxLength(80)]],
@@ -282,11 +297,11 @@ export class PantryPageComponent implements OnInit {
               catchError(() => {
                 this.searchingTypeSuggestions$.next(false);
                 return of([] as ProductType[]);
-              }),
+              })
             );
-          }),
+          })
         );
-      }),
+      })
     );
 
   selectedExistingType: ProductType | null = null;
@@ -324,16 +339,18 @@ export class PantryPageComponent implements OnInit {
   privacyExportBusy = false;
   quickCaptureDrafts: QuickCaptureDraft[] = [];
   quickCaptureStatus: string | null = null;
+  pendingShoppingCheckoutCount = 0;
   isOffline = false;
   readonly consumeErrors: Record<string, string> = {};
   private readonly expandedProductTypeIds = new Set<string>();
   private shoppingWakeLock: ScreenWakeLock | null = null;
+  private pendingShoppingCheckoutSyncing = false;
 
   ngOnInit(): void {
     if (isPlatformBrowser(this.platformId)) {
       this.loadOverview();
-      this.loadLocalShoppingSupport();
       this.watchNetworkState();
+      this.loadLocalShoppingSupport();
       this.destroyRef.onDestroy(() => {
         void this.releaseShoppingWakeLock();
       });
@@ -348,7 +365,7 @@ export class PantryPageComponent implements OnInit {
             {
               existingProductTypeId: '',
             },
-            { emitEvent: false },
+            { emitEvent: false }
           );
         }
       });
@@ -371,7 +388,7 @@ export class PantryPageComponent implements OnInit {
               depletionEveryPeriod: 'month',
               depletionAnchorDate: toDateInputValue(new Date()),
             },
-            { emitEvent: false },
+            { emitEvent: false }
           );
         }
       });
@@ -389,7 +406,7 @@ export class PantryPageComponent implements OnInit {
         existingProductTypeId: productType.id,
         unit: productType.defaultUnit,
       },
-      { emitEvent: false },
+      { emitEvent: false }
     );
     this.patchDepletionRuleControls(productType);
     this.registerError = null;
@@ -410,7 +427,9 @@ export class PantryPageComponent implements OnInit {
 
   getLotUnitPreview(): string {
     if (this.lotForm.controls.selectionMode.value === 'existing') {
-      return this.selectedExistingType?.defaultUnit ?? 'Selecciona un tipo base';
+      return (
+        this.selectedExistingType?.defaultUnit ?? 'Selecciona un tipo base'
+      );
     }
 
     return this.lotForm.controls.unit.value;
@@ -465,7 +484,8 @@ export class PantryPageComponent implements OnInit {
   savePlanningSettings(group: PantryOverviewItem): void {
     if (this.planningSettingsForm.invalid) {
       this.planningSettingsForm.markAllAsTouched();
-      this.planningSettingsError = 'Revisa los rangos antes de guardar estas reglas.';
+      this.planningSettingsError =
+        'Revisa los rangos antes de guardar estas reglas.';
       return;
     }
 
@@ -475,13 +495,13 @@ export class PantryPageComponent implements OnInit {
     this.pantryService
       .updateProductTypePlanningSettings(
         group.productTypeId,
-        this.buildPlanningSettingsRequest(),
+        this.buildPlanningSettingsRequest()
       )
       .pipe(
         finalize(() => {
           this.planningSettingsSavingProductTypeId = null;
           this.changeDetector.markForCheck();
-        }),
+        })
       )
       .subscribe({
         next: () => {
@@ -519,7 +539,8 @@ export class PantryPageComponent implements OnInit {
   saveShoppingMetadata(group: PantryOverviewItem): void {
     if (this.shoppingMetadataForm.invalid) {
       this.shoppingMetadataForm.markAllAsTouched();
-      this.shoppingMetadataError = 'Revisa los datos de compra antes de guardar.';
+      this.shoppingMetadataError =
+        'Revisa los datos de compra antes de guardar.';
       return;
     }
 
@@ -530,14 +551,14 @@ export class PantryPageComponent implements OnInit {
       .updateProductTypeShoppingMetadata(
         group.productTypeId,
         this.buildShoppingMetadataRequest(
-          this.shoppingMetadataForm.getRawValue(),
-        ),
+          this.shoppingMetadataForm.getRawValue()
+        )
       )
       .pipe(
         finalize(() => {
           this.shoppingMetadataSavingProductTypeId = null;
           this.changeDetector.markForCheck();
-        }),
+        })
       )
       .subscribe({
         next: () => {
@@ -566,7 +587,7 @@ export class PantryPageComponent implements OnInit {
       .pipe(
         finalize(() => {
           this.depletionRuleSavingProductTypeId = null;
-        }),
+        })
       )
       .subscribe({
         next: () => {
@@ -590,7 +611,8 @@ export class PantryPageComponent implements OnInit {
     const selectionMode = rawValue.selectionMode;
 
     if (selectionMode === 'existing' && !this.selectedExistingType) {
-      this.registerError = 'Selecciona un tipo base existente antes de registrar el lote.';
+      this.registerError =
+        'Selecciona un tipo base existente antes de registrar el lote.';
       return;
     }
 
@@ -602,9 +624,12 @@ export class PantryPageComponent implements OnInit {
     this.registerError = null;
     const lotUnit =
       selectionMode === 'existing'
-        ? (this.selectedExistingType?.defaultUnit ?? rawValue.unit)
+        ? this.selectedExistingType?.defaultUnit ?? rawValue.unit
         : rawValue.unit;
-    const defaultDepletionRule = this.buildDefaultDepletionRule(rawValue, lotUnit);
+    const defaultDepletionRule = this.buildDefaultDepletionRule(
+      rawValue,
+      lotUnit
+    );
 
     if (rawValue.enableDurability && !defaultDepletionRule) {
       return;
@@ -640,7 +665,7 @@ export class PantryPageComponent implements OnInit {
         timeout({ first: this.lotRegistrationTimeoutMs }),
         finalize(() => {
           this.submittingLot = false;
-        }),
+        })
       )
       .subscribe({
         next: () => {
@@ -673,7 +698,7 @@ export class PantryPageComponent implements OnInit {
       .pipe(
         finalize(() => {
           this.consumeBusyLotId = null;
-        }),
+        })
       )
       .subscribe({
         next: () => {
@@ -711,7 +736,7 @@ export class PantryPageComponent implements OnInit {
         finalize(() => {
           this.archivedLoading = false;
           this.changeDetector.markForCheck();
-        }),
+        })
       )
       .subscribe({
         next: (archivedItems) => {
@@ -750,7 +775,7 @@ export class PantryPageComponent implements OnInit {
 
   isArchiveConfirmationOpen(
     kind: ArchiveConfirmationTarget['kind'],
-    id: string,
+    id: string
   ): boolean {
     return (
       this.archiveConfirmationTarget?.kind === kind &&
@@ -780,18 +805,14 @@ export class PantryPageComponent implements OnInit {
 
     this.clearArchiveConfirmation();
 
-    this.runMutation(
-      busyKey,
-      request,
-      { refreshArchived: true },
-    );
+    this.runMutation(busyKey, request, { refreshArchived: true });
   }
 
   restoreProductType(productType: ProductType): void {
     this.runMutation(
       `restore-type-${productType.id}`,
       this.pantryService.restoreProductType(productType.id),
-      { refreshArchived: true },
+      { refreshArchived: true }
     );
   }
 
@@ -799,7 +820,7 @@ export class PantryPageComponent implements OnInit {
     this.runMutation(
       `restore-lot-${lot.id}`,
       this.pantryService.restoreInventoryLot(lot.id),
-      { refreshArchived: true },
+      { refreshArchived: true }
     );
   }
 
@@ -830,7 +851,7 @@ export class PantryPageComponent implements OnInit {
 
   isDeleteConfirmationOpen(
     kind: DeleteConfirmationTarget['kind'],
-    id: string,
+    id: string
   ): boolean {
     return (
       this.deleteConfirmationTarget?.kind === kind &&
@@ -838,7 +859,10 @@ export class PantryPageComponent implements OnInit {
     );
   }
 
-  canConfirmDelete(kind: DeleteConfirmationTarget['kind'], id: string): boolean {
+  canConfirmDelete(
+    kind: DeleteConfirmationTarget['kind'],
+    id: string
+  ): boolean {
     return (
       this.isDeleteConfirmationOpen(kind, id) &&
       this.mutationBusyKey === null &&
@@ -865,7 +889,9 @@ export class PantryPageComponent implements OnInit {
     const request =
       target.kind === 'productType'
         ? this.pantryService.deleteProductType(target.id, { confirmationText })
-        : this.pantryService.deleteInventoryLot(target.id, { confirmationText });
+        : this.pantryService.deleteInventoryLot(target.id, {
+            confirmationText,
+          });
     const busyKey =
       target.kind === 'productType'
         ? `delete-type-${target.id}`
@@ -873,11 +899,7 @@ export class PantryPageComponent implements OnInit {
 
     this.clearDeleteConfirmation();
 
-    this.runMutation(
-      busyKey,
-      request,
-      { refreshArchived: true },
-    );
+    this.runMutation(busyKey, request, { refreshArchived: true });
   }
 
   reviewExpiredLots(): void {
@@ -894,7 +916,10 @@ export class PantryPageComponent implements OnInit {
     this.authFacade.logout();
   }
 
-  trackByProductTypeId(_: number, productType: { productTypeId: string }): string {
+  trackByProductTypeId(
+    _: number,
+    productType: { productTypeId: string }
+  ): string {
     return productType.productTypeId;
   }
 
@@ -923,7 +948,7 @@ export class PantryPageComponent implements OnInit {
       (
         this.getExpiredQuantity(group) +
         this.getPendingExpirationQuantity(group)
-      ).toFixed(2),
+      ).toFixed(2)
     );
   }
 
@@ -941,7 +966,9 @@ export class PantryPageComponent implements OnInit {
 
   getShoppingPlanEstimatedTotal(items: ShoppingPlanItem[]): number {
     return Number(
-      items.reduce((sum, item) => sum + (item.estimatedLineTotal ?? 0), 0).toFixed(2),
+      items
+        .reduce((sum, item) => sum + (item.estimatedLineTotal ?? 0), 0)
+        .toFixed(2)
     );
   }
 
@@ -961,14 +988,16 @@ export class PantryPageComponent implements OnInit {
     }
 
     const totalValue = this.formatShoppingPrice(
-      this.getShoppingPlanEstimatedTotal(items),
+      this.getShoppingPlanEstimatedTotal(items)
     );
 
     return `${this.getShoppingPlanTotalLabel(items)}: ${totalValue}`;
   }
 
   getStapleAttentionSummary(items: PantryStapleItem[]): string {
-    const attentionCount = items.filter((item) => item.status !== 'available').length;
+    const attentionCount = items.filter(
+      (item) => item.status !== 'available'
+    ).length;
 
     if (items.length === 0) {
       return 'Sin básicos marcados';
@@ -983,7 +1012,7 @@ export class PantryPageComponent implements OnInit {
     const total = Number(
       items
         .reduce((sum, item) => sum + (item.estimatedRestockTotal ?? 0), 0)
-        .toFixed(2),
+        .toFixed(2)
     );
 
     return total > 0
@@ -1007,14 +1036,14 @@ export class PantryPageComponent implements OnInit {
       lines.push(`Subtotal ruta: ${this.getRouteTotalSummary(group.items)}`);
 
       const missingPriceCount = group.items.filter(
-        (item) => item.estimatedLineTotal === undefined,
+        (item) => item.estimatedLineTotal === undefined
       ).length;
 
       if (missingPriceCount > 0) {
         lines.push(
           `Precios pendientes: ${missingPriceCount} ${
             missingPriceCount === 1 ? 'producto' : 'productos'
-          }`,
+          }`
         );
       }
 
@@ -1023,12 +1052,14 @@ export class PantryPageComponent implements OnInit {
         lines.push(
           `- ${item.baseName}: ${this.formatQuantity(
             item.suggestedPurchaseQuantity,
-            item.defaultUnit,
-          )}`,
+            item.defaultUnit
+          )}`
         );
 
         if (item.estimatedLineTotal !== undefined) {
-          lines.push(`  Aprox: ${this.formatShoppingPrice(item.estimatedLineTotal)}`);
+          lines.push(
+            `  Aprox: ${this.formatShoppingPrice(item.estimatedLineTotal)}`
+          );
         }
 
         if (metadata.preferredBrand) {
@@ -1058,7 +1089,10 @@ export class PantryPageComponent implements OnInit {
     const exportText = this.buildShoppingPlanExportText(items);
     this.shoppingExportText = exportText;
 
-    if (!isPlatformBrowser(this.platformId) || !navigator.clipboard?.writeText) {
+    if (
+      !isPlatformBrowser(this.platformId) ||
+      !navigator.clipboard?.writeText
+    ) {
       this.shoppingExportStatus = 'Lista generada para copiar manualmente.';
       this.changeDetector.markForCheck();
       return;
@@ -1068,7 +1102,8 @@ export class PantryPageComponent implements OnInit {
       await navigator.clipboard.writeText(exportText);
       this.shoppingExportStatus = 'Lista copiada para WhatsApp.';
     } catch {
-      this.shoppingExportStatus = 'No se pudo copiar; lista generada manualmente.';
+      this.shoppingExportStatus =
+        'No se pudo copiar; lista generada manualmente.';
     } finally {
       this.changeDetector.markForCheck();
     }
@@ -1098,7 +1133,8 @@ export class PantryPageComponent implements OnInit {
         this.changeDetector.markForCheck();
         return;
       } catch {
-        this.shoppingExportStatus = 'No se pudo abrir compartir; usa copia o WhatsApp.';
+        this.shoppingExportStatus =
+          'No se pudo abrir compartir; usa copia o WhatsApp.';
       }
     }
 
@@ -1118,29 +1154,34 @@ export class PantryPageComponent implements OnInit {
     this.privacyExportBusy = true;
     this.privacyExportStatus = null;
 
-    this.pantryService.exportPantryData().pipe(
-      timeout(this.lotRegistrationTimeoutMs),
-      finalize(() => {
-        this.privacyExportBusy = false;
-        this.changeDetector.markForCheck();
-      }),
-    ).subscribe({
-      next: (exportData) => {
-        const blob = new Blob([JSON.stringify(exportData, null, 2)], {
-          type: 'application/json',
-        });
-        const downloadUrl = URL.createObjectURL(blob);
-        const anchor = document.createElement('a');
-        anchor.href = downloadUrl;
-        anchor.download = `pantrylist-export-${toDateInputValue(new Date())}.json`;
-        anchor.click();
-        URL.revokeObjectURL(downloadUrl);
-        this.privacyExportStatus = 'Export descargado en este navegador.';
-      },
-      error: (error) => {
-        this.privacyExportStatus = this.getErrorMessage(error);
-      },
-    });
+    this.pantryService
+      .exportPantryData()
+      .pipe(
+        timeout(this.lotRegistrationTimeoutMs),
+        finalize(() => {
+          this.privacyExportBusy = false;
+          this.changeDetector.markForCheck();
+        })
+      )
+      .subscribe({
+        next: (exportData) => {
+          const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+            type: 'application/json',
+          });
+          const downloadUrl = URL.createObjectURL(blob);
+          const anchor = document.createElement('a');
+          anchor.href = downloadUrl;
+          anchor.download = `pantrylist-export-${toDateInputValue(
+            new Date()
+          )}.json`;
+          anchor.click();
+          URL.revokeObjectURL(downloadUrl);
+          this.privacyExportStatus = 'Export descargado en este navegador.';
+        },
+        error: (error) => {
+          this.privacyExportStatus = this.getErrorMessage(error);
+        },
+      });
   }
 
   async enterShoppingMode(items: ShoppingPlanItem[]): Promise<void> {
@@ -1175,7 +1216,7 @@ export class PantryPageComponent implements OnInit {
 
   updateShoppingTripQuantity(
     item: ShoppingPlanItem,
-    value: string | number | null,
+    value: string | number | null
   ): void {
     const quantity = this.toOptionalNumber(value);
 
@@ -1191,7 +1232,7 @@ export class PantryPageComponent implements OnInit {
 
   updateShoppingTripPaidUnitPrice(
     item: ShoppingPlanItem,
-    value: string | number | null,
+    value: string | number | null
   ): void {
     const paidUnitPrice = this.toOptionalNumber(value);
 
@@ -1217,46 +1258,44 @@ export class PantryPageComponent implements OnInit {
       return;
     }
 
+    const requestItems = this.buildCloseShoppingPurchaseItems(selectedItems);
+
     if (this.isOffline) {
+      this.enqueuePendingShoppingCheckout(requestItems);
       this.shoppingCheckoutStatus =
-        'Sin conexion. Borrador guardado para cerrar despues.';
+        'Sin conexion. Cierre guardado para sincronizar despues.';
+      this.shoppingModeActive = false;
       this.persistShoppingTripDraft();
+      void this.releaseShoppingWakeLock();
       return;
     }
-
-    const requestItems: CloseShoppingPurchaseItemRequest[] = selectedItems.map(
-      ({ draft }) => ({
-        productTypeId: draft.productTypeId,
-        quantity: draft.quantity,
-        unit: draft.unit,
-        paidUnitPrice: draft.paidUnitPrice,
-        shoppingLocation: draft.shoppingLocation,
-      }),
-    );
 
     this.shoppingCheckoutBusy = true;
     this.shoppingCheckoutStatus = null;
 
-    this.pantryService.closeShoppingPurchase({ items: requestItems }).pipe(
-      timeout(this.lotRegistrationTimeoutMs),
-      finalize(() => {
-        this.shoppingCheckoutBusy = false;
-        this.changeDetector.markForCheck();
-      }),
-    ).subscribe({
-      next: (lots) => {
-        this.shoppingCheckoutStatus = `Compra cerrada: ${lots.length} lotes registrados.`;
-        this.shoppingModeActive = false;
-        this.shoppingTripDraft = {};
-        this.removeLocalValue(this.shoppingTripStorageKey);
-        void this.releaseShoppingWakeLock();
-        this.loadOverview();
-      },
-      error: (error) => {
-        this.shoppingCheckoutStatus = this.getErrorMessage(error);
-        this.persistShoppingTripDraft();
-      },
-    });
+    this.pantryService
+      .closeShoppingPurchase({ items: requestItems })
+      .pipe(
+        timeout(this.lotRegistrationTimeoutMs),
+        finalize(() => {
+          this.shoppingCheckoutBusy = false;
+          this.changeDetector.markForCheck();
+        })
+      )
+      .subscribe({
+        next: (lots) => {
+          this.shoppingCheckoutStatus = `Compra cerrada: ${lots.length} lotes registrados.`;
+          this.shoppingModeActive = false;
+          this.shoppingTripDraft = {};
+          this.removeLocalValue(this.shoppingTripStorageKey);
+          void this.releaseShoppingWakeLock();
+          this.loadOverview();
+        },
+        error: (error) => {
+          this.shoppingCheckoutStatus = this.getErrorMessage(error);
+          this.persistShoppingTripDraft();
+        },
+      });
   }
 
   clearShoppingTripDraft(items: ShoppingPlanItem[]): void {
@@ -1272,8 +1311,12 @@ export class PantryPageComponent implements OnInit {
   getShoppingTripPlannedTotal(items: ShoppingPlanItem[]): number {
     return Number(
       this.getSelectedShoppingTripItems(items)
-        .reduce((sum, selection) => sum + (selection.planItem.estimatedLineTotal ?? 0), 0)
-        .toFixed(2),
+        .reduce(
+          (sum, selection) =>
+            sum + (selection.planItem.estimatedLineTotal ?? 0),
+          0
+        )
+        .toFixed(2)
     );
   }
 
@@ -1287,7 +1330,7 @@ export class PantryPageComponent implements OnInit {
             0;
           return sum + unitPrice * selection.draft.quantity;
         }, 0)
-        .toFixed(2),
+        .toFixed(2)
     );
   }
 
@@ -1299,6 +1342,17 @@ export class PantryPageComponent implements OnInit {
     return this.formatShoppingPrice(this.getShoppingPlanEstimatedTotal(items));
   }
 
+  getWasteSavingsSummary(insights: PantryValueInsights): string {
+    return [
+      `Riesgo desperdicio: ${this.formatShoppingPrice(
+        insights.estimatedWasteAtRisk
+      )}`,
+      `${insights.pricedShoppingItemCount} con precio`,
+      `${insights.unpricedShoppingItemCount} sin precio`,
+      `${insights.promoOnlyShoppingItemCount} solo promo`,
+    ].join(' · ');
+  }
+
   saveShoppingBudget(amount?: number | null): void {
     const rawAmount = amount ?? this.shoppingBudgetForm.controls.amount.value;
     const parsedAmount = this.toOptionalNumber(rawAmount);
@@ -1306,18 +1360,21 @@ export class PantryPageComponent implements OnInit {
     if (parsedAmount === undefined || parsedAmount < 0) {
       this.shoppingBudget = null;
       this.removeLocalValue(this.shoppingBudgetStorageKey);
-      this.shoppingBudgetForm.patchValue({ amount: null }, { emitEvent: false });
+      this.shoppingBudgetForm.patchValue(
+        { amount: null },
+        { emitEvent: false }
+      );
       return;
     }
 
     this.shoppingBudget = Number(parsedAmount.toFixed(2));
     this.shoppingBudgetForm.patchValue(
       { amount: this.shoppingBudget },
-      { emitEvent: false },
+      { emitEvent: false }
     );
     this.setLocalValue(
       this.shoppingBudgetStorageKey,
-      JSON.stringify(this.shoppingBudget),
+      JSON.stringify(this.shoppingBudget)
     );
   }
 
@@ -1336,7 +1393,9 @@ export class PantryPageComponent implements OnInit {
 
     return difference >= 0
       ? `Dentro del presupuesto: quedan ${this.formatShoppingPrice(difference)}`
-      : `Sobre presupuesto por ${this.formatShoppingPrice(Math.abs(difference))}`;
+      : `Sobre presupuesto por ${this.formatShoppingPrice(
+          Math.abs(difference)
+        )}`;
   }
 
   getBudgetStatusTone(total: number): 'unset' | 'ok' | 'over' {
@@ -1398,7 +1457,7 @@ export class PantryPageComponent implements OnInit {
         estimatedUnitPrice: item.estimatedUnitPrice ?? null,
         purchaseDate: toDateInputValue(new Date()),
       },
-      { emitEvent: false },
+      { emitEvent: false }
     );
 
     if (isPlatformBrowser(this.platformId)) {
@@ -1412,11 +1471,10 @@ export class PantryPageComponent implements OnInit {
     return Number(
       items
         .reduce(
-          (sum, item) =>
-            sum + (item.estimatedUnitPrice ?? 0) * item.quantity,
-          0,
+          (sum, item) => sum + (item.estimatedUnitPrice ?? 0) * item.quantity,
+          0
         )
-        .toFixed(2),
+        .toFixed(2)
     );
   }
 
@@ -1425,7 +1483,7 @@ export class PantryPageComponent implements OnInit {
     key:
       | 'expirationWarningDays'
       | 'depletionWarningThresholdRatio'
-      | 'shoppingPlanLeadDays',
+      | 'shoppingPlanLeadDays'
   ): string {
     const source = settings[`${key}Source`];
     return source === 'productType' ? 'Este tipo' : 'Perfil';
@@ -1450,7 +1508,7 @@ export class PantryPageComponent implements OnInit {
     }
 
     const quantityMatch = (quantityPart ?? '').match(
-      /^(\d+(?:[\.,]\d+)?)\s*(.*)$/,
+      /^(\d+(?:[\.,]\d+)?)\s*(.*)$/
     );
     const quantity = quantityMatch
       ? Number(quantityMatch[1].replace(',', '.'))
@@ -1481,7 +1539,7 @@ export class PantryPageComponent implements OnInit {
           this.shoppingBudget = Number(parsedBudget.toFixed(2));
           this.shoppingBudgetForm.patchValue(
             { amount: this.shoppingBudget },
-            { emitEvent: false },
+            { emitEvent: false }
           );
         }
       } catch {
@@ -1509,24 +1567,38 @@ export class PantryPageComponent implements OnInit {
 
     if (storedTripDraft) {
       try {
-        const parsedItems = JSON.parse(storedTripDraft) as ShoppingTripDraftItem[];
+        const parsedItems = JSON.parse(
+          storedTripDraft
+        ) as ShoppingTripDraftItem[];
         this.shoppingTripDraft = parsedItems.reduce<
           Record<string, ShoppingTripDraftItem>
-        >((draft, item) => ({
-          ...draft,
-          [item.productTypeId]: item,
-        }), {});
+        >(
+          (draft, item) => ({
+            ...draft,
+            [item.productTypeId]: item,
+          }),
+          {}
+        );
       } catch {
         this.shoppingTripDraft = {};
       }
     }
+
+    this.pendingShoppingCheckoutCount =
+      this.loadPendingShoppingCheckouts().length;
+
+    if (!this.isOffline) {
+      this.flushPendingShoppingCheckouts();
+    }
   }
 
   private watchNetworkState(): void {
-    this.isOffline = typeof navigator !== 'undefined' ? !navigator.onLine : false;
+    this.isOffline =
+      typeof navigator !== 'undefined' ? !navigator.onLine : false;
 
     const setOnline = () => {
       this.isOffline = false;
+      this.flushPendingShoppingCheckouts();
       this.changeDetector.markForCheck();
     };
     const setOffline = () => {
@@ -1545,24 +1617,26 @@ export class PantryPageComponent implements OnInit {
   private persistQuickCaptureDrafts(): void {
     this.setLocalValue(
       this.quickCaptureStorageKey,
-      JSON.stringify(this.quickCaptureDrafts),
+      JSON.stringify(this.quickCaptureDrafts)
     );
   }
 
   private ensureShoppingTripDraft(items: ShoppingPlanItem[]): void {
-    this.shoppingTripDraft = items.reduce<Record<string, ShoppingTripDraftItem>>(
+    this.shoppingTripDraft = items.reduce<
+      Record<string, ShoppingTripDraftItem>
+    >(
       (draft, item) => ({
         ...draft,
         [item.productTypeId]: this.getShoppingTripItem(item),
       }),
-      {},
+      {}
     );
     this.persistShoppingTripDraft();
   }
 
   private updateShoppingTripDraftItem(
     item: ShoppingPlanItem,
-    patch: Partial<ShoppingTripDraftItem>,
+    patch: Partial<ShoppingTripDraftItem>
   ): void {
     this.shoppingTripDraft = {
       ...this.shoppingTripDraft,
@@ -1577,7 +1651,7 @@ export class PantryPageComponent implements OnInit {
   }
 
   private buildDefaultShoppingTripItem(
-    item: ShoppingPlanItem,
+    item: ShoppingPlanItem
   ): ShoppingTripDraftItem {
     const metadata = this.resolveShoppingMetadata(item.shoppingMetadata);
 
@@ -1592,7 +1666,7 @@ export class PantryPageComponent implements OnInit {
   }
 
   private getSelectedShoppingTripItems(
-    items: ShoppingPlanItem[],
+    items: ShoppingPlanItem[]
   ): { planItem: ShoppingPlanItem; draft: ShoppingTripDraftItem }[] {
     return items
       .map((planItem) => ({
@@ -1613,6 +1687,116 @@ export class PantryPageComponent implements OnInit {
     this.setLocalValue(this.shoppingTripStorageKey, JSON.stringify(draftItems));
   }
 
+  private buildCloseShoppingPurchaseItems(
+    selectedItems: { draft: ShoppingTripDraftItem }[]
+  ): CloseShoppingPurchaseItemRequest[] {
+    return selectedItems.map(({ draft }) => ({
+      productTypeId: draft.productTypeId,
+      quantity: draft.quantity,
+      unit: draft.unit,
+      paidUnitPrice: draft.paidUnitPrice,
+      shoppingLocation: draft.shoppingLocation,
+    }));
+  }
+
+  private enqueuePendingShoppingCheckout(
+    items: CloseShoppingPurchaseItemRequest[]
+  ): void {
+    const pendingCheckouts = [
+      ...this.loadPendingShoppingCheckouts(),
+      {
+        id: `${Date.now()}`,
+        createdAt: new Date(),
+        items,
+      },
+    ];
+
+    this.pendingShoppingCheckoutCount = pendingCheckouts.length;
+    this.setLocalValue(
+      this.pendingShoppingCheckoutStorageKey,
+      JSON.stringify(pendingCheckouts)
+    );
+  }
+
+  private flushPendingShoppingCheckouts(): void {
+    if (this.isOffline || this.pendingShoppingCheckoutSyncing) {
+      return;
+    }
+
+    const [nextCheckout, ...remainingCheckouts] =
+      this.loadPendingShoppingCheckouts();
+
+    if (!nextCheckout) {
+      this.pendingShoppingCheckoutCount = 0;
+      return;
+    }
+
+    this.pendingShoppingCheckoutSyncing = true;
+    this.pantryService
+      .closeShoppingPurchase({ items: nextCheckout.items })
+      .pipe(timeout(this.lotRegistrationTimeoutMs))
+      .subscribe({
+        next: () => {
+          this.persistPendingShoppingCheckouts(remainingCheckouts);
+          if (remainingCheckouts.length === 0) {
+            this.shoppingTripDraft = {};
+            this.removeLocalValue(this.shoppingTripStorageKey);
+          }
+          this.shoppingCheckoutStatus = remainingCheckouts.length
+            ? `Compra sincronizada. Quedan ${remainingCheckouts.length} pendientes.`
+            : 'Compra pendiente sincronizada.';
+          this.loadOverview();
+          this.pendingShoppingCheckoutSyncing = false;
+          this.flushPendingShoppingCheckouts();
+          this.changeDetector.markForCheck();
+        },
+        error: (error) => {
+          this.pendingShoppingCheckoutSyncing = false;
+          this.shoppingCheckoutStatus = this.getErrorMessage(error);
+          this.changeDetector.markForCheck();
+        },
+      });
+  }
+
+  private loadPendingShoppingCheckouts(): PendingShoppingCheckout[] {
+    const storedCheckouts = this.getLocalValue(
+      this.pendingShoppingCheckoutStorageKey
+    );
+
+    if (!storedCheckouts) {
+      return [];
+    }
+
+    try {
+      const parsedCheckouts = JSON.parse(storedCheckouts) as Array<
+        Omit<PendingShoppingCheckout, 'createdAt'> & { createdAt: string }
+      >;
+
+      return parsedCheckouts.map((checkout) => ({
+        ...checkout,
+        createdAt: new Date(checkout.createdAt),
+      }));
+    } catch {
+      return [];
+    }
+  }
+
+  private persistPendingShoppingCheckouts(
+    checkouts: PendingShoppingCheckout[]
+  ): void {
+    this.pendingShoppingCheckoutCount = checkouts.length;
+
+    if (checkouts.length === 0) {
+      this.removeLocalValue(this.pendingShoppingCheckoutStorageKey);
+      return;
+    }
+
+    this.setLocalValue(
+      this.pendingShoppingCheckoutStorageKey,
+      JSON.stringify(checkouts)
+    );
+  }
+
   private async requestShoppingWakeLock(): Promise<void> {
     if (!isPlatformBrowser(this.platformId)) {
       return;
@@ -1629,7 +1813,9 @@ export class PantryPageComponent implements OnInit {
     }
 
     try {
-      this.shoppingWakeLock = await wakeLockNavigator.wakeLock.request('screen');
+      this.shoppingWakeLock = await wakeLockNavigator.wakeLock.request(
+        'screen'
+      );
     } catch {
       this.shoppingCheckoutStatus =
         'Modo compra activo; este navegador puede bloquear pantalla.';
@@ -1732,13 +1918,13 @@ export class PantryPageComponent implements OnInit {
     return {
       planningEnabled: rawValue.planningEnabled ?? true,
       expirationWarningDaysOverride: this.toOptionalNumber(
-        rawValue.expirationWarningDaysOverride,
+        rawValue.expirationWarningDaysOverride
       ),
       depletionWarningThresholdRatioOverride: this.toOptionalNumber(
-        rawValue.depletionWarningThresholdRatioOverride,
+        rawValue.depletionWarningThresholdRatioOverride
       ),
       shoppingPlanLeadDaysOverride: this.toOptionalNumber(
-        rawValue.shoppingPlanLeadDaysOverride,
+        rawValue.shoppingPlanLeadDaysOverride
       ),
     };
   }
@@ -1753,7 +1939,9 @@ export class PantryPageComponent implements OnInit {
     shoppingNotes?: string;
     estimatedUnitPrice?: number | string | null;
   }): ProductTypeShoppingMetadataRequest {
-    const estimatedUnitPrice = this.toOptionalNumber(rawValue.estimatedUnitPrice);
+    const estimatedUnitPrice = this.toOptionalNumber(
+      rawValue.estimatedUnitPrice
+    );
     const metadata: ProductTypeShoppingMetadataRequest = {
       storageLocation: this.toOptionalText(rawValue.storageLocation),
       shoppingLocation: this.toOptionalText(rawValue.shoppingLocation),
@@ -1773,7 +1961,7 @@ export class PantryPageComponent implements OnInit {
 
   private buildDefaultDepletionRule(
     rawValue: ReturnType<typeof this.lotForm.getRawValue>,
-    unit: ProductUnit,
+    unit: ProductUnit
   ): ProductTypeDepletionRuleRequest | undefined {
     if (!rawValue.enableDurability) {
       return undefined;
@@ -1811,7 +1999,7 @@ export class PantryPageComponent implements OnInit {
   }
 
   private buildEditedDepletionRule(
-    unit: ProductUnit,
+    unit: ProductUnit
   ): ProductTypeDepletionRuleRequest | undefined {
     const rawValue = this.depletionRuleForm.getRawValue();
 
@@ -1836,12 +2024,14 @@ export class PantryPageComponent implements OnInit {
     const everyAmount = Number(rawValue.everyAmount);
 
     if (!Number.isFinite(consumeAmount) || consumeAmount <= 0) {
-      this.depletionRuleError = 'La cantidad de durabilidad debe ser mayor a cero.';
+      this.depletionRuleError =
+        'La cantidad de durabilidad debe ser mayor a cero.';
       return undefined;
     }
 
     if (!Number.isFinite(everyAmount) || everyAmount <= 0) {
-      this.depletionRuleError = 'El intervalo de durabilidad debe ser mayor a cero.';
+      this.depletionRuleError =
+        'El intervalo de durabilidad debe ser mayor a cero.';
       return undefined;
     }
 
@@ -1868,7 +2058,7 @@ export class PantryPageComponent implements OnInit {
           ? toDateInputValue(rule.anchorDate)
           : toDateInputValue(new Date()),
       },
-      { emitEvent: false },
+      { emitEvent: false }
     );
   }
 
@@ -1893,7 +2083,7 @@ export class PantryPageComponent implements OnInit {
   private runMutation(
     busyKey: string,
     request: Observable<unknown>,
-    options: { refreshArchived?: boolean } = {},
+    options: { refreshArchived?: boolean } = {}
   ): void {
     if (this.mutationBusyKey) {
       return;
@@ -1907,7 +2097,7 @@ export class PantryPageComponent implements OnInit {
         finalize(() => {
           this.mutationBusyKey = null;
           this.changeDetector.markForCheck();
-        }),
+        })
       )
       .subscribe({
         next: () => {
@@ -1946,7 +2136,9 @@ export class PantryPageComponent implements OnInit {
     this.deleteConfirmationError = null;
   }
 
-  private toOptionalNumber(value: number | string | null | undefined): number | undefined {
+  private toOptionalNumber(
+    value: number | string | null | undefined
+  ): number | undefined {
     if (value === null || value === undefined || value === '') {
       return undefined;
     }
@@ -1961,7 +2153,7 @@ export class PantryPageComponent implements OnInit {
   }
 
   private resolveShoppingMetadata(
-    metadata: ProductTypeShoppingMetadata | undefined,
+    metadata: ProductTypeShoppingMetadata | undefined
   ): ProductTypeShoppingMetadata {
     return {
       ...metadata,
@@ -1971,7 +2163,7 @@ export class PantryPageComponent implements OnInit {
   }
 
   private groupShoppingPlanByRoute(
-    items: ShoppingPlanItem[],
+    items: ShoppingPlanItem[]
   ): { location: string; items: ShoppingPlanItem[] }[] {
     const grouped = new Map<string, ShoppingPlanItem[]>();
 
@@ -1990,7 +2182,7 @@ export class PantryPageComponent implements OnInit {
       .sort((left, right) =>
         left.location.localeCompare(right.location, 'es', {
           sensitivity: 'base',
-        }),
+        })
       );
   }
 
@@ -2004,7 +2196,7 @@ export class PantryPageComponent implements OnInit {
 
   private sumLotsByStatus(
     lots: PantryLotSummary[],
-    statuses: ExpirationStatus[],
+    statuses: ExpirationStatus[]
   ): number {
     return Number(
       lots
@@ -2012,9 +2204,9 @@ export class PantryPageComponent implements OnInit {
         .reduce(
           (sum, lot) =>
             Number.isFinite(lot.quantity) ? sum + lot.quantity : sum,
-          0,
+          0
         )
-        .toFixed(2),
+        .toFixed(2)
     );
   }
 }

@@ -8,6 +8,15 @@ export interface UserPreferences {
 
 export type UserPreferencesUpdate = Partial<UserPreferences>;
 
+export interface DeletePantryDataRequest {
+  confirmationText: string;
+}
+
+export interface DeletePantryDataResult {
+  deletedInventoryLotCount: number;
+  deletedProductTypeCount: number;
+}
+
 export interface UserProfile {
   id: string;
   email: string;

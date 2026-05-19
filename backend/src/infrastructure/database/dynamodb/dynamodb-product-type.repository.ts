@@ -195,23 +195,44 @@ export class DynamoDbProductTypeRepository implements ProductTypeRepository {
     );
   }
 
+  async deleteByUserId(userId: UserId): Promise<number> {
+    const productTypes = await this.findAllByUserId(userId);
+
+    await Promise.all(
+      productTypes.map((productType) => this.delete(productType.id)),
+    );
+
+    return productTypes.length;
+  }
+
   private async findAllByUserId(
     userId: UserId,
     limit?: number,
   ): Promise<ProductType[]> {
-    const result = await this.dynamoDb.send(
-      new QueryCommand({
-        TableName: this.tableName,
-        IndexName: 'UserBaseNameIndex',
-        KeyConditionExpression: 'userId = :userId',
-        ExpressionAttributeValues: {
-          ':userId': userId.toString(),
-        },
-        ...(limit ? { Limit: limit } : {}),
-      }),
-    );
+    const items: ProductTypeItem[] = [];
+    let exclusiveStartKey: Record<string, unknown> | undefined;
 
-    const items = (result.Items ?? []) as ProductTypeItem[];
+    do {
+      const result = await this.dynamoDb.send(
+        new QueryCommand({
+          TableName: this.tableName,
+          IndexName: 'UserBaseNameIndex',
+          KeyConditionExpression: 'userId = :userId',
+          ExpressionAttributeValues: {
+            ':userId': userId.toString(),
+          },
+          ...(limit ? { Limit: limit } : {}),
+          ...(exclusiveStartKey
+            ? { ExclusiveStartKey: exclusiveStartKey }
+            : {}),
+        }),
+      );
+
+      items.push(...((result.Items ?? []) as ProductTypeItem[]));
+      exclusiveStartKey = limit
+        ? undefined
+        : (result.LastEvaluatedKey as Record<string, unknown> | undefined);
+    } while (exclusiveStartKey);
 
     return items.map((item) => this.toDomain(item));
   }

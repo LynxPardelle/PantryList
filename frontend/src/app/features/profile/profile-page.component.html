@@ -184,6 +184,35 @@
           {{ exporting ? 'Exportando...' : 'Exportar datos' }}
         </button>
       </aside>
+
+      <aside class="panel export-panel danger-panel">
+        <p class="panel-kicker">Privacidad</p>
+        <h2>Borrar datos locales</h2>
+        <p>Elimina tipos base, lotes activos y archivados. La sesi&oacute;n de Cognito no se borra.</p>
+
+        <form class="preferences-form" [formGroup]="deletePantryDataForm" (ngSubmit)="deletePantryData()">
+          <label class="field">
+            <span>Confirmaci&oacute;n</span>
+            <input type="text" formControlName="confirmationText" placeholder="ELIMINAR" />
+          </label>
+
+          @if (deleteError) {
+            <p class="field-error" role="alert">{{ deleteError }}</p>
+          }
+
+          @if (deleteMessage) {
+            <p class="success-copy" role="status">{{ deleteMessage }}</p>
+          }
+
+          <button
+            class="secondary-button"
+            type="submit"
+            [disabled]="deletingPantryData || loading"
+          >
+            {{ deletingPantryData ? 'Eliminando...' : 'Eliminar datos' }}
+          </button>
+        </form>
+      </aside>
     </div>
   </section>
 </main>

@@ -73,4 +73,26 @@ describe('ProfileService', () => {
       showGuidanceTips: true,
     });
   });
+
+  it('deletes local pantry data with explicit confirmation', () => {
+    service
+      .deletePantryData({ confirmationText: 'ELIMINAR' })
+      .subscribe((result) => {
+        expect(result).toEqual({
+          deletedInventoryLotCount: 5,
+          deletedProductTypeCount: 3,
+        });
+      });
+
+    const request = http.expectOne('/api/profile/pantry-data');
+    expect(request.request.method).toBe('DELETE');
+    expect(request.request.withCredentials).toBeTrue();
+    expect(request.request.body).toEqual({
+      confirmationText: 'ELIMINAR',
+    });
+    request.flush({
+      deletedInventoryLotCount: 5,
+      deletedProductTypeCount: 3,
+    });
+  });
 });

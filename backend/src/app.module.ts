@@ -28,6 +28,7 @@ import { CreateInventoryLotUseCase } from './application/use-cases/create-invent
 import { CreateProductUseCase } from './application/use-cases/create-product.use-case';
 import { CreateProductTypeUseCase } from './application/use-cases/create-product-type.use-case';
 import { DeleteInventoryLotUseCase } from './application/use-cases/delete-inventory-lot.use-case';
+import { DeletePantryDataUseCase } from './application/use-cases/delete-pantry-data.use-case';
 import { DeleteProductTypeUseCase } from './application/use-cases/delete-product-type.use-case';
 import { GetArchivedPantryItemsUseCase } from './application/use-cases/get-archived-pantry-items.use-case';
 import { GetExpiringLotsUseCase } from './application/use-cases/get-expiring-lots.use-case';
@@ -341,6 +342,7 @@ const inventoryLotRepositoryProvider = useDynamoDb
     ArchiveProductTypeUseCase,
     RestoreProductTypeUseCase,
     DeleteProductTypeUseCase,
+    DeletePantryDataUseCase,
     ArchiveInventoryLotUseCase,
     RestoreInventoryLotUseCase,
     DeleteInventoryLotUseCase,

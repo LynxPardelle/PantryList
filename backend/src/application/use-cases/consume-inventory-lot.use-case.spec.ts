@@ -15,6 +15,7 @@ describe('ConsumeInventoryLotUseCase', () => {
     reassignUserOwnership: jest.fn(),
     delete: jest.fn(),
     deleteByProductTypeId: jest.fn(),
+    deleteByUserId: jest.fn(),
   });
 
   it('returns a clean BadRequestException when consumption exceeds the lot quantity', async () => {

@@ -12,6 +12,7 @@ describe('CreateProductTypeUseCase', () => {
     findByBaseName: jest.fn(),
     reassignUserOwnership: jest.fn(),
     delete: jest.fn(),
+    deleteByUserId: jest.fn(),
   });
 
   it('persists a default depletion rule when creating a product type', async () => {

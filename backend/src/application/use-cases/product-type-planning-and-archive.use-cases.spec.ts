@@ -20,6 +20,7 @@ describe('product type planning settings and archive use cases', () => {
     findByBaseName: jest.fn(),
     reassignUserOwnership: jest.fn(),
     delete: jest.fn(),
+    deleteByUserId: jest.fn(),
   });
 
   const makeInventoryLotRepository =
@@ -32,6 +33,7 @@ describe('product type planning settings and archive use cases', () => {
       reassignUserOwnership: jest.fn(),
       delete: jest.fn(),
       deleteByProductTypeId: jest.fn(),
+      deleteByUserId: jest.fn(),
     });
 
   const makeProductType = (): ProductType =>

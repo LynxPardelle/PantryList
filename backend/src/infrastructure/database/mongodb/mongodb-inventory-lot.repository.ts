@@ -147,6 +147,14 @@ export class MongoInventoryLotRepository implements InventoryLotRepository {
       .exec();
   }
 
+  async deleteByUserId(userId: UserId): Promise<number> {
+    const result = await this.inventoryLotModel
+      .deleteMany({ userId: userId.toString() })
+      .exec();
+
+    return result.deletedCount;
+  }
+
   private toDomain(lot: PersistedInventoryLot): InventoryLot {
     return InventoryLot.fromPrimitives({
       id: lot.id,

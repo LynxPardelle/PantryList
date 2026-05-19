@@ -1,5 +1,12 @@
-const CACHE_NAME = 'pantrylist-shell-v1';
-const SHELL_URLS = ['/', '/login', '/favicon.ico', '/manifest.webmanifest'];
+const CACHE_NAME = 'pantrylist-shell-v2';
+const SHELL_URLS = [
+  '/',
+  '/login',
+  '/pantry',
+  '/profile',
+  '/favicon.ico',
+  '/manifest.webmanifest',
+];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -41,6 +48,8 @@ self.addEventListener('fetch', (event) => {
   const isPublicShell =
     url.pathname === '/' ||
     url.pathname === '/login' ||
+    url.pathname === '/pantry' ||
+    url.pathname === '/profile' ||
     url.pathname === '/favicon.ico' ||
     url.pathname === '/manifest.webmanifest';
   const isStaticAsset = ['script', 'style', 'image', 'font'].includes(

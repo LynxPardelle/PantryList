@@ -14,6 +14,7 @@ describe('UpdateProductTypeDepletionRuleUseCase', () => {
     findByBaseName: jest.fn(),
     reassignUserOwnership: jest.fn(),
     delete: jest.fn(),
+    deleteByUserId: jest.fn(),
   });
 
   const makeProductType = (): ProductType =>

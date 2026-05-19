@@ -287,7 +287,12 @@ describe('buildPantryOverview depletion forecasts', () => {
       stapleAttentionCount: 2,
       estimatedShoppingTotal: 60,
       estimatedExpiringValue: 0,
+      estimatedWasteAtRisk: 0,
       estimatedStapleRestockTotal: 78,
+      pricedShoppingItemCount: 1,
+      unpricedShoppingItemCount: 0,
+      promoOnlyShoppingItemCount: 0,
+      estimatedPromoOnlyTotal: 0,
     });
   });
 
@@ -860,6 +865,148 @@ describe('buildPantryOverview depletion forecasts', () => {
             lotId: 'lot-active',
           }),
         ],
+      }),
+    ]);
+  });
+
+  it('builds v2 household savings insights and staple catalog groups', () => {
+    const expiringMilk = makeProductType({
+      id: 'type-milk-savings',
+      baseName: 'Leche',
+      category: ProductCategory.FOOD,
+      shoppingMetadata: {
+        shoppingLocation: 'Supermercado',
+        householdStaple: true,
+        buyOnlyOnPromo: true,
+        estimatedUnitPrice: 28,
+      },
+    });
+    const availableSoap = makeProductType({
+      id: 'type-soap-savings',
+      baseName: 'Jabon',
+      category: ProductCategory.HYGIENE,
+      shoppingMetadata: {
+        shoppingLocation: 'Farmacia',
+        householdStaple: true,
+        buyOnlyOnPromo: false,
+        estimatedUnitPrice: 18,
+      },
+    });
+
+    const overview = buildPantryOverview(
+      userId,
+      [availableSoap, expiringMilk],
+      [
+        makeInventoryLot({
+          id: 'lot-milk-savings',
+          productTypeId: 'type-milk-savings',
+          quantity: 2,
+          unit: QuantityUnit.PIECE,
+          expiresAt: new Date('2026-04-25T00:00:00.000Z'),
+        }),
+        makeInventoryLot({
+          id: 'lot-soap-savings',
+          productTypeId: 'type-soap-savings',
+          quantity: 4,
+          unit: QuantityUnit.PIECE,
+        }),
+      ],
+      referenceDate,
+    );
+
+    expect(overview.valueInsights).toMatchObject({
+      estimatedExpiringValue: 56,
+      estimatedWasteAtRisk: 56,
+      promoOnlyShoppingItemCount: 0,
+      unpricedShoppingItemCount: 0,
+    });
+    expect((overview as any).stapleCatalogGroups).toEqual([
+      expect.objectContaining({
+        status: 'low',
+        itemCount: 1,
+        estimatedRestockTotal: 28,
+      }),
+      expect.objectContaining({
+        status: 'available',
+        itemCount: 1,
+        estimatedRestockTotal: 0,
+      }),
+    ]);
+  });
+
+  it('orders store route items by grocery category inside each route', () => {
+    const soap = makeProductType({
+      id: 'type-route-soap-v2',
+      baseName: 'Jabon',
+      category: ProductCategory.HYGIENE,
+      defaultDepletionRule: {
+        enabled: true,
+        consumeAmount: 1,
+        unit: QuantityUnit.PIECE,
+        everyAmount: 1,
+        everyPeriod: 'day',
+        anchorDate: new Date('2026-04-20T00:00:00.000Z'),
+      },
+      shoppingMetadata: {
+        shoppingLocation: 'Mercado',
+        householdStaple: true,
+        buyOnlyOnPromo: false,
+        estimatedUnitPrice: 18,
+      },
+    });
+    const rice = makeProductType({
+      id: 'type-route-rice-v2',
+      baseName: 'Arroz',
+      category: ProductCategory.FOOD,
+      defaultDepletionRule: {
+        enabled: true,
+        consumeAmount: 2,
+        unit: QuantityUnit.KILOGRAM,
+        everyAmount: 1,
+        everyPeriod: 'day',
+        anchorDate: new Date('2026-04-20T00:00:00.000Z'),
+      },
+      shoppingMetadata: {
+        shoppingLocation: 'Mercado',
+        householdStaple: true,
+        buyOnlyOnPromo: false,
+        estimatedUnitPrice: 30,
+      },
+    });
+
+    const overview = buildPantryOverview(
+      userId,
+      [soap, rice],
+      [
+        makeInventoryLot({
+          id: 'lot-soap-route-v2',
+          productTypeId: 'type-route-soap-v2',
+          quantity: 1,
+          unit: QuantityUnit.PIECE,
+        }),
+        makeInventoryLot({
+          id: 'lot-rice-route-v2',
+          productTypeId: 'type-route-rice-v2',
+          quantity: 1,
+          unit: QuantityUnit.KILOGRAM,
+        }),
+      ],
+      referenceDate,
+    );
+
+    expect(
+      overview.shoppingRouteGroups[0].items.map((item) => item.baseName),
+    ).toEqual(['Arroz', 'Jabon']);
+    expect((overview.shoppingRouteGroups[0] as any).categoryBreakdown).toEqual([
+      expect.objectContaining({
+        category: ProductCategory.FOOD,
+        itemCount: 1,
+        estimatedTotal: 60,
+      }),
+      expect.objectContaining({
+        category: ProductCategory.HYGIENE,
+        itemCount: 1,
+        estimatedTotal: 18,
       }),
     ]);
   });

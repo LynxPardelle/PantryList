@@ -148,24 +148,43 @@ export class DynamoDbInventoryLotRepository implements InventoryLotRepository {
     await Promise.all(lots.map((lot) => this.delete(lot.id)));
   }
 
+  async deleteByUserId(userId: UserId): Promise<number> {
+    const lots = await this.findAllByUserId(userId);
+
+    await Promise.all(lots.map((lot) => this.delete(lot.id)));
+
+    return lots.length;
+  }
+
   private async findAllByProductTypeId(
     productTypeId: ProductTypeId,
     limit?: number,
   ): Promise<InventoryLot[]> {
-    const result = await this.dynamoDb.send(
-      new QueryCommand({
-        TableName: this.tableName,
-        IndexName: 'ProductTypeUpdatedAtIndex',
-        KeyConditionExpression: 'productTypeId = :productTypeId',
-        ExpressionAttributeValues: {
-          ':productTypeId': productTypeId.toString(),
-        },
-        ScanIndexForward: false,
-        ...(limit ? { Limit: limit } : {}),
-      }),
-    );
+    const items: InventoryLotItem[] = [];
+    let exclusiveStartKey: Record<string, unknown> | undefined;
 
-    const items = (result.Items ?? []) as InventoryLotItem[];
+    do {
+      const result = await this.dynamoDb.send(
+        new QueryCommand({
+          TableName: this.tableName,
+          IndexName: 'ProductTypeUpdatedAtIndex',
+          KeyConditionExpression: 'productTypeId = :productTypeId',
+          ExpressionAttributeValues: {
+            ':productTypeId': productTypeId.toString(),
+          },
+          ScanIndexForward: false,
+          ...(limit ? { Limit: limit } : {}),
+          ...(exclusiveStartKey
+            ? { ExclusiveStartKey: exclusiveStartKey }
+            : {}),
+        }),
+      );
+
+      items.push(...((result.Items ?? []) as InventoryLotItem[]));
+      exclusiveStartKey = limit
+        ? undefined
+        : (result.LastEvaluatedKey as Record<string, unknown> | undefined);
+    } while (exclusiveStartKey);
 
     return items
       .map((item) => this.toDomain(item))
@@ -176,20 +195,31 @@ export class DynamoDbInventoryLotRepository implements InventoryLotRepository {
     userId: UserId,
     limit?: number,
   ): Promise<InventoryLot[]> {
-    const result = await this.dynamoDb.send(
-      new QueryCommand({
-        TableName: this.tableName,
-        IndexName: 'UserUpdatedAtIndex',
-        KeyConditionExpression: 'userId = :userId',
-        ExpressionAttributeValues: {
-          ':userId': userId.toString(),
-        },
-        ScanIndexForward: false,
-        ...(limit ? { Limit: limit } : {}),
-      }),
-    );
+    const items: InventoryLotItem[] = [];
+    let exclusiveStartKey: Record<string, unknown> | undefined;
 
-    const items = (result.Items ?? []) as InventoryLotItem[];
+    do {
+      const result = await this.dynamoDb.send(
+        new QueryCommand({
+          TableName: this.tableName,
+          IndexName: 'UserUpdatedAtIndex',
+          KeyConditionExpression: 'userId = :userId',
+          ExpressionAttributeValues: {
+            ':userId': userId.toString(),
+          },
+          ScanIndexForward: false,
+          ...(limit ? { Limit: limit } : {}),
+          ...(exclusiveStartKey
+            ? { ExclusiveStartKey: exclusiveStartKey }
+            : {}),
+        }),
+      );
+
+      items.push(...((result.Items ?? []) as InventoryLotItem[]));
+      exclusiveStartKey = limit
+        ? undefined
+        : (result.LastEvaluatedKey as Record<string, unknown> | undefined);
+    } while (exclusiveStartKey);
 
     return items.map((item) => this.toDomain(item));
   }

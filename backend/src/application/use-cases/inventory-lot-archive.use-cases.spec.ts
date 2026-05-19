@@ -17,6 +17,7 @@ describe('inventory lot archive use cases', () => {
     reassignUserOwnership: jest.fn(),
     delete: jest.fn(),
     deleteByProductTypeId: jest.fn(),
+    deleteByUserId: jest.fn(),
   });
 
   const makeLot = (): InventoryLot =>

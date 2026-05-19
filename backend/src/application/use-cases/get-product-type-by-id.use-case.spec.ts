@@ -14,6 +14,7 @@ describe('GetProductTypeByIdUseCase', () => {
     findByBaseName: jest.fn(),
     reassignUserOwnership: jest.fn(),
     delete: jest.fn(),
+    deleteByUserId: jest.fn(),
   });
 
   const makeProductType = (userId: string): ProductType =>
