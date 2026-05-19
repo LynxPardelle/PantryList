@@ -23,6 +23,7 @@ import { CheckoutPantryDto } from '../dtos/checkout-pantry.dto';
 import { InventoryLotResponseDto } from '../dtos/inventory-lot-response.dto';
 import { PantryExportResponseDto } from '../dtos/pantry-export-response.dto';
 import { PantryOverviewResponseDto } from '../dtos/pantry-overview-response.dto';
+import { getRequestId } from '../request-id';
 import { InventoryLotMapper } from '../mappers/inventory-lot.mapper';
 import { PantryOverviewMapper } from '../mappers/pantry-overview.mapper';
 import { ProfileMapper } from '../mappers/profile.mapper';
@@ -97,8 +98,9 @@ export class PantryController {
     @Req() request: FastifyRequest,
   ): Promise<InventoryLotResponseDto[]> {
     this.authCookieService.ensureXsrfForRequest(request);
+    const requestId = getRequestId(request) ?? 'none';
     this.logger.log(
-      `pantry_checkout_requested userId=${currentUser.userId} itemCount=${dto.items.length}`,
+      `pantry_checkout_requested requestId=${requestId} userId=${currentUser.userId} itemCount=${dto.items.length}`,
     );
 
     const inventoryLots = await this.closeShoppingPurchaseUseCase.execute({
@@ -115,7 +117,7 @@ export class PantryController {
     });
 
     this.logger.log(
-      `pantry_checkout_completed userId=${currentUser.userId} createdLotCount=${inventoryLots.length}`,
+      `pantry_checkout_completed requestId=${requestId} userId=${currentUser.userId} createdLotCount=${inventoryLots.length}`,
     );
 
     return inventoryLots.map((lot) => InventoryLotMapper.toResponse(lot));

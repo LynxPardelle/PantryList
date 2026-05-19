@@ -114,6 +114,11 @@
   font-weight: 800;
 }
 
+.danger-panel {
+  border-color: rgba(145, 54, 54, 0.32);
+  background: var(--color-surface-warning);
+}
+
 .guidance-panel ul {
   display: grid;
   gap: 0.7rem;

@@ -49,7 +49,12 @@ describe('PantryService', () => {
         stapleAttentionCount: 1,
         estimatedShoppingTotal: 42.5,
         estimatedExpiringValue: 0,
+        estimatedWasteAtRisk: 0,
         estimatedStapleRestockTotal: 42.5,
+        pricedShoppingItemCount: 1,
+        unpricedShoppingItemCount: 0,
+        promoOnlyShoppingItemCount: 1,
+        estimatedPromoOnlyTotal: 42.5,
       });
       expect((overview as any).shoppingRouteGroups[0]).toEqual(
         jasmine.objectContaining({
@@ -58,6 +63,23 @@ describe('PantryService', () => {
           estimatedTotal: 42.5,
           missingPriceCount: 0,
           nextRecommendedPurchaseAt: new Date('2026-04-28T00:00:00.000Z'),
+        }),
+      );
+      expect((overview as any).shoppingRouteGroups[0].categoryBreakdown[0])
+        .toEqual(jasmine.objectContaining({
+          category: 'cleaning',
+          itemCount: 1,
+          estimatedTotal: 42.5,
+        }));
+      expect(
+        (overview as any).shoppingRouteGroups[0].categoryBreakdown[0].items[0]
+          .recommendedPurchaseAt,
+      ).toEqual(new Date('2026-04-28T00:00:00.000Z'));
+      expect((overview as any).stapleCatalogGroups[0]).toEqual(
+        jasmine.objectContaining({
+          status: 'missing',
+          itemCount: 1,
+          estimatedRestockTotal: 42.5,
         }),
       );
       expect((overview as any).priceReferenceItems[0]).toEqual(
@@ -193,6 +215,49 @@ describe('PantryService', () => {
           missingPriceCount: 0,
           estimatedTotal: 42.5,
           nextRecommendedPurchaseAt: '2026-04-28T00:00:00.000Z',
+          categoryBreakdown: [
+            {
+              category: 'cleaning',
+              itemCount: 1,
+              estimatedTotal: 42.5,
+              items: [
+                {
+                  productTypeId: 'type-detergent',
+                  baseName: 'Detergente',
+                  category: 'cleaning',
+                  defaultUnit: 'lt',
+                  totalQuantity: 2,
+                  estimatedCurrentQuantity: 1,
+                  estimatedConsumedQuantity: 1,
+                  estimatedDepletionAt: '2026-05-01T00:00:00.000Z',
+                  recommendedPurchaseAt: '2026-04-28T00:00:00.000Z',
+                  suggestedPurchaseQuantity: 1,
+                  estimatedUnitPrice: 42.5,
+                  estimatedLineTotal: 42.5,
+                  shoppingMetadata: {
+                    storageLocation: 'Limpieza',
+                    shoppingLocation: 'Mayoreo',
+                    preferredBrand: 'Marca hogar',
+                    substituteBrand: 'Marca propia',
+                    householdStaple: true,
+                    buyOnlyOnPromo: true,
+                    shoppingNotes: 'Comprar solo si hay promo',
+                    estimatedUnitPrice: 42.5,
+                  },
+                  urgency: 'upcoming',
+                  effectivePlanningSettings: makeEffectivePlanningSettings(),
+                  depletionRule: {
+                    enabled: true,
+                    consumeAmount: 1,
+                    unit: 'lt',
+                    everyAmount: 1,
+                    everyPeriod: 'week',
+                    anchorDate: '2026-04-17T00:00:00.000Z',
+                  },
+                },
+              ],
+            },
+          ],
           items: [
             {
               productTypeId: 'type-detergent',
@@ -273,12 +338,43 @@ describe('PantryService', () => {
           },
         },
       ],
+      stapleCatalogGroups: [
+        {
+          status: 'missing',
+          itemCount: 1,
+          estimatedRestockTotal: 42.5,
+          items: [
+            {
+              productTypeId: 'type-detergent',
+              baseName: 'Detergente',
+              category: 'cleaning',
+              defaultUnit: 'lt',
+              totalQuantity: 1,
+              estimatedCurrentQuantity: 0,
+              suggestedPurchaseQuantity: 1,
+              estimatedUnitPrice: 42.5,
+              estimatedRestockTotal: 42.5,
+              status: 'missing',
+              shoppingMetadata: {
+                householdStaple: true,
+                buyOnlyOnPromo: true,
+                estimatedUnitPrice: 42.5,
+              },
+            },
+          ],
+        },
+      ],
       valueInsights: {
         stapleCount: 1,
         stapleAttentionCount: 1,
         estimatedShoppingTotal: 42.5,
         estimatedExpiringValue: 0,
+        estimatedWasteAtRisk: 0,
         estimatedStapleRestockTotal: 42.5,
+        pricedShoppingItemCount: 1,
+        unpricedShoppingItemCount: 0,
+        promoOnlyShoppingItemCount: 1,
+        estimatedPromoOnlyTotal: 42.5,
       },
     });
   });

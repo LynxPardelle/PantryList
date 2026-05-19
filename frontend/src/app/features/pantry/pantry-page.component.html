@@ -534,10 +534,11 @@
           </div>
 
           @if (valueInsights$ | async; as valueInsights) {
-            <div class="value-insight-strip" aria-label="Resumen de valor estimado">
+            <div class="shopping-plan-tools" aria-label="Resumen de valor estimado">
               <span>Compra: {{ formatShoppingPrice(valueInsights.estimatedShoppingTotal) }}</span>
               <span>Por caducar: {{ formatShoppingPrice(valueInsights.estimatedExpiringValue) }}</span>
               <span>B&aacute;sicos: {{ formatShoppingPrice(valueInsights.estimatedStapleRestockTotal) }}</span>
+              <span>{{ getWasteSavingsSummary(valueInsights) }}</span>
             </div>
           }
 
@@ -659,6 +660,11 @@
             @if (shoppingCheckoutStatus) {
               <p class="helper-copy" aria-live="polite">{{ shoppingCheckoutStatus }}</p>
             }
+            @if (pendingShoppingCheckoutCount > 0) {
+              <p class="helper-copy" aria-live="polite">
+                {{ pendingShoppingCheckoutCount }} cierres de compra pendientes de sincronizar.
+              </p>
+            }
 
             @if (shoppingModeActive) {
               <section class="shopping-mode-panel" aria-label="Modo compra">
@@ -757,6 +763,17 @@
                           <small>{{ route.missingPriceCount }} sin precio</small>
                         }
                       </div>
+                      @if (route.categoryBreakdown.length > 0) {
+                        <div class="price-history-list">
+                          @for (categoryGroup of route.categoryBreakdown; track categoryGroup.category) {
+                            <span>
+                              {{ categoryLabels[categoryGroup.category] }}:
+                              {{ categoryGroup.itemCount }}
+                              · {{ formatShoppingPrice(categoryGroup.estimatedTotal) }}
+                            </span>
+                          }
+                        </div>
+                      }
                     </article>
                   }
                 </div>

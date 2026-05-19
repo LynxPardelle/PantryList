@@ -11,4 +11,5 @@ export interface ProductTypeRepository {
   findByBaseName(userId: UserId, baseName: string): Promise<ProductType | null>;
   reassignUserOwnership(fromUserId: UserId, toUserId: UserId): Promise<number>;
   delete(id: ProductTypeId): Promise<void>;
+  deleteByUserId(userId: UserId): Promise<number>;
 }

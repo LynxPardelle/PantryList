@@ -5,6 +5,8 @@ import { map } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import {
   ApiUserProfile,
+  DeletePantryDataRequest,
+  DeletePantryDataResult,
   UserPreferences,
   UserPreferencesUpdate,
   UserProfile,
@@ -31,6 +33,18 @@ export class ProfileService {
       `${this.profileUrl}/preferences`,
       preferences,
       { withCredentials: true },
+    );
+  }
+
+  deletePantryData(
+    request: DeletePantryDataRequest,
+  ): Observable<DeletePantryDataResult> {
+    return this.http.delete<DeletePantryDataResult>(
+      `${this.profileUrl}/pantry-data`,
+      {
+        body: request,
+        withCredentials: true,
+      },
     );
   }
 

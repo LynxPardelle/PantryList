@@ -16,6 +16,7 @@ describe('GetArchivedPantryItemsUseCase', () => {
     findByBaseName: jest.fn(),
     reassignUserOwnership: jest.fn(),
     delete: jest.fn(),
+    deleteByUserId: jest.fn(),
   });
 
   const makeInventoryLotRepository =
@@ -28,6 +29,7 @@ describe('GetArchivedPantryItemsUseCase', () => {
       reassignUserOwnership: jest.fn(),
       delete: jest.fn(),
       deleteByProductTypeId: jest.fn(),
+      deleteByUserId: jest.fn(),
     });
 
   it('returns archived product types and lots for the current user', async () => {

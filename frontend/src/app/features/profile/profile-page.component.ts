@@ -42,6 +42,9 @@ export class ProfilePageComponent implements OnInit {
   saveMessage: string | null = null;
   exportError: string | null = null;
   exportMessage: string | null = null;
+  deletingPantryData = false;
+  deleteError: string | null = null;
+  deleteMessage: string | null = null;
 
   readonly preferencesForm = this.formBuilder.nonNullable.group({
     expirationWarningDays: [
@@ -58,6 +61,10 @@ export class ProfilePageComponent implements OnInit {
       [Validators.required, Validators.min(0), Validators.max(30)],
     ],
     showGuidanceTips: [true],
+  });
+
+  readonly deletePantryDataForm = this.formBuilder.nonNullable.group({
+    confirmationText: ['', Validators.required],
   });
 
   ngOnInit(): void {
@@ -167,6 +174,41 @@ export class ProfilePageComponent implements OnInit {
         },
         error: (error) => {
           this.exportError = this.getErrorMessage(error);
+          this.changeDetector.markForCheck();
+        },
+      });
+  }
+
+  deletePantryData(): void {
+    const confirmationText =
+      this.deletePantryDataForm.controls.confirmationText.value.trim();
+
+    if (confirmationText !== 'ELIMINAR') {
+      this.deleteError = 'Escribe ELIMINAR para borrar datos locales.';
+      this.deleteMessage = null;
+      return;
+    }
+
+    this.deletingPantryData = true;
+    this.deleteError = null;
+    this.deleteMessage = null;
+
+    this.profileService
+      .deletePantryData({ confirmationText })
+      .pipe(
+        finalize(() => {
+          this.deletingPantryData = false;
+          this.changeDetector.markForCheck();
+        }),
+      )
+      .subscribe({
+        next: (result) => {
+          this.deletePantryDataForm.reset({ confirmationText: '' });
+          this.deleteMessage = `Datos eliminados: ${result.deletedInventoryLotCount} lotes y ${result.deletedProductTypeCount} tipos base.`;
+          this.changeDetector.markForCheck();
+        },
+        error: (error) => {
+          this.deleteError = this.getErrorMessage(error);
           this.changeDetector.markForCheck();
         },
       });

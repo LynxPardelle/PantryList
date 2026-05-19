@@ -19,6 +19,7 @@ describe('ProfilePageComponent', () => {
     profileService = jasmine.createSpyObj<ProfileService>('ProfileService', [
       'getProfile',
       'updatePreferences',
+      'deletePantryData',
     ]);
     profileService.getProfile.and.returnValue(
       of({
@@ -45,6 +46,12 @@ describe('ProfilePageComponent', () => {
         depletionWarningThresholdRatio: 1,
         shoppingPlanLeadDays: 3,
         showGuidanceTips: true,
+      }),
+    );
+    profileService.deletePantryData.and.returnValue(
+      of({
+        deletedInventoryLotCount: 5,
+        deletedProductTypeCount: 3,
       }),
     );
     pantryService = jasmine.createSpyObj<PantryService>('PantryService', [
@@ -188,5 +195,29 @@ describe('ProfilePageComponent', () => {
 
     expect(component.exportMessage).toBeNull();
     expect(component.exportError).toBe('Blob failed');
+  });
+
+  it('requires ELIMINAR confirmation before deleting local pantry data', () => {
+    component.deletePantryDataForm.patchValue({
+      confirmationText: 'BORRAR',
+    });
+
+    component.deletePantryData();
+
+    expect(profileService.deletePantryData).not.toHaveBeenCalled();
+    expect(component.deleteError).toContain('ELIMINAR');
+
+    component.deletePantryDataForm.patchValue({
+      confirmationText: 'ELIMINAR',
+    });
+
+    component.deletePantryData();
+
+    expect(profileService.deletePantryData).toHaveBeenCalledWith({
+      confirmationText: 'ELIMINAR',
+    });
+    expect(component.deleteMessage).toBe(
+      'Datos eliminados: 5 lotes y 3 tipos base.',
+    );
   });
 });

@@ -189,6 +189,14 @@ export class MongoProductTypeRepository implements ProductTypeRepository {
     await this.productTypeModel.deleteOne({ id: id.toString() }).exec();
   }
 
+  async deleteByUserId(userId: UserId): Promise<number> {
+    const result = await this.productTypeModel
+      .deleteMany({ userId: userId.toString() })
+      .exec();
+
+    return result.deletedCount;
+  }
+
   private toDomain(productType: PersistedProductType): ProductType {
     return ProductType.fromPrimitives({
       id: productType.id,

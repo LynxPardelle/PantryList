@@ -241,6 +241,14 @@ export interface ShoppingRouteGroup {
   missingPriceCount: number;
   estimatedTotal: number;
   nextRecommendedPurchaseAt: Date;
+  categoryBreakdown: ShoppingRouteCategoryGroup[];
+  items: ShoppingPlanItem[];
+}
+
+export interface ShoppingRouteCategoryGroup {
+  category: ProductCategory;
+  itemCount: number;
+  estimatedTotal: number;
   items: ShoppingPlanItem[];
 }
 
@@ -277,7 +285,19 @@ export interface PantryValueInsights {
   stapleAttentionCount: number;
   estimatedShoppingTotal: number;
   estimatedExpiringValue: number;
+  estimatedWasteAtRisk: number;
   estimatedStapleRestockTotal: number;
+  pricedShoppingItemCount: number;
+  unpricedShoppingItemCount: number;
+  promoOnlyShoppingItemCount: number;
+  estimatedPromoOnlyTotal: number;
+}
+
+export interface PantryStapleCatalogGroup {
+  status: PantryStapleStatus;
+  itemCount: number;
+  estimatedRestockTotal: number;
+  items: PantryStapleItem[];
 }
 
 export interface PantryOverview {
@@ -292,6 +312,7 @@ export interface PantryOverview {
   shoppingRouteGroups: ShoppingRouteGroup[];
   priceReferenceItems: PriceReferenceItem[];
   stapleItems: PantryStapleItem[];
+  stapleCatalogGroups: PantryStapleCatalogGroup[];
   valueInsights: PantryValueInsights;
 }
 
@@ -474,6 +495,14 @@ export interface ApiShoppingRouteGroup {
   missingPriceCount: number;
   estimatedTotal: number;
   nextRecommendedPurchaseAt: string;
+  categoryBreakdown?: ApiShoppingRouteCategoryGroup[];
+  items: ApiShoppingPlanItem[];
+}
+
+export interface ApiShoppingRouteCategoryGroup {
+  category: ProductCategory;
+  itemCount: number;
+  estimatedTotal: number;
   items: ApiShoppingPlanItem[];
 }
 
@@ -513,6 +542,13 @@ export interface ApiPantryStapleItem {
   shoppingMetadata?: ProductTypeShoppingMetadata;
 }
 
+export interface ApiPantryStapleCatalogGroup {
+  status: PantryStapleStatus;
+  itemCount: number;
+  estimatedRestockTotal: number;
+  items: ApiPantryStapleItem[];
+}
+
 export interface ApiPantryOverview {
   userId: string;
   generatedAt: string;
@@ -525,6 +561,7 @@ export interface ApiPantryOverview {
   shoppingRouteGroups?: ApiShoppingRouteGroup[];
   priceReferenceItems?: ApiPriceReferenceItem[];
   stapleItems?: ApiPantryStapleItem[];
+  stapleCatalogGroups?: ApiPantryStapleCatalogGroup[];
   valueInsights?: PantryValueInsights;
 }
 

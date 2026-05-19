@@ -16,6 +16,7 @@ describe('GetExpiringLotsUseCase', () => {
     findByBaseName: jest.fn(),
     reassignUserOwnership: jest.fn(),
     delete: jest.fn(),
+    deleteByUserId: jest.fn(),
   });
 
   const makeInventoryLotRepository =
@@ -28,6 +29,7 @@ describe('GetExpiringLotsUseCase', () => {
       reassignUserOwnership: jest.fn(),
       delete: jest.fn(),
       deleteByProductTypeId: jest.fn(),
+      deleteByUserId: jest.fn(),
     });
 
   const userId = UserId.fromString('lot-user');

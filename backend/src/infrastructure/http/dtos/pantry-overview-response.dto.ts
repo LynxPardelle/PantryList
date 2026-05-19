@@ -167,7 +167,22 @@ export class PantryValueInsightsResponseDto {
   estimatedExpiringValue: number;
 
   @ApiProperty()
+  estimatedWasteAtRisk: number;
+
+  @ApiProperty()
   estimatedStapleRestockTotal: number;
+
+  @ApiProperty()
+  pricedShoppingItemCount: number;
+
+  @ApiProperty()
+  unpricedShoppingItemCount: number;
+
+  @ApiProperty()
+  promoOnlyShoppingItemCount: number;
+
+  @ApiProperty()
+  estimatedPromoOnlyTotal: number;
 }
 
 export class DepletingProductGroupResponseDto {
@@ -277,8 +292,39 @@ export class ShoppingRouteGroupResponseDto {
   @ApiProperty()
   nextRecommendedPurchaseAt: Date;
 
+  @ApiProperty({ type: () => [ShoppingRouteCategoryGroupResponseDto] })
+  categoryBreakdown: ShoppingRouteCategoryGroupResponseDto[];
+
   @ApiProperty({ type: [ShoppingPlanItemResponseDto] })
   items: ShoppingPlanItemResponseDto[];
+}
+
+export class ShoppingRouteCategoryGroupResponseDto {
+  @ApiProperty()
+  category: string;
+
+  @ApiProperty()
+  itemCount: number;
+
+  @ApiProperty()
+  estimatedTotal: number;
+
+  @ApiProperty({ type: [ShoppingPlanItemResponseDto] })
+  items: ShoppingPlanItemResponseDto[];
+}
+
+export class PantryStapleCatalogGroupResponseDto {
+  @ApiProperty()
+  status: string;
+
+  @ApiProperty()
+  itemCount: number;
+
+  @ApiProperty()
+  estimatedRestockTotal: number;
+
+  @ApiProperty({ type: [PantryStapleItemResponseDto] })
+  items: PantryStapleItemResponseDto[];
 }
 
 export class PriceHistoryEntryResponseDto {
@@ -425,6 +471,9 @@ export class PantryOverviewResponseDto {
 
   @ApiProperty({ type: [PantryStapleItemResponseDto] })
   stapleItems: PantryStapleItemResponseDto[];
+
+  @ApiProperty({ type: [PantryStapleCatalogGroupResponseDto] })
+  stapleCatalogGroups: PantryStapleCatalogGroupResponseDto[];
 
   @ApiProperty({ type: PantryValueInsightsResponseDto })
   valueInsights: PantryValueInsightsResponseDto;

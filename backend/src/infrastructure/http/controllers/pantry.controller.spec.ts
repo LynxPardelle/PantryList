@@ -58,7 +58,18 @@ describe('PantryController', () => {
   });
 
   it('requires XSRF and closes a shopping purchase for the current user', async () => {
-    const request = { method: 'POST' } as FastifyRequest;
+    const request = {
+      method: 'POST',
+      headers: {
+        'x-request-id': 'req-checkout-1',
+      },
+    } as unknown as FastifyRequest;
+    const logSpy = jest
+      .spyOn(
+        (controller as unknown as { logger: { log: jest.Mock } }).logger,
+        'log',
+      )
+      .mockImplementation();
 
     const response = await controller.checkout(
       { userId: 'user-1' },
@@ -94,6 +105,9 @@ describe('PantryController', () => {
       ],
     });
     expect(response[0].productTypeId).toBe('type-1');
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.stringContaining('requestId=req-checkout-1'),
+    );
   });
 });
 
@@ -120,13 +134,21 @@ function makeOverview() {
     depletingItems: [],
     shoppingPlanItems: [],
     shoppingPlanEstimatedTotal: 0,
+    shoppingRouteGroups: [],
+    priceReferenceItems: [],
     stapleItems: [],
+    stapleCatalogGroups: [],
     valueInsights: {
       stapleCount: 0,
       stapleAttentionCount: 0,
       estimatedShoppingTotal: 0,
       estimatedExpiringValue: 0,
+      estimatedWasteAtRisk: 0,
       estimatedStapleRestockTotal: 0,
+      pricedShoppingItemCount: 0,
+      unpricedShoppingItemCount: 0,
+      promoOnlyShoppingItemCount: 0,
+      estimatedPromoOnlyTotal: 0,
     },
   };
 }
