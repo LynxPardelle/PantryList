@@ -167,29 +167,49 @@ This creates production Cognito plus the production support stack for
 `https://pantrylist.lynxpardelle.com`:
 
 ```powershell
-npx cdk deploy pantrylist-prod-cognito pantrylist-prod-app `
-  --require-approval never `
-  --context stage=prod `
-  --context awsRegion=us-east-1 `
-  --context domainPrefix=pantrylist-prod-765932874577 `
-  --context productionFrontendBaseUrl=https://pantrylist.lynxpardelle.com `
-  --context includeProductionInfra=true `
-  --context appDomainName=pantrylist.lynxpardelle.com `
-  --context hostedZoneId=Z05088763QG63CC5SE7PN `
-  --context hostedZoneName=lynxpardelle.com `
-  --context originDomainName=ec2-54-198-41-242.compute-1.amazonaws.com `
-  --context ec2RoleName=EC2TraefikRoute53DNS01Role `
-  --context deletionProtection=true `
-  --context enableGoogle=true `
-  --context googleClientId=<google-oauth-client-id> `
-  --context googleClientSecretName=/pantrylist/prod/google-client-secret `
-  --context enableFacebook=true `
-  --context facebookClientId=<facebook-app-id> `
-  --context facebookClientSecretName=/pantrylist/prod/facebook-client-secret
+$env:PANTRYLIST_ORIGIN_VERIFY_HEADER_VALUE = aws ssm get-parameter `
+  --region us-east-1 `
+  --name "/pantrylist/prod/cloudfront-origin-verify-header" `
+  --with-decryption `
+  --query "Parameter.Value" `
+  --output text
+
+try {
+  npx cdk deploy pantrylist-prod-cognito pantrylist-prod-app `
+    --require-approval never `
+    --context stage=prod `
+    --context awsRegion=us-east-1 `
+    --context domainPrefix=pantrylist-prod-765932874577 `
+    --context productionFrontendBaseUrl=https://pantrylist.lynxpardelle.com `
+    --context includeProductionInfra=true `
+    --context appDomainName=pantrylist.lynxpardelle.com `
+    --context hostedZoneId=Z05088763QG63CC5SE7PN `
+    --context hostedZoneName=lynxpardelle.com `
+    --context originDomainName=origin.pantrylist.lynxpardelle.com `
+    --context originRecordName=origin.pantrylist.lynxpardelle.com `
+    --context originTargetIp=54.198.41.242 `
+    --context originProtocolPolicy=https-only `
+    --context enableIpv6=false `
+    --context originVerifyHeaderName=X-PantryList-Origin-Verify `
+    --context originVerifyHeaderParameterName=/pantrylist/prod/cloudfront-origin-verify-header `
+    --context ec2RoleName=EC2TraefikRoute53DNS01Role `
+    --context deletionProtection=true `
+    --context enableGoogle=true `
+    --context googleClientId=<google-oauth-client-id> `
+    --context googleClientSecretName=/pantrylist/prod/google-client-secret `
+    --context enableFacebook=true `
+    --context facebookClientId=<facebook-app-id> `
+    --context facebookClientSecretName=/pantrylist/prod/facebook-client-secret
+} finally {
+  Remove-Item Env:\PANTRYLIST_ORIGIN_VERIFY_HEADER_VALUE -ErrorAction SilentlyContinue
+}
 ```
 
 Do not put OAuth client secrets in command-line context. Store them in Secrets
 Manager and reference only the secret names.
+Do not put the CloudFront origin verification value in command-line context.
+Load it from SSM SecureString into `PANTRYLIST_ORIGIN_VERIFY_HEADER_VALUE` for
+the deploy process, then clear that environment variable.
 
 ## Apply Outputs To PantryList
 

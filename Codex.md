@@ -24,3 +24,12 @@
 - The next approved improvement direction is a six-block package, in order: privacy controls/data lifecycle, pagination/query limits, observability baseline, shopping mode plus close-purchase flow, offline-capable PWA behavior for shopping, and household sharing lite. The shopping-mode block may include mobile checklist UX, keep-screen-awake support, real paid-price capture, closing purchases into lots, planned-vs-real budget comparison, and robust Web Share/WhatsApp/copy fallback.
 - The `Household Savings + PWA Reliability` batch uses derived overview data instead of new product tables: staple catalog groups, waste-at-risk and price coverage summaries, store-route category breakdowns, offline checkout queue, local pantry-data deletion with `ELIMINAR` confirmation, and checkout logs with request IDs. It still does not delete Cognito identities, implement real multi-member households, or add payments/AI/retailer integrations.
 - Treat minor audit hardening found during manual production review as part of the next relevant feature batch instead of loose cleanup. Current example: destructive profile actions should keep the action button disabled until the exact confirmation text is present, not only reject the submit handler.
+
+## 2026-05-29 CT - Origin Verification Header Migrated To SSM
+
+- Production CloudFront origin verification header now uses SSM SecureString `/pantrylist/prod/cloudfront-origin-verify-header` as the operational source of truth.
+- CloudFront does not support SSM SecureString dynamic references for `DistributionConfig.Origins`, so deploys must load the value into `PANTRYLIST_ORIGIN_VERIFY_HEADER_VALUE` from SSM and clear it after deploy. Do not pass the value as CLI context.
+- `pantrylist-prod-app` was redeployed with `OriginVerifyHeaderParameterName=/pantrylist/prod/cloudfront-origin-verify-header`; EC2 role now has scoped `ssm:GetParameter` for that parameter.
+- Remote Traefik route was updated from the same SSM parameter. Public checks returned `200` for `/healthz`, `/api/healthz`, `/login/`, and `/api/auth/cognito/providers`; direct origin without the header returned `404`.
+- Old Secrets Manager secret `/pantrylist/prod/cloudfront-origin-verify-header` was scheduled for deletion with a 7-day recovery window.
+- User decision after migration: leave Google/Facebook Cognito provider secrets in Secrets Manager for now; do not force SSM migration unless explicitly reopened.

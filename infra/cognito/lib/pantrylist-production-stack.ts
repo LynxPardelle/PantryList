@@ -47,9 +47,10 @@ export class PantryListProductionStack extends cdk.Stack {
     const originVerifyHeaderName = this.readOptionalContext(
       "originVerifyHeaderName"
     );
-    const originVerifyHeaderValue = this.readOptionalContext(
-      "originVerifyHeaderValue"
+    const originVerifyHeaderParameterName = this.readOptionalContext(
+      "originVerifyHeaderParameterName"
     );
+    const originVerifyHeaderValue = this.readOriginVerifyHeaderValue();
     this.assertOriginVerificationHeaderConfig(
       originVerifyHeaderName,
       originVerifyHeaderValue
@@ -89,6 +90,14 @@ export class PantryListProductionStack extends cdk.Stack {
         resources: [tables.users.tableArn],
       })
     );
+    if (originVerifyHeaderParameterName) {
+      ec2Role.addToPrincipalPolicy(
+        new iam.PolicyStatement({
+          actions: ["ssm:GetParameter"],
+          resources: [this.ssmParameterArn(originVerifyHeaderParameterName)],
+        })
+      );
+    }
 
     const certificate = new acm.Certificate(this, "CloudFrontCertificate", {
       domainName,
@@ -167,6 +176,11 @@ export class PantryListProductionStack extends cdk.Stack {
     if (originVerifyHeaderName) {
       new cdk.CfnOutput(this, "OriginVerifyHeaderName", {
         value: originVerifyHeaderName,
+      });
+    }
+    if (originVerifyHeaderParameterName) {
+      new cdk.CfnOutput(this, "OriginVerifyHeaderParameterName", {
+        value: originVerifyHeaderParameterName,
       });
     }
     new cdk.CfnOutput(this, "Ipv6Enabled", {
@@ -344,6 +358,21 @@ export class PantryListProductionStack extends cdk.Stack {
         "originVerifyHeaderName and originVerifyHeaderValue must be configured together."
       );
     }
+  }
+
+  private readOriginVerifyHeaderValue(): string | undefined {
+    return (
+      this.readOptionalContext("originVerifyHeaderValue") ??
+      process.env.PANTRYLIST_ORIGIN_VERIFY_HEADER_VALUE?.trim()
+    );
+  }
+
+  private ssmParameterArn(parameterName: string): string {
+    return this.formatArn({
+      service: "ssm",
+      resource: "parameter",
+      resourceName: parameterName.replace(/^\/+/, ""),
+    });
   }
 
   private createResponseHeadersPolicy(
