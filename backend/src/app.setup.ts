@@ -1,4 +1,4 @@
-import { ValidationPipe } from '@nestjs/common';
+import { Type, ValidationPipe } from '@nestjs/common';
 import fastifyCookie from '@fastify/cookie';
 import fastifyHelmet from '@fastify/helmet';
 import fastifyRateLimit from '@fastify/rate-limit';
@@ -28,9 +28,7 @@ export async function configureApp(
   const swaggerEnabled =
     configService.get<string>('SWAGGER_ENABLED') === 'true';
   const metricsService = app.get(ApiMetricsService, { strict: false });
-  const metricsAlertSink = app.get(ApiMetricsAlertSinkService, {
-    strict: false,
-  });
+  const metricsAlertSink = getOptionalProvider(app, ApiMetricsAlertSinkService);
 
   app.setGlobalPrefix(apiPrefix);
   app.enableCors({ origin: corsOrigin, credentials: true });
@@ -122,4 +120,15 @@ function getFirstForwardedFor(
     ?.split(',')
     .map((part) => part.trim())
     .find(Boolean);
+}
+
+function getOptionalProvider<T>(
+  app: NestFastifyApplication,
+  token: Type<T>,
+): T | undefined {
+  try {
+    return app.get(token, { strict: false });
+  } catch {
+    return undefined;
+  }
 }

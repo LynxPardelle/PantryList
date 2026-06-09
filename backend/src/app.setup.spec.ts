@@ -63,7 +63,13 @@ function makeApp(): NestFastifyApplication {
         addHook: jest.fn(),
       }),
     }),
-    get: jest.fn().mockReturnValue(metricsService),
+    get: jest.fn((token: unknown) => {
+      if (token === ApiMetricsService) {
+        return metricsService;
+      }
+
+      throw new Error('Provider not found');
+    }),
     register: jest.fn().mockResolvedValue(undefined),
     useGlobalPipes: jest.fn(),
     useGlobalFilters: jest.fn(),
