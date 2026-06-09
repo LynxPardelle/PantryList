@@ -56,5 +56,5 @@
 - After recovery, SSM returned `Online`, `/healthz` and `/api/healthz` returned `200`, and production-smoke curl calls were hardened with connect/response timeouts.
 - Active Dokploy service path is `/etc/dokploy/compose/compose-compress-back-end-port-hiewlq/code`; older `/etc/dokploy/compose/pantrylist-prod/code` is not the active routed service. Preserve Dokploy-generated `docker-compose.dokploy.prod.yml` labels when resetting the active worktree.
 - The Dokploy host uses `/usr/local/bin/docker-compose` rather than `docker compose`, and the active service uses `.env` rather than `.env.production.local`.
-- After manual recovery, the active service was reset to `2235b5b`, frontend was rebuilt without cache, production served `main-6HS7YGRD.js`, and the Stripe panel marker was present in `chunk-6V23M5MG.js`.
+- After manual recovery, the frontend runtime was rebuilt without cache from the Stripe monetization app code, production served `main-6HS7YGRD.js`, and the Stripe panel marker was present in `chunk-6V23M5MG.js`. For docs/workflow-only commits after that, keep the active Dokploy worktree aligned to current `main` while preserving generated labels; a runtime rebuild is only needed when app code changes.
 - Temporary SSH security group rule `sgr-0a452c81e8018a820` for `201.137.54.26/32` was revoked after the manual production audit/deploy.
