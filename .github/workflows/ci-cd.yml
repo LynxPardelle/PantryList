@@ -219,9 +219,9 @@ jobs:
         set -euo pipefail
 
         for attempt in {1..18}; do
-          frontend="$(curl --fail --show-error --silent "$PRODUCTION_BASE_URL/healthz" || true)"
-          backend="$(curl --fail --show-error --silent "$PRODUCTION_BASE_URL/api/healthz" || true)"
-          login_headers="$(curl --fail --show-error --silent --head "$PRODUCTION_BASE_URL/login/" || true)"
+          frontend="$(curl --fail --show-error --silent --connect-timeout 5 --max-time 10 "$PRODUCTION_BASE_URL/healthz" || true)"
+          backend="$(curl --fail --show-error --silent --connect-timeout 5 --max-time 10 "$PRODUCTION_BASE_URL/api/healthz" || true)"
+          login_headers="$(curl --fail --show-error --silent --connect-timeout 5 --max-time 10 --head "$PRODUCTION_BASE_URL/login/" || true)"
 
           if echo "$frontend" | grep -q '"service":"pantrylist-frontend"' \
             && echo "$backend" | grep -q '"service":"pantrylist-backend"' \

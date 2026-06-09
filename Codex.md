@@ -46,3 +46,11 @@
 - Remote Traefik route was updated from the same SSM parameter. Public checks returned `200` for `/healthz`, `/api/healthz`, `/login/`, and `/api/auth/cognito/providers`; direct origin without the header returned `404`.
 - Old Secrets Manager secret `/pantrylist/prod/cloudfront-origin-verify-header` was scheduled for deletion with a 7-day recovery window.
 - User decision after migration: leave Google/Facebook Cognito provider secrets in Secrets Manager for now; do not force SSM migration unless explicitly reopened.
+
+## 2026-06-09 CT - Dokploy Disk-Full Recovery
+
+- During the Stripe monetization discovery deploy, production health checks hung because the Dokploy EC2 host accepted TCP but returned no HTTP bytes.
+- EC2 console output showed `OSError: [Errno 28] No space left on device`; SSM was `ConnectionLost`.
+- Root EBS volume `vol-0bd5f763909f1383b` was snapshotted as `snap-0e2ffccfd85932b9f`, expanded from 80 GB to 120 GB, repaired with `e2fsck`, resized with `resize2fs`, and cleaned offline through helper instance `i-0d33f07ef8509f918`.
+- Helper instance `i-0d33f07ef8509f918` was terminated and temporary SSH security group rule `sgr-0ddcd029ee29e4d60` for `201.137.54.26/32` was revoked.
+- After recovery, SSM returned `Online`, `/healthz` and `/api/healthz` returned `200`, and production-smoke curl calls were hardened with connect/response timeouts.
