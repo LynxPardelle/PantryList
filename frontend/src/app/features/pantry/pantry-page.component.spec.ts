@@ -620,6 +620,156 @@ describe('PantryPageComponent', () => {
     expect(component.shoppingExportText).toContain('Mayoreo semanal');
   });
 
+  it('saves the current smart basket as a master shopping list', () => {
+    component.saveMasterShoppingListSnapshot([
+      makeShoppingPlanItem({
+        baseName: 'Arroz',
+        defaultUnit: 'kg',
+        suggestedPurchaseQuantity: 2,
+      }),
+    ]);
+
+    expect(pantryService.createSavedShoppingList).toHaveBeenCalledWith(
+      jasmine.objectContaining({
+        title: 'Lista maestra',
+        occasion: 'Compra recurrente',
+        items: [
+          jasmine.objectContaining({
+            baseName: 'Arroz',
+            quantity: 2,
+            unit: 'kg',
+          }),
+        ],
+      }),
+    );
+    expect(component.savedShoppingListStatus).toBe(
+      'Lista maestra sincronizada en tu cuenta.',
+    );
+  });
+
+  it('repeats a saved shopping list in shopping mode even without current recommendations', async () => {
+    const list: SavedShoppingList = {
+      id: 'list-previous',
+      ownerUserId: 'tester',
+      title: 'Compra anterior',
+      shoppingLocation: 'Mercado',
+      createdAt: new Date('2026-06-09T00:00:00.000Z'),
+      updatedAt: new Date('2026-06-09T00:00:00.000Z'),
+      items: [
+        {
+          productTypeId: 'type-rice',
+          baseName: 'Arroz',
+          quantity: 2,
+          unit: 'kg',
+          shoppingLocation: 'Mercado',
+          estimatedUnitPrice: 36,
+        },
+      ],
+    };
+
+    await component.enterShoppingModeFromSavedList(list, []);
+    expect(component.shoppingModeSourceList).toBe(list);
+
+    component.closeShoppingTrip([]);
+
+    expect(pantryService.closeShoppingPurchase).toHaveBeenCalledWith({
+      items: [
+        jasmine.objectContaining({
+          productTypeId: 'type-rice',
+          quantity: 2,
+          unit: 'kg',
+          paidUnitPrice: 36,
+          shoppingLocation: 'Mercado',
+        }),
+      ],
+    });
+    expect(component.shoppingModeSourceList).toBeNull();
+  });
+
+  it('supports bulk shopping-mode selection for all and urgent items', () => {
+    const criticalItem = makeShoppingPlanItem({
+      productTypeId: 'type-critical',
+      urgency: 'critical',
+    });
+    const upcomingItem = makeShoppingPlanItem({
+      productTypeId: 'type-upcoming',
+      urgency: 'upcoming',
+    });
+    const items = [criticalItem, upcomingItem];
+
+    component.setShoppingTripItemsChecked(items, true);
+
+    expect(component.getShoppingTripSelectedCount(items)).toBe(2);
+
+    component.setUrgentShoppingTripItemsChecked(items);
+
+    expect(component.getShoppingTripItem(criticalItem).checked).toBeTrue();
+    expect(component.getShoppingTripItem(upcomingItem).checked).toBeFalse();
+  });
+
+  it('toggles a shopping item as a household basic without sending price history', () => {
+    const item = makeShoppingPlanItem({
+      shoppingMetadata: {
+        shoppingLocation: 'Mercado',
+        preferredBrand: 'Local',
+        householdStaple: false,
+        buyOnlyOnPromo: true,
+        replenishWhenLow: true,
+        estimatedUnitPrice: 36,
+        priceHistory: [
+          {
+            shoppingLocation: 'Mercado',
+            unit: 'lt',
+            estimatedUnitPrice: 34,
+            recordedAt: new Date('2026-06-01T00:00:00.000Z'),
+          },
+        ],
+      },
+    });
+
+    component.toggleShoppingStaple(item);
+
+    expect(pantryService.updateProductTypeShoppingMetadata).toHaveBeenCalledWith(
+      'type-detergent',
+      {
+        storageLocation: undefined,
+        shoppingLocation: 'Mercado',
+        preferredBrand: 'Local',
+        substituteBrand: undefined,
+        householdStaple: true,
+        buyOnlyOnPromo: true,
+        replenishWhenLow: true,
+        shoppingNotes: undefined,
+        estimatedUnitPrice: 36,
+      },
+    );
+  });
+
+  it('shows the latest paid price summary from price history first', () => {
+    const item = makeShoppingPlanItem({
+      estimatedUnitPrice: 42,
+      shoppingMetadata: {
+        householdStaple: false,
+        buyOnlyOnPromo: false,
+        replenishWhenLow: true,
+        estimatedUnitPrice: 42,
+        shoppingLocation: 'Mayoreo',
+        priceHistory: [
+          {
+            shoppingLocation: 'Mercado',
+            unit: 'lt',
+            estimatedUnitPrice: 39,
+            recordedAt: new Date('2026-06-08T12:00:00.000Z'),
+          },
+        ],
+      },
+    });
+
+    expect(component.getLastPaidPriceSummary(item)).toContain(
+      'Último: 39.00 moneda local · Mercado',
+    );
+  });
+
   it('deletes a server-backed saved shopping list', () => {
     component.savedShoppingLists = [
       {

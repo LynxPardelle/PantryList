@@ -51,6 +51,7 @@ import {
   ProductTypeSelectionMode,
   ProductUnit,
   SavedShoppingList,
+  SavedShoppingListItem,
   ShoppingShare,
   ShoppingPlanItem,
   ShoppingPlanUrgency,
@@ -111,6 +112,25 @@ interface ShoppingTripDraftItem {
   unit: ProductUnit;
   paidUnitPrice?: number;
   shoppingLocation?: string;
+}
+
+interface ShoppingTripSourceItem {
+  productTypeId: string;
+  baseName: string;
+  category?: ProductCategory;
+  defaultUnit: ProductUnit;
+  suggestedPurchaseQuantity: number;
+  estimatedUnitPrice?: number;
+  estimatedLineTotal?: number;
+  urgency?: ShoppingPlanUrgency;
+  shoppingMetadata?: ProductTypeShoppingMetadata;
+}
+
+interface SavedShoppingListSnapshotPayload {
+  title: string;
+  occasion?: string;
+  shoppingLocation?: string;
+  items: SavedShoppingListItem[];
 }
 
 interface PendingShoppingCheckout {
@@ -485,9 +505,11 @@ export class PantryPageComponent implements OnInit {
   activeShoppingSharesError: string | null = null;
   shoppingBudget: number | null = null;
   shoppingModeActive = false;
+  shoppingModeSourceList: SavedShoppingList | null = null;
   shoppingTripDraft: Record<string, ShoppingTripDraftItem> = {};
   shoppingCheckoutStatus: string | null = null;
   shoppingCheckoutBusy = false;
+  stapleToggleBusyProductTypeId: string | null = null;
   privacyExportStatus: string | null = null;
   privacyExportBusy = false;
   quickCaptureDrafts: QuickCaptureDraft[] = [];
@@ -1401,12 +1423,47 @@ export class PantryPageComponent implements OnInit {
   }
 
   saveShoppingListSnapshot(items: ShoppingPlanItem[]): void {
-    if (items.length === 0) {
-      this.savedShoppingListStatus = 'No hay compras sugeridas para guardar.';
+    const listPayload = this.buildShoppingListSnapshotPayload(
+      items,
+      this.savedShoppingListForm.getRawValue(),
+    );
+
+    if (!listPayload) {
       return;
     }
 
-    const rawValue = this.savedShoppingListForm.getRawValue();
+    this.persistShoppingListSnapshot(
+      listPayload,
+      'Lista sincronizada en tu cuenta.',
+    );
+  }
+
+  saveMasterShoppingListSnapshot(items: ShoppingPlanItem[]): void {
+    const listPayload = this.buildShoppingListSnapshotPayload(items, {
+      title: 'Lista maestra',
+      occasion: 'Compra recurrente',
+      shoppingLocation: '',
+    });
+
+    if (!listPayload) {
+      return;
+    }
+
+    this.persistShoppingListSnapshot(
+      listPayload,
+      'Lista maestra sincronizada en tu cuenta.',
+    );
+  }
+
+  private buildShoppingListSnapshotPayload(
+    items: ShoppingPlanItem[],
+    rawValue: { title?: string; occasion?: string; shoppingLocation?: string },
+  ): SavedShoppingListSnapshotPayload | null {
+    if (items.length === 0) {
+      this.savedShoppingListStatus = 'No hay compras sugeridas para guardar.';
+      return null;
+    }
+
     const shoppingLocation = this.toOptionalText(rawValue.shoppingLocation);
     const filteredItems = shoppingLocation
       ? items.filter((item) => {
@@ -1418,10 +1475,10 @@ export class PantryPageComponent implements OnInit {
     if (filteredItems.length === 0) {
       this.savedShoppingListStatus =
         'No hay productos para esa tienda en la lista actual.';
-      return;
+      return null;
     }
 
-    const listPayload = {
+    return {
       title:
         this.toOptionalText(rawValue.title) ??
         `Lista ${this.savedShoppingLists.length + 1}`,
@@ -1438,7 +1495,12 @@ export class PantryPageComponent implements OnInit {
         estimatedLineTotal: item.estimatedLineTotal,
       })),
     };
+  }
 
+  private persistShoppingListSnapshot(
+    listPayload: SavedShoppingListSnapshotPayload,
+    successMessage: string,
+  ): void {
     this.savedShoppingListStatus = 'Guardando lista...';
     this.pantryService.createSavedShoppingList(listPayload).subscribe({
       next: (list) => {
@@ -1448,7 +1510,7 @@ export class PantryPageComponent implements OnInit {
               lists.findIndex((entry) => entry.id === candidate.id) === index,
           )
           .slice(0, 25);
-        this.savedShoppingListStatus = 'Lista sincronizada en tu cuenta.';
+        this.savedShoppingListStatus = successMessage;
         this.resetSavedShoppingListForm();
         this.persistSavedShoppingLists();
         this.changeDetector.markForCheck();
@@ -1471,6 +1533,14 @@ export class PantryPageComponent implements OnInit {
         this.changeDetector.markForCheck();
       },
     });
+  }
+
+  getMasterShoppingList(): SavedShoppingList | null {
+    return (
+      this.savedShoppingLists.find(
+        (list) => list.title.trim().toLocaleLowerCase('es') === 'lista maestra',
+      ) ?? null
+    );
   }
 
   async copySavedShoppingList(list: SavedShoppingList): Promise<void> {
@@ -1824,6 +1894,7 @@ export class PantryPageComponent implements OnInit {
   }
 
   async enterShoppingMode(items: ShoppingPlanItem[]): Promise<void> {
+    this.shoppingModeSourceList = null;
     this.ensureShoppingTripDraft(items);
     this.shoppingModeActive = true;
     this.shoppingCheckoutStatus = this.isOffline
@@ -1833,14 +1904,68 @@ export class PantryPageComponent implements OnInit {
     this.changeDetector.markForCheck();
   }
 
+  async enterShoppingModeFromSavedList(
+    list: SavedShoppingList,
+    planItems: ShoppingPlanItem[],
+  ): Promise<void> {
+    const sourceItems = this.buildShoppingTripRowsFromSavedList(
+      list,
+      planItems,
+    );
+
+    if (sourceItems.length === 0) {
+      this.savedShoppingListStatus = 'Esta lista guardada no tiene productos.';
+      return;
+    }
+
+    this.shoppingModeSourceList = list;
+    this.shoppingTripDraft = sourceItems.reduce<
+      Record<string, ShoppingTripDraftItem>
+    >(
+      (draft, item) => ({
+        ...draft,
+        [item.productTypeId]: {
+          productTypeId: item.productTypeId,
+          checked: true,
+          quantity: item.suggestedPurchaseQuantity,
+          unit: item.defaultUnit,
+          paidUnitPrice: item.estimatedUnitPrice,
+          shoppingLocation: this.resolveShoppingMetadata(item.shoppingMetadata)
+            .shoppingLocation,
+        },
+      }),
+      {},
+    );
+    this.persistShoppingTripDraft();
+    this.shoppingModeActive = true;
+    this.savedShoppingListStatus = `Repitiendo ${list.title}.`;
+    this.shoppingCheckoutStatus = this.isOffline
+      ? 'Modo compra sin conexion; el cierre queda pendiente.'
+      : 'Lista cargada en modo compra.';
+    await this.requestShoppingWakeLock();
+    this.changeDetector.markForCheck();
+  }
+
   exitShoppingMode(): void {
     this.shoppingModeActive = false;
+    this.shoppingModeSourceList = null;
     this.shoppingCheckoutStatus = null;
     void this.releaseShoppingWakeLock();
     this.persistShoppingTripDraft();
   }
 
-  getShoppingTripItem(item: ShoppingPlanItem): ShoppingTripDraftItem {
+  getShoppingModeRows(items: ShoppingPlanItem[]): ShoppingTripSourceItem[] {
+    if (this.shoppingModeSourceList) {
+      return this.buildShoppingTripRowsFromSavedList(
+        this.shoppingModeSourceList,
+        items,
+      );
+    }
+
+    return items;
+  }
+
+  getShoppingTripItem(item: ShoppingTripSourceItem): ShoppingTripDraftItem {
     return {
       ...this.buildDefaultShoppingTripItem(item),
       ...this.shoppingTripDraft[item.productTypeId],
@@ -1848,13 +1973,13 @@ export class PantryPageComponent implements OnInit {
     };
   }
 
-  updateShoppingTripChecked(item: ShoppingPlanItem, event: Event): void {
+  updateShoppingTripChecked(item: ShoppingTripSourceItem, event: Event): void {
     const input = event.target as HTMLInputElement;
     this.updateShoppingTripDraftItem(item, { checked: input.checked });
   }
 
   updateShoppingTripQuantity(
-    item: ShoppingPlanItem,
+    item: ShoppingTripSourceItem,
     value: string | number | null
   ): void {
     const quantity = this.toOptionalNumber(value);
@@ -1870,7 +1995,7 @@ export class PantryPageComponent implements OnInit {
   }
 
   updateShoppingTripPaidUnitPrice(
-    item: ShoppingPlanItem,
+    item: ShoppingTripSourceItem,
     value: string | number | null
   ): void {
     const paidUnitPrice = this.toOptionalNumber(value);
@@ -1883,14 +2008,16 @@ export class PantryPageComponent implements OnInit {
     });
   }
 
-  updateShoppingTripLocation(item: ShoppingPlanItem, value: string): void {
+  updateShoppingTripLocation(item: ShoppingTripSourceItem, value: string): void {
     this.updateShoppingTripDraftItem(item, {
       shoppingLocation: this.toOptionalText(value),
     });
   }
 
   closeShoppingTrip(items: ShoppingPlanItem[]): void {
-    const selectedItems = this.getSelectedShoppingTripItems(items);
+    const selectedItems = this.getSelectedShoppingTripItems(
+      this.getShoppingModeRows(items),
+    );
 
     if (selectedItems.length === 0) {
       this.shoppingCheckoutStatus = 'Marca al menos un producto comprado.';
@@ -1904,6 +2031,7 @@ export class PantryPageComponent implements OnInit {
       this.shoppingCheckoutStatus =
         'Sin conexion. Cierre guardado para sincronizar despues.';
       this.shoppingModeActive = false;
+      this.shoppingModeSourceList = null;
       this.persistShoppingTripDraft();
       void this.releaseShoppingWakeLock();
       return;
@@ -1925,6 +2053,7 @@ export class PantryPageComponent implements OnInit {
         next: (lots) => {
           this.shoppingCheckoutStatus = `Compra cerrada: ${lots.length} lotes registrados.`;
           this.shoppingModeActive = false;
+          this.shoppingModeSourceList = null;
           this.shoppingTripDraft = {};
           this.removeLocalValue(this.shoppingTripStorageKey);
           void this.releaseShoppingWakeLock();
@@ -1939,17 +2068,19 @@ export class PantryPageComponent implements OnInit {
 
   clearShoppingTripDraft(items: ShoppingPlanItem[]): void {
     this.shoppingTripDraft = {};
-    this.ensureShoppingTripDraft(items);
+    this.ensureShoppingTripDraft(this.getShoppingModeRows(items));
     this.shoppingCheckoutStatus = 'Borrador de compra reiniciado.';
   }
 
   getShoppingTripSelectedCount(items: ShoppingPlanItem[]): number {
-    return this.getSelectedShoppingTripItems(items).length;
+    return this.getSelectedShoppingTripItems(
+      this.getShoppingModeRows(items),
+    ).length;
   }
 
   getShoppingTripPlannedTotal(items: ShoppingPlanItem[]): number {
     return Number(
-      this.getSelectedShoppingTripItems(items)
+      this.getSelectedShoppingTripItems(this.getShoppingModeRows(items))
         .reduce(
           (sum, selection) =>
             sum + (selection.planItem.estimatedLineTotal ?? 0),
@@ -1961,7 +2092,7 @@ export class PantryPageComponent implements OnInit {
 
   getShoppingTripActualTotal(items: ShoppingPlanItem[]): number {
     return Number(
-      this.getSelectedShoppingTripItems(items)
+      this.getSelectedShoppingTripItems(this.getShoppingModeRows(items))
         .reduce((sum, selection) => {
           const unitPrice =
             selection.draft.paidUnitPrice ??
@@ -1971,6 +2102,127 @@ export class PantryPageComponent implements OnInit {
         }, 0)
         .toFixed(2)
     );
+  }
+
+  getShoppingTripActualDifferenceLabel(items: ShoppingPlanItem[]): string {
+    const plannedTotal = this.getShoppingTripPlannedTotal(items);
+    const actualTotal = this.getShoppingTripActualTotal(items);
+    const difference = Number((actualTotal - plannedTotal).toFixed(2));
+
+    if (difference === 0) {
+      return 'Real igual al plan.';
+    }
+
+    return difference > 0
+      ? `Real sobre plan por ${this.formatShoppingPrice(difference)}`
+      : `Real bajo plan por ${this.formatShoppingPrice(Math.abs(difference))}`;
+  }
+
+  getLastPaidPriceSummary(item: ShoppingTripSourceItem): string {
+    const metadata = this.resolveShoppingMetadata(item.shoppingMetadata);
+    const latestPrice = metadata.priceHistory?.[0];
+    const estimatedUnitPrice =
+      latestPrice?.estimatedUnitPrice ??
+      metadata.estimatedUnitPrice ??
+      item.estimatedUnitPrice;
+
+    if (estimatedUnitPrice === undefined) {
+      return 'Sin precio pagado';
+    }
+
+    const parts = [`Último: ${this.formatShoppingPrice(estimatedUnitPrice)}`];
+    const shoppingLocation =
+      latestPrice?.shoppingLocation ?? metadata.shoppingLocation;
+
+    if (shoppingLocation) {
+      parts.push(shoppingLocation);
+    }
+
+    if (latestPrice?.recordedAt) {
+      parts.push(this.formatCentralDate(latestPrice.recordedAt));
+    }
+
+    return parts.join(' · ');
+  }
+
+  isShoppingStaple(item: ShoppingTripSourceItem): boolean {
+    return this.resolveShoppingMetadata(item.shoppingMetadata).householdStaple;
+  }
+
+  toggleShoppingStaple(item: ShoppingTripSourceItem): void {
+    if (this.stapleToggleBusyProductTypeId) {
+      return;
+    }
+
+    const metadata = this.resolveShoppingMetadata(item.shoppingMetadata);
+    this.stapleToggleBusyProductTypeId = item.productTypeId;
+    this.pantryService
+      .updateProductTypeShoppingMetadata(
+        item.productTypeId,
+        this.buildShoppingMetadataRequest({
+          ...metadata,
+          householdStaple: !metadata.householdStaple,
+        }),
+      )
+      .pipe(
+        finalize(() => {
+          this.stapleToggleBusyProductTypeId = null;
+          this.changeDetector.markForCheck();
+        }),
+      )
+      .subscribe({
+        next: () => {
+          this.shoppingCheckoutStatus = metadata.householdStaple
+            ? `${item.baseName} ya no está marcado como básico.`
+            : `${item.baseName} marcado como básico.`;
+          this.loadOverview();
+        },
+        error: (error) => {
+          this.shoppingCheckoutStatus = this.getErrorMessage(error);
+          this.changeDetector.markForCheck();
+        },
+      });
+  }
+
+  setShoppingTripItemsChecked(
+    items: ShoppingPlanItem[],
+    checked: boolean,
+  ): void {
+    const sourceItems = this.getShoppingModeRows(items);
+    this.shoppingTripDraft = sourceItems.reduce<
+      Record<string, ShoppingTripDraftItem>
+    >(
+      (draft, item) => ({
+        ...draft,
+        [item.productTypeId]: {
+          ...this.getShoppingTripItem(item),
+          checked,
+        },
+      }),
+      {},
+    );
+    this.persistShoppingTripDraft();
+    this.shoppingCheckoutStatus = checked
+      ? 'Todos los productos marcados.'
+      : 'Todos los productos desmarcados.';
+  }
+
+  setUrgentShoppingTripItemsChecked(items: ShoppingPlanItem[]): void {
+    const sourceItems = this.getShoppingModeRows(items);
+    this.shoppingTripDraft = sourceItems.reduce<
+      Record<string, ShoppingTripDraftItem>
+    >(
+      (draft, item) => ({
+        ...draft,
+        [item.productTypeId]: {
+          ...this.getShoppingTripItem(item),
+          checked: item.urgency === 'depleted' || item.urgency === 'critical',
+        },
+      }),
+      {},
+    );
+    this.persistShoppingTripDraft();
+    this.shoppingCheckoutStatus = 'Solo urgentes marcados.';
   }
 
   getRouteTotalSummary(items: ShoppingPlanItem[]): string {
@@ -2403,7 +2655,7 @@ export class PantryPageComponent implements OnInit {
     this.persistSavedShoppingLists();
   }
 
-  private ensureShoppingTripDraft(items: ShoppingPlanItem[]): void {
+  private ensureShoppingTripDraft(items: ShoppingTripSourceItem[]): void {
     this.shoppingTripDraft = items.reduce<
       Record<string, ShoppingTripDraftItem>
     >(
@@ -2417,7 +2669,7 @@ export class PantryPageComponent implements OnInit {
   }
 
   private updateShoppingTripDraftItem(
-    item: ShoppingPlanItem,
+    item: ShoppingTripSourceItem,
     patch: Partial<ShoppingTripDraftItem>
   ): void {
     this.shoppingTripDraft = {
@@ -2433,7 +2685,7 @@ export class PantryPageComponent implements OnInit {
   }
 
   private buildDefaultShoppingTripItem(
-    item: ShoppingPlanItem
+    item: ShoppingTripSourceItem
   ): ShoppingTripDraftItem {
     const metadata = this.resolveShoppingMetadata(item.shoppingMetadata);
 
@@ -2448,14 +2700,53 @@ export class PantryPageComponent implements OnInit {
   }
 
   private getSelectedShoppingTripItems(
-    items: ShoppingPlanItem[]
-  ): { planItem: ShoppingPlanItem; draft: ShoppingTripDraftItem }[] {
+    items: ShoppingTripSourceItem[]
+  ): { planItem: ShoppingTripSourceItem; draft: ShoppingTripDraftItem }[] {
     return items
       .map((planItem) => ({
         planItem,
         draft: this.getShoppingTripItem(planItem),
       }))
       .filter((selection) => selection.draft.checked);
+  }
+
+  private buildShoppingTripRowsFromSavedList(
+    list: SavedShoppingList,
+    planItems: ShoppingPlanItem[],
+  ): ShoppingTripSourceItem[] {
+    return list.items.map((listItem) => {
+      const matchingPlanItem = planItems.find(
+        (item) => item.productTypeId === listItem.productTypeId,
+      );
+      const metadata = this.resolveShoppingMetadata(
+        matchingPlanItem?.shoppingMetadata,
+      );
+      const shoppingLocation =
+        listItem.shoppingLocation ?? list.shoppingLocation ?? metadata.shoppingLocation;
+      const estimatedUnitPrice =
+        listItem.estimatedUnitPrice ?? matchingPlanItem?.estimatedUnitPrice;
+      const estimatedLineTotal =
+        listItem.estimatedLineTotal ??
+        (estimatedUnitPrice === undefined
+          ? undefined
+          : Number((estimatedUnitPrice * listItem.quantity).toFixed(2)));
+
+      return {
+        productTypeId: listItem.productTypeId,
+        baseName: listItem.baseName,
+        category: matchingPlanItem?.category,
+        defaultUnit: listItem.unit,
+        suggestedPurchaseQuantity: listItem.quantity,
+        estimatedUnitPrice,
+        estimatedLineTotal,
+        urgency: matchingPlanItem?.urgency,
+        shoppingMetadata: {
+          ...metadata,
+          shoppingLocation,
+          estimatedUnitPrice,
+        },
+      };
+    });
   }
 
   private persistShoppingTripDraft(): void {
