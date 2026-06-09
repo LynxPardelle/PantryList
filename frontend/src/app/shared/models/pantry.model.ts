@@ -409,6 +409,7 @@ export interface ProductTypePlanningSettingsRequest {
 export interface ArchivedPantryItems {
   productTypes: ProductType[];
   inventoryLots: InventoryLot[];
+  pagination?: ArchivedPantryPagination;
 }
 
 export interface RegisterLotRequest {
@@ -624,6 +625,23 @@ export interface ApiInventoryLot {
 export interface ApiArchivedPantryItems {
   productTypes: ApiProductType[];
   inventoryLots: ApiInventoryLot[];
+  pagination?: ArchivedPantryPagination;
+}
+
+export interface ArchivedPantryPagination {
+  limit: number;
+  productTypesNextCursor?: string;
+  inventoryLotsNextCursor?: string;
+  hasMoreProductTypes: boolean;
+  hasMoreInventoryLots: boolean;
+}
+
+export interface ArchivedPantryQuery {
+  limit?: number;
+  productTypesCursor?: string;
+  inventoryLotsCursor?: string;
+  includeProductTypes?: boolean;
+  includeInventoryLots?: boolean;
 }
 
 export interface PantryDataLimits {
@@ -632,6 +650,7 @@ export interface PantryDataLimits {
   productTypeSearchResults: number;
   activeInventoryLotsPerUser: number;
   archivedInventoryLotsPerUser: number;
+  archivedPantryPageSize: number;
   inventoryLotsPerProductType: number;
   shoppingCheckoutItems: number;
 }

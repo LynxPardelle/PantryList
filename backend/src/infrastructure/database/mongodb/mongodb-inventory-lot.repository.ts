@@ -8,10 +8,15 @@ import {
 } from '../../../domain/entities/inventory-lot.entity';
 import {
   MAX_ACTIVE_INVENTORY_LOTS_PER_USER,
+  MAX_ARCHIVED_PANTRY_PAGE_SIZE,
   MAX_ARCHIVED_INVENTORY_LOTS_PER_USER,
   MAX_INVENTORY_LOTS_PER_PRODUCT_TYPE,
 } from '../../../application/constants/query-limits';
 import { getArchivedRecordRetentionExpiresAt } from '../../../application/policies/retention-policy';
+import {
+  CursorPage,
+  CursorPageOptions,
+} from '../../../domain/repositories/cursor-page';
 import { InventoryLotRepository } from '../../../domain/repositories/inventory-lot.repository';
 import { InventoryLotId } from '../../../domain/value-objects/inventory-lot-id.vo';
 import { ProductTypeId } from '../../../domain/value-objects/product-type-id.vo';
@@ -109,14 +114,49 @@ export class MongoInventoryLotRepository implements InventoryLotRepository {
   }
 
   async findArchivedByUserId(userId: UserId): Promise<InventoryLot[]> {
+    const page = await this.findArchivedPageByUserId(userId, {
+      limit: MAX_ARCHIVED_INVENTORY_LOTS_PER_USER,
+    });
+
+    return page.items;
+  }
+
+  async findArchivedPageByUserId(
+    userId: UserId,
+    options: CursorPageOptions,
+  ): Promise<CursorPage<InventoryLot>> {
+    const limit = clampLimit(options.limit);
+    const cursor = decodeMongoArchiveCursor(options.cursor);
+    const cursorFilter = cursor
+      ? {
+          $or: [
+            { archivedAt: { $lt: cursor.archivedAt } },
+            { archivedAt: cursor.archivedAt, id: { $gt: cursor.id } },
+          ],
+        }
+      : {};
     const lots = await this.inventoryLotModel
-      .find({ userId: userId.toString(), archivedAt: { $exists: true } })
-      .sort({ archivedAt: -1 })
-      .limit(MAX_ARCHIVED_INVENTORY_LOTS_PER_USER)
+      .find({
+        userId: userId.toString(),
+        archivedAt: { $exists: true },
+        ...cursorFilter,
+      })
+      .sort({ archivedAt: -1, id: 1 })
+      .limit(limit + 1)
       .lean()
       .exec();
+    const pageItems = lots.slice(0, limit);
+    const nextCursor =
+      lots.length > limit
+        ? encodeMongoArchiveCursor(pageItems[pageItems.length - 1])
+        : undefined;
 
-    return lots.map((lot) => this.toDomain(lot as PersistedInventoryLot));
+    return {
+      items: pageItems.map((lot) =>
+        this.toDomain(lot as PersistedInventoryLot),
+      ),
+      nextCursor,
+    };
   }
 
   async findByProductTypeId(
@@ -193,4 +233,56 @@ function defaultConfigService(): ConfigService {
 
 function emptyConfigValue(): undefined {
   return undefined;
+}
+
+interface MongoArchiveCursor {
+  archivedAt: Date;
+  id: string;
+}
+
+function clampLimit(limit: number): number {
+  return Math.min(
+    Math.max(1, Math.floor(limit || MAX_ARCHIVED_PANTRY_PAGE_SIZE)),
+    MAX_ARCHIVED_INVENTORY_LOTS_PER_USER,
+  );
+}
+
+function encodeMongoArchiveCursor(
+  item: Pick<PersistedInventoryLot, 'archivedAt' | 'id'> | undefined,
+): string | undefined {
+  if (!item?.archivedAt) {
+    return undefined;
+  }
+
+  return Buffer.from(
+    JSON.stringify({
+      archivedAt: new Date(item.archivedAt).toISOString(),
+      id: item.id,
+    }),
+    'utf8',
+  ).toString('base64url');
+}
+
+function decodeMongoArchiveCursor(
+  cursor: string | undefined,
+): MongoArchiveCursor | undefined {
+  if (!cursor) {
+    return undefined;
+  }
+
+  const parsed = JSON.parse(
+    Buffer.from(cursor, 'base64url').toString('utf8'),
+  ) as {
+    archivedAt?: string;
+    id?: string;
+  };
+
+  if (!parsed.archivedAt || !parsed.id) {
+    throw new Error('Invalid archived inventory lot cursor');
+  }
+
+  return {
+    archivedAt: new Date(parsed.archivedAt),
+    id: parsed.id,
+  };
 }

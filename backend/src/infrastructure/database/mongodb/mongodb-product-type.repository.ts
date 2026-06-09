@@ -10,10 +10,15 @@ import {
 } from '../../../domain/entities/product-type.entity';
 import {
   MAX_ACTIVE_PRODUCT_TYPES_PER_USER,
+  MAX_ARCHIVED_PANTRY_PAGE_SIZE,
   MAX_ARCHIVED_PRODUCT_TYPES_PER_USER,
   MAX_PRODUCT_TYPE_SEARCH_RESULTS,
 } from '../../../application/constants/query-limits';
 import { getArchivedRecordRetentionExpiresAt } from '../../../application/policies/retention-policy';
+import {
+  CursorPage,
+  CursorPageOptions,
+} from '../../../domain/repositories/cursor-page';
 import { ProductTypeRepository } from '../../../domain/repositories/product-type.repository';
 import { ProductTypeId } from '../../../domain/value-objects/product-type-id.vo';
 import { UserId } from '../../../domain/value-objects/user-id.vo';
@@ -130,16 +135,49 @@ export class MongoProductTypeRepository implements ProductTypeRepository {
   }
 
   async findArchivedByUserId(userId: UserId): Promise<ProductType[]> {
+    const page = await this.findArchivedPageByUserId(userId, {
+      limit: MAX_ARCHIVED_PRODUCT_TYPES_PER_USER,
+    });
+
+    return page.items;
+  }
+
+  async findArchivedPageByUserId(
+    userId: UserId,
+    options: CursorPageOptions,
+  ): Promise<CursorPage<ProductType>> {
+    const limit = clampLimit(options.limit);
+    const cursor = decodeMongoArchiveCursor(options.cursor);
+    const cursorFilter = cursor
+      ? {
+          $or: [
+            { archivedAt: { $lt: cursor.archivedAt } },
+            { archivedAt: cursor.archivedAt, id: { $gt: cursor.id } },
+          ],
+        }
+      : {};
     const productTypes = await this.productTypeModel
-      .find({ userId: userId.toString(), archivedAt: { $exists: true } })
-      .sort({ archivedAt: -1 })
-      .limit(MAX_ARCHIVED_PRODUCT_TYPES_PER_USER)
+      .find({
+        userId: userId.toString(),
+        archivedAt: { $exists: true },
+        ...cursorFilter,
+      })
+      .sort({ archivedAt: -1, id: 1 })
+      .limit(limit + 1)
       .lean()
       .exec();
+    const pageItems = productTypes.slice(0, limit);
+    const nextCursor =
+      productTypes.length > limit
+        ? encodeMongoArchiveCursor(pageItems[pageItems.length - 1])
+        : undefined;
 
-    return productTypes.map((productType) =>
-      this.toDomain(productType as PersistedProductType),
-    );
+    return {
+      items: pageItems.map((productType) =>
+        this.toDomain(productType as PersistedProductType),
+      ),
+      nextCursor,
+    };
   }
 
   async searchByUserId(
@@ -253,6 +291,58 @@ function toDepletionPeriod(
   }
 
   throw new Error(`Unsupported persisted depletion interval period: ${value}`);
+}
+
+interface MongoArchiveCursor {
+  archivedAt: Date;
+  id: string;
+}
+
+function clampLimit(limit: number): number {
+  return Math.min(
+    Math.max(1, Math.floor(limit || MAX_ARCHIVED_PANTRY_PAGE_SIZE)),
+    MAX_ARCHIVED_PRODUCT_TYPES_PER_USER,
+  );
+}
+
+function encodeMongoArchiveCursor(
+  item: Pick<PersistedProductType, 'archivedAt' | 'id'> | undefined,
+): string | undefined {
+  if (!item?.archivedAt) {
+    return undefined;
+  }
+
+  return Buffer.from(
+    JSON.stringify({
+      archivedAt: new Date(item.archivedAt).toISOString(),
+      id: item.id,
+    }),
+    'utf8',
+  ).toString('base64url');
+}
+
+function decodeMongoArchiveCursor(
+  cursor: string | undefined,
+): MongoArchiveCursor | undefined {
+  if (!cursor) {
+    return undefined;
+  }
+
+  const parsed = JSON.parse(
+    Buffer.from(cursor, 'base64url').toString('utf8'),
+  ) as {
+    archivedAt?: string;
+    id?: string;
+  };
+
+  if (!parsed.archivedAt || !parsed.id) {
+    throw new Error('Invalid archived product type cursor');
+  }
+
+  return {
+    archivedAt: new Date(parsed.archivedAt),
+    id: parsed.id,
+  };
 }
 
 function defaultConfigService(): ConfigService {

@@ -210,6 +210,7 @@ const SHOPPING_LOCATION_ORDER = [
   'Otro',
   'Sin tienda definida',
 ];
+const ARCHIVED_PAGE_SIZE = 50;
 
 @Component({
   selector: 'app-pantry-page',
@@ -228,6 +229,7 @@ export class PantryPageComponent implements OnInit {
   private readonly changeDetector = inject(ChangeDetectorRef);
   private readonly lotRegistrationTimeoutMs = 15000;
   private readonly shoppingBudgetStorageKey = 'pantrylist.shoppingBudget';
+  private readonly archivedPageSize = ARCHIVED_PAGE_SIZE;
   private readonly quickCaptureStorageKey = 'pantrylist.quickCaptureDrafts';
   private readonly shoppingTripStorageKey = 'pantrylist.shoppingTripDraft';
   private readonly pendingShoppingCheckoutStorageKey =
@@ -862,7 +864,9 @@ export class PantryPageComponent implements OnInit {
     this.archivedError = null;
 
     this.pantryService
-      .getArchivedPantryItems()
+      .getArchivedPantryItems({
+        limit: this.archivedPageSize,
+      })
       .pipe(
         finalize(() => {
           this.archivedLoading = false;
@@ -877,6 +881,50 @@ export class PantryPageComponent implements OnInit {
           this.archivedError = this.getErrorMessage(error);
         },
       });
+  }
+
+  loadMoreArchivedItems(): void {
+    const pagination = this.archivedItems?.pagination;
+
+    if (!pagination || !this.canLoadMoreArchivedItems()) {
+      return;
+    }
+
+    this.archivedLoading = true;
+    this.archivedError = null;
+
+    this.pantryService
+      .getArchivedPantryItems({
+        limit: this.archivedPageSize,
+        productTypesCursor: pagination.productTypesNextCursor,
+        inventoryLotsCursor: pagination.inventoryLotsNextCursor,
+        includeProductTypes: pagination.hasMoreProductTypes,
+        includeInventoryLots: pagination.hasMoreInventoryLots,
+      })
+      .pipe(
+        finalize(() => {
+          this.archivedLoading = false;
+          this.changeDetector.markForCheck();
+        })
+      )
+      .subscribe({
+        next: (archivedItems) => {
+          this.archivedItems = this.mergeArchivedItems(
+            this.archivedItems,
+            archivedItems,
+          );
+        },
+        error: (error) => {
+          this.archivedError = this.getErrorMessage(error);
+        },
+      });
+  }
+
+  canLoadMoreArchivedItems(): boolean {
+    return Boolean(
+      this.archivedItems?.pagination?.hasMoreProductTypes ||
+        this.archivedItems?.pagination?.hasMoreInventoryLots,
+    );
   }
 
   archiveProductType(group: PantryOverviewItem): void {
@@ -2449,6 +2497,21 @@ export class PantryPageComponent implements OnInit {
 
   private clearArchiveConfirmation(): void {
     this.archiveConfirmationTarget = null;
+  }
+
+  private mergeArchivedItems(
+    current: ArchivedPantryItems | null,
+    next: ArchivedPantryItems,
+  ): ArchivedPantryItems {
+    if (!current) {
+      return next;
+    }
+
+    return {
+      productTypes: [...current.productTypes, ...next.productTypes],
+      inventoryLots: [...current.inventoryLots, ...next.inventoryLots],
+      pagination: next.pagination,
+    };
   }
 
   private startDeleteConfirmation(target: DeleteConfirmationTarget): void {

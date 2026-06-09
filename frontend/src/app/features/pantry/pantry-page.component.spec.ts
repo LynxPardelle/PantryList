@@ -803,12 +803,53 @@ describe('PantryPageComponent', () => {
   it('loads archived pantry items when the archived panel is opened', () => {
     component.toggleArchivedPanel();
 
-    expect(pantryService.getArchivedPantryItems).toHaveBeenCalled();
+    expect(pantryService.getArchivedPantryItems).toHaveBeenCalledWith({
+      limit: 50,
+    });
     expect(component.archivedPanelOpen).toBeTrue();
     expect(component.archivedItems).toEqual({
       productTypes: [],
       inventoryLots: [],
     });
+  });
+
+  it('loads more archived pantry items with cursors', () => {
+    component.archivedItems = {
+      productTypes: [{ id: 'type-1' } as any],
+      inventoryLots: [],
+      pagination: {
+        limit: 50,
+        productTypesNextCursor: 'next-types',
+        hasMoreProductTypes: true,
+        hasMoreInventoryLots: false,
+      },
+    };
+    pantryService.getArchivedPantryItems.and.returnValue(
+      of({
+        productTypes: [{ id: 'type-2' } as any],
+        inventoryLots: [],
+        pagination: {
+          limit: 50,
+          hasMoreProductTypes: false,
+          hasMoreInventoryLots: false,
+        },
+      }),
+    );
+
+    component.loadMoreArchivedItems();
+
+    expect(pantryService.getArchivedPantryItems).toHaveBeenCalledWith({
+      limit: 50,
+      productTypesCursor: 'next-types',
+      inventoryLotsCursor: undefined,
+      includeProductTypes: true,
+      includeInventoryLots: false,
+    });
+    expect(component.archivedItems.productTypes.map((item) => item.id)).toEqual([
+      'type-1',
+      'type-2',
+    ]);
+    expect(component.canLoadMoreArchivedItems()).toBeFalse();
   });
 
   it('requires inline confirmation before archiving a product type', () => {

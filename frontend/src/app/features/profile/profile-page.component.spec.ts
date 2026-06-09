@@ -174,6 +174,7 @@ describe('ProfilePageComponent', () => {
           productTypeSearchResults: 25,
           activeInventoryLotsPerUser: 1000,
           archivedInventoryLotsPerUser: 250,
+          archivedPantryPageSize: 50,
           inventoryLotsPerProductType: 500,
           shoppingCheckoutItems: 50,
         },

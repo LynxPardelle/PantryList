@@ -8,11 +8,13 @@ import { UserId } from '../../../domain/value-objects/user-id.vo';
 import { MongoProductTypeRepository } from './mongodb-product-type.repository';
 
 type QueryResult<T> = {
-  sort: () => QueryResult<T>;
-  limit: (limit: number) => QueryResult<T>;
-  lean: () => {
-    exec: () => Promise<T>;
-  };
+  sort: jest.MockedFunction<() => QueryResult<T>>;
+  limit: jest.MockedFunction<(limit: number) => QueryResult<T>>;
+  lean: jest.MockedFunction<
+    () => {
+      exec: jest.MockedFunction<() => Promise<T>>;
+    }
+  >;
 };
 
 describe('MongoProductTypeRepository archive-aware queries', () => {
@@ -36,13 +38,12 @@ describe('MongoProductTypeRepository archive-aware queries', () => {
     });
 
   const makeQuery = <T>(value: T): QueryResult<T> => {
-    const query: QueryResult<T> = {
-      sort: () => query,
-      limit: () => query,
-      lean: () => ({
-        exec: () => Promise.resolve(value),
-      }),
-    };
+    const query = {} as QueryResult<T>;
+    query.sort = jest.fn(() => query);
+    query.limit = jest.fn((_limit: number) => query);
+    query.lean = jest.fn(() => ({
+      exec: jest.fn(() => Promise.resolve(value)),
+    }));
 
     return query;
   };
@@ -124,11 +125,41 @@ describe('MongoProductTypeRepository archive-aware queries', () => {
       archivedAt: { $exists: true },
     });
     expect(query.limit).toHaveBeenCalledWith(
-      MAX_ARCHIVED_PRODUCT_TYPES_PER_USER,
+      MAX_ARCHIVED_PRODUCT_TYPES_PER_USER + 1,
     );
     expect(archived[0].toPrimitives()).toMatchObject({
       id: 'type-1',
       archivedReason: 'Ya no se compra',
     });
+  });
+
+  it('returns archived product type pages with next cursors', async () => {
+    const productTypes = [
+      makeProductType().toPrimitives(),
+      ProductType.fromPrimitives({
+        ...makeProductType().toPrimitives(),
+        id: 'type-2',
+        baseName: 'Arroz',
+        archivedAt: new Date('2026-04-19T00:00:00.000Z'),
+      }).toPrimitives(),
+    ];
+    const query = makeQuery(productTypes);
+    const model = {
+      findOneAndUpdate: jest.fn(),
+      findOne: jest.fn(),
+      find: jest.fn().mockReturnValue(query),
+      updateMany: jest.fn(),
+      deleteOne: jest.fn(),
+    };
+
+    const repository = new MongoProductTypeRepository(model as never);
+
+    const page = await repository.findArchivedPageByUserId(userId, {
+      limit: 1,
+    });
+
+    expect(query.limit).toHaveBeenCalledWith(2);
+    expect(page.items).toHaveLength(1);
+    expect(page.nextCursor).toBeDefined();
   });
 });

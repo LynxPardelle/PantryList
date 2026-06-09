@@ -10,11 +10,13 @@ import { UserId } from '../../../domain/value-objects/user-id.vo';
 import { MongoInventoryLotRepository } from './mongodb-inventory-lot.repository';
 
 type QueryResult<T> = {
-  sort: () => QueryResult<T>;
-  limit: (limit: number) => QueryResult<T>;
-  lean: () => {
-    exec: () => Promise<T>;
-  };
+  sort: jest.MockedFunction<() => QueryResult<T>>;
+  limit: jest.MockedFunction<(limit: number) => QueryResult<T>>;
+  lean: jest.MockedFunction<
+    () => {
+      exec: jest.MockedFunction<() => Promise<T>>;
+    }
+  >;
 };
 
 describe('MongoInventoryLotRepository archive-aware queries', () => {
@@ -36,13 +38,12 @@ describe('MongoInventoryLotRepository archive-aware queries', () => {
     });
 
   const makeQuery = <T>(value: T): QueryResult<T> => {
-    const query: QueryResult<T> = {
-      sort: () => query,
-      limit: () => query,
-      lean: () => ({
-        exec: () => Promise.resolve(value),
-      }),
-    };
+    const query = {} as QueryResult<T>;
+    query.sort = jest.fn(() => query);
+    query.limit = jest.fn((_limit: number) => query);
+    query.lean = jest.fn(() => ({
+      exec: jest.fn(() => Promise.resolve(value)),
+    }));
 
     return query;
   };
@@ -86,8 +87,6 @@ describe('MongoInventoryLotRepository archive-aware queries', () => {
       updateMany: jest.fn(),
       deleteOne: jest.fn(),
     };
-    jest.spyOn(query, 'limit');
-
     const repository = new MongoInventoryLotRepository(model as never);
 
     await repository.findByUserId(userId);
@@ -110,8 +109,6 @@ describe('MongoInventoryLotRepository archive-aware queries', () => {
       updateMany: jest.fn(),
       deleteOne: jest.fn(),
     };
-    jest.spyOn(query, 'limit');
-
     const repository = new MongoInventoryLotRepository(model as never);
 
     await repository.findByProductTypeId(productTypeId);
@@ -146,11 +143,41 @@ describe('MongoInventoryLotRepository archive-aware queries', () => {
       archivedAt: { $exists: true },
     });
     expect(query.limit).toHaveBeenCalledWith(
-      MAX_ARCHIVED_INVENTORY_LOTS_PER_USER,
+      MAX_ARCHIVED_INVENTORY_LOTS_PER_USER + 1,
     );
     expect(archived[0].toPrimitives()).toMatchObject({
       id: 'lot-1',
       archivedReason: 'Regalado',
     });
+  });
+
+  it('returns archived lot pages with next cursors', async () => {
+    const lots = [
+      makeInventoryLot().toPrimitives(),
+      InventoryLot.fromPrimitives({
+        ...makeInventoryLot().toPrimitives(),
+        id: 'lot-2',
+        archivedAt: new Date('2026-04-19T00:00:00.000Z'),
+      }).toPrimitives(),
+    ];
+    const query = makeQuery(lots);
+    const model = {
+      findOneAndUpdate: jest.fn(),
+      findOne: jest.fn(),
+      find: jest.fn().mockReturnValue(query),
+      updateMany: jest.fn(),
+      deleteOne: jest.fn(),
+    };
+    jest.spyOn(query, 'limit');
+
+    const repository = new MongoInventoryLotRepository(model as never);
+
+    const page = await repository.findArchivedPageByUserId(userId, {
+      limit: 1,
+    });
+
+    expect(query.limit).toHaveBeenCalledWith(2);
+    expect(page.items).toHaveLength(1);
+    expect(page.nextCursor).toBeDefined();
   });
 });

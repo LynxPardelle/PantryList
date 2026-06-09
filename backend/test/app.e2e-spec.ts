@@ -5,6 +5,10 @@ import {
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
 import * as request from 'supertest';
+import {
+  ApiMetricsService,
+  ApiMetricsSnapshot,
+} from '../src/application/services/api-metrics.service';
 import { AppController } from '../src/app.controller';
 import { AppService } from '../src/app.service';
 import { configureApp } from '../src/app.setup';
@@ -23,13 +27,14 @@ describe('AppController (e2e)', () => {
               API_PREFIX: 'api',
               CORS_ORIGIN: 'http://localhost:4200',
               HELMET_ENABLED: 'false',
+              METRICS_ACCESS_TOKEN: 'test-metrics-token',
               SWAGGER_ENABLED: 'false',
             }),
           ],
         }),
       ],
       controllers: [AppController],
-      providers: [AppService],
+      providers: [AppService, ApiMetricsService],
     }).compile();
 
     app = moduleFixture.createNestApplication<NestFastifyApplication>(
@@ -56,5 +61,27 @@ describe('AppController (e2e)', () => {
       status: 'ok',
       service: 'pantrylist-backend',
     });
+  });
+
+  it('/api/metrics (GET)', async () => {
+    await request(app.getHttpServer()).get('/api/healthz').expect(200);
+
+    await request(app.getHttpServer())
+      .get('/api/metrics')
+      .set('X-Metrics-Token', 'test-metrics-token')
+      .expect(200)
+      .expect((response) => {
+        const body = response.body as ApiMetricsSnapshot;
+        expect(body.service).toBe('pantrylist-backend');
+        expect(body.totalRequests).toBeGreaterThanOrEqual(1);
+        expect(body.routes).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              method: 'GET',
+              route: '/api/healthz',
+            }),
+          ]),
+        );
+      });
   });
 });

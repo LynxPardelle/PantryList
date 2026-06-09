@@ -19,6 +19,9 @@ export class PantryDataLimitsResponseDto {
   @ApiProperty({ example: 250 })
   archivedInventoryLotsPerUser: number;
 
+  @ApiProperty({ example: 50 })
+  archivedPantryPageSize: number;
+
   @ApiProperty({ example: 500 })
   inventoryLotsPerProductType: number;
 

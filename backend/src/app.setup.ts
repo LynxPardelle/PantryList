@@ -6,6 +6,8 @@ import { ConfigService } from '@nestjs/config';
 import { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import type { FastifyRequest } from 'fastify';
+import { ApiMetricsService } from './application/services/api-metrics.service';
+import { registerApiMetricsHook } from './infrastructure/http/api-metrics.hook';
 import { ApiExceptionFilter } from './infrastructure/http/filters/api-exception.filter';
 import { registerRequestIdHook } from './infrastructure/http/request-id';
 
@@ -24,10 +26,19 @@ export async function configureApp(
     configService.get<string>('RATE_LIMIT_TRUST_PROXY') === 'true';
   const swaggerEnabled =
     configService.get<string>('SWAGGER_ENABLED') === 'true';
+  const metricsService = app.get(ApiMetricsService, { strict: false });
 
   app.setGlobalPrefix(apiPrefix);
   app.enableCors({ origin: corsOrigin, credentials: true });
   registerRequestIdHook(app.getHttpAdapter().getInstance());
+  metricsService.configure({
+    slowRequestThresholdMs:
+      configService.get<number>('METRICS_SLOW_REQUEST_THRESHOLD_MS') ?? 1000,
+    errorRateAlertThreshold:
+      configService.get<number>('METRICS_ERROR_RATE_ALERT_THRESHOLD') ?? 0.05,
+    maxRoutes: configService.get<number>('METRICS_MAX_ROUTES') ?? 50,
+  });
+  registerApiMetricsHook(app.getHttpAdapter().getInstance(), metricsService);
   await app.register(fastifyCookie);
 
   if (rateLimitEnabled) {

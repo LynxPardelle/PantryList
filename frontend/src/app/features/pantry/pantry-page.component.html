@@ -1901,6 +1901,18 @@
                   </article>
                 }
               </div>
+              @if (canLoadMoreArchivedItems()) {
+                <div class="lot-actions">
+                  <button
+                    type="button"
+                    class="secondary-button"
+                    [disabled]="archivedLoading"
+                    (click)="loadMoreArchivedItems()"
+                  >
+                    Cargar más archivados
+                  </button>
+                </div>
+              }
             }
           }
         } @else {

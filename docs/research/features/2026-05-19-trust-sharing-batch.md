@@ -20,6 +20,7 @@ Status: Implemented batch evidence and remaining backlog source.
 - Follow-up implemented on 2026-06-08 CT: DynamoDB household and shopping-share lookup paths now write generic GSI keys and use indexed query access patterns with temporary legacy fallbacks for pre-index records.
 - Follow-up implemented on 2026-06-09 CT: security lifecycle controls now expose retention policy in profile, support optional archived-record TTL metadata with auto-delete off by default, require privacy review docs for sensitive feature diffs in CI, add Cognito global sign-out from profile, add optional step-up checks for destructive profile actions, and support optional software-token MFA through CDK context.
 - Follow-up implemented on 2026-06-09 CT: LatAm shopping route groups now sort by fixed store route, the pantry form offers starter staple templates, and product-type shopping metadata includes a "replenish when low" flag so one-off products do not become missing/restock candidates after they run out.
+- Follow-up implemented on 2026-06-09 CT: technical observability and archive scale controls now add a protected `/api/metrics` snapshot, cursor pagination for archived pantry reads, frontend "Cargar más archivados", archived page-size metadata in export/profile limits, digest-pinned Node Docker base images, and a weekly base-image digest drift workflow.
 
 ## Security Notes
 
@@ -75,18 +76,17 @@ Status: Implemented batch evidence and remaining backlog source.
 
 ### Technical And Security Backlog
 
-- Optional Docker image digest pinning.
 - Full session/device list beyond Cognito global sign-out.
-- Metrics and alerting beyond current request-id logs and CI scans.
-- Cursor pagination for high-volume pantry data beyond current explicit query limits and export metadata.
+- External metrics and alerting sink beyond the protected in-memory metrics snapshot.
+- Cursor pagination for active pantry and legacy product reads beyond archived pantry pagination, current explicit query limits, and export metadata.
 - Future backend architecture migration from the Nest monolith to AWS serverless microservices with Lambda, Step Functions where needed, supporting AWS services, and isolated dev/test/production environments.
 
 ## Recommended Next Batch
 
-1. Metrics and alerting beyond request-id logs.
-2. Cursor pagination for high-volume pantry lists and archives.
-3. Optional Docker image digest pinning plus base-image update cadence.
-4. Multiple shopping lists by store, occasion, or trip.
-5. Voice input for quick capture.
+1. Full session/device list beyond Cognito global sign-out.
+2. Multiple shopping lists by store, occasion, or trip.
+3. Voice input for quick capture.
+4. Cursor pagination for active pantry and legacy product reads if production data volume starts stressing overview/export paths.
+5. Waste event tracking and weekly savings/waste summaries.
 
-This is the best next package because the core trust controls and first LatAm shopping ergonomics are now in place, so the next gain should reduce production blind spots and protect list performance as data volume grows.
+This is the best next package because the trust controls and first technical scale guardrails are now in place, so the next gain should improve user workflows while keeping a small technical safety follow-up ready.

@@ -12,6 +12,7 @@ describe('GetArchivedPantryItemsUseCase', () => {
     findById: jest.fn(),
     findByUserId: jest.fn(),
     findArchivedByUserId: jest.fn(),
+    findArchivedPageByUserId: jest.fn(),
     searchByUserId: jest.fn(),
     findByBaseName: jest.fn(),
     reassignUserOwnership: jest.fn(),
@@ -25,6 +26,7 @@ describe('GetArchivedPantryItemsUseCase', () => {
       findById: jest.fn(),
       findByUserId: jest.fn(),
       findArchivedByUserId: jest.fn(),
+      findArchivedPageByUserId: jest.fn(),
       findByProductTypeId: jest.fn(),
       reassignUserOwnership: jest.fn(),
       delete: jest.fn(),
@@ -79,6 +81,56 @@ describe('GetArchivedPantryItemsUseCase', () => {
     expect(result.inventoryLots[0]).toMatchObject({
       id: 'lot-1',
       archivedReason: 'Regalado',
+    });
+  });
+
+  it('returns a cursor-paginated archived page when requested', async () => {
+    const productTypeRepository = makeProductTypeRepository();
+    const inventoryLotRepository = makeInventoryLotRepository();
+    const productType = ProductType.fromPrimitives({
+      id: 'type-1',
+      userId: 'owner-user',
+      baseName: 'Atun',
+      category: ProductCategory.FOOD,
+      defaultUnit: QuantityUnit.PIECE,
+      archivedAt: new Date('2026-04-20T00:00:00.000Z'),
+      createdAt: new Date('2026-04-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-04-20T00:00:00.000Z'),
+    });
+    productTypeRepository.findArchivedPageByUserId.mockResolvedValue({
+      items: [productType],
+      nextCursor: 'next-types',
+    });
+    inventoryLotRepository.findArchivedPageByUserId.mockResolvedValue({
+      items: [],
+      nextCursor: undefined,
+    });
+
+    const result = await new GetArchivedPantryItemsUseCase(
+      productTypeRepository,
+      inventoryLotRepository,
+    ).execute('owner-user', {
+      limit: 10,
+      productTypesCursor: 'types-cursor',
+      includeInventoryLots: false,
+    });
+
+    expect(productTypeRepository.findArchivedPageByUserId).toHaveBeenCalledWith(
+      UserId.fromString('owner-user'),
+      {
+        limit: 10,
+        cursor: 'types-cursor',
+      },
+    );
+    expect(
+      inventoryLotRepository.findArchivedPageByUserId,
+    ).not.toHaveBeenCalled();
+    expect(result.pagination).toEqual({
+      limit: 10,
+      productTypesNextCursor: 'next-types',
+      inventoryLotsNextCursor: undefined,
+      hasMoreProductTypes: true,
+      hasMoreInventoryLots: false,
     });
   });
 });

@@ -17,7 +17,7 @@ import {
 } from '../../../application/use-cases/shopping-share.use-cases';
 import { ShoppingShare } from '../../../domain/entities/shopping-share.entity';
 import { InventoryLot } from '../../../domain/entities/inventory-lot.entity';
-import { QuantityUnit } from '../../../domain/enums';
+import { ProductCategory, QuantityUnit } from '../../../domain/enums';
 import { PantryController } from './pantry.controller';
 
 describe('PantryController', () => {
@@ -134,8 +134,48 @@ describe('PantryController', () => {
       productTypeSearchResults: 25,
       activeInventoryLotsPerUser: 1000,
       archivedInventoryLotsPerUser: 250,
+      archivedPantryPageSize: 50,
       inventoryLotsPerProductType: 500,
       shoppingCheckoutItems: 50,
+    });
+  });
+
+  it('loads archived pantry items with independent cursors', async () => {
+    getArchivedPantryItemsUseCase.execute.mockResolvedValueOnce({
+      ...makeArchivedItems(),
+      pagination: {
+        limit: 10,
+        productTypesNextCursor: 'next-types',
+        inventoryLotsNextCursor: 'next-lots',
+        hasMoreProductTypes: true,
+        hasMoreInventoryLots: true,
+      },
+    });
+
+    const response = await controller.archived(makeCurrentUser('user-1'), {
+      limit: 10,
+      productTypesCursor: 'types-cursor',
+      inventoryLotsCursor: 'lots-cursor',
+      includeProductTypes: true,
+      includeInventoryLots: false,
+    });
+
+    expect(getArchivedPantryItemsUseCase.execute).toHaveBeenCalledWith(
+      'user-1',
+      {
+        limit: 10,
+        productTypesCursor: 'types-cursor',
+        inventoryLotsCursor: 'lots-cursor',
+        includeProductTypes: true,
+        includeInventoryLots: false,
+      },
+    );
+    expect(response.pagination).toEqual({
+      limit: 10,
+      productTypesNextCursor: 'next-types',
+      inventoryLotsNextCursor: 'next-lots',
+      hasMoreProductTypes: true,
+      hasMoreInventoryLots: true,
     });
   });
 
@@ -480,14 +520,15 @@ function makeArchivedItems() {
         id: 'type-1',
         userId: 'user-1',
         baseName: 'Detergente',
-        category: 'cleaning' as const,
-        defaultUnit: 'lt' as const,
+        category: ProductCategory.CLEANING,
+        defaultUnit: QuantityUnit.LITER,
         planningSettings: {
           planningEnabled: true,
         },
         shoppingMetadata: {
           householdStaple: false,
           buyOnlyOnPromo: false,
+          replenishWhenLow: true,
         },
         archivedAt: timestamp,
         createdAt: timestamp,
@@ -501,7 +542,7 @@ function makeArchivedItems() {
         productTypeId: 'type-1',
         variantName: 'Botella',
         quantity: 1,
-        unit: 'lt' as const,
+        unit: QuantityUnit.LITER,
         archivedAt: timestamp,
         createdAt: timestamp,
         updatedAt: timestamp,

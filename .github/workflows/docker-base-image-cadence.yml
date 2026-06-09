@@ -1,0 +1,36 @@
+name: Docker Base Image Cadence
+
+on:
+  schedule:
+    - cron: '0 15 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-node-base-digest:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - name: Compare pinned Node base image digest
+        run: |
+          set -euo pipefail
+
+          current_digest="$(docker buildx imagetools inspect node:22-alpine | awk '/^Digest:/ { print $2; exit }')"
+          pinned_references="$(grep -RhoE 'node:22-alpine@sha256:[a-f0-9]+' backend/Dockerfile frontend/Dockerfile | sort -u)"
+          pinned_count="$(printf '%s\n' "$pinned_references" | sed '/^$/d' | wc -l | tr -d ' ')"
+          expected_reference="node:22-alpine@$current_digest"
+
+          echo "Current node:22-alpine digest: $current_digest"
+          echo "Pinned references:"
+          printf '%s\n' "$pinned_references"
+
+          if [ "$pinned_count" -ne 1 ] || [ "$pinned_references" != "$expected_reference" ]; then
+            echo "::error::Pinned Docker base image digest is stale or inconsistent. Update backend/Dockerfile and frontend/Dockerfile, rebuild, and rerun Trivy scans."
+            exit 1
+          fi
+
+          echo "Docker base image digest is current."

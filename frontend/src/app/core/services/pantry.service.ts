@@ -22,6 +22,7 @@ import {
   ApiShoppingRouteCategoryGroup,
   ApiShoppingRouteGroup,
   ArchivedPantryItems,
+  ArchivedPantryQuery,
   ArchivePantryItemRequest,
   CloseShoppingPurchaseRequest,
   ConsumeInventoryLotRequest,
@@ -262,8 +263,11 @@ export class PantryService {
     });
   }
 
-  getArchivedPantryItems(): Observable<ArchivedPantryItems> {
+  getArchivedPantryItems(
+    query: ArchivedPantryQuery = {},
+  ): Observable<ArchivedPantryItems> {
     return this.http.get<ApiArchivedPantryItems>(this.archivedPantryUrl, {
+      params: this.toArchivedPantryParams(query),
       withCredentials: true,
     }).pipe(
       map((items) => ({
@@ -273,6 +277,7 @@ export class PantryService {
         inventoryLots: items.inventoryLots.map((inventoryLot) =>
           this.normalizeInventoryLot(inventoryLot),
         ),
+        pagination: items.pagination,
       })),
     );
   }
@@ -364,6 +369,16 @@ export class PantryService {
       createdAt: new Date(productType.createdAt),
       updatedAt: new Date(productType.updatedAt),
     };
+  }
+
+  private toArchivedPantryParams(
+    query: ArchivedPantryQuery,
+  ): Record<string, string> {
+    return Object.fromEntries(
+      Object.entries(query)
+        .filter(([, value]) => value !== undefined)
+        .map(([key, value]) => [key, String(value)]),
+    );
   }
 
   private normalizeInventoryLot(inventoryLot: ApiInventoryLot): InventoryLot {

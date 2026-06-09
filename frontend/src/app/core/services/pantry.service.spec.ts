@@ -528,6 +528,7 @@ describe('PantryService', () => {
       expect(archivedItems.inventoryLots[0].purchaseDate).toEqual(
         new Date('2026-04-01T00:00:00.000Z'),
       );
+      expect(archivedItems.pagination?.hasMoreInventoryLots).toBeTrue();
     });
     const archivedItemsRequest = httpMock.expectOne(
       `${environment.apiUrl}/pantry/archived`,
@@ -551,6 +552,41 @@ describe('PantryService', () => {
           updatedAt: '2026-04-24T00:00:00.000Z',
         },
       ],
+      pagination: {
+        limit: 50,
+        inventoryLotsNextCursor: 'next-lots',
+        hasMoreProductTypes: false,
+        hasMoreInventoryLots: true,
+      },
+    });
+  });
+
+  it('passes archived pantry cursor query parameters', () => {
+    service
+      .getArchivedPantryItems({
+        limit: 10,
+        productTypesCursor: 'types-cursor',
+        includeInventoryLots: false,
+      })
+      .subscribe();
+
+    const request = httpMock.expectOne((candidate) => {
+      return (
+        candidate.url === `${environment.apiUrl}/pantry/archived` &&
+        candidate.params.get('limit') === '10' &&
+        candidate.params.get('productTypesCursor') === 'types-cursor' &&
+        candidate.params.get('includeInventoryLots') === 'false'
+      );
+    });
+    expect(request.request.withCredentials).toBeTrue();
+    request.flush({
+      productTypes: [],
+      inventoryLots: [],
+      pagination: {
+        limit: 10,
+        hasMoreProductTypes: false,
+        hasMoreInventoryLots: false,
+      },
     });
   });
 

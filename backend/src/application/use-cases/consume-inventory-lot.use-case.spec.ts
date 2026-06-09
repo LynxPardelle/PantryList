@@ -12,6 +12,7 @@ describe('ConsumeInventoryLotUseCase', () => {
     findByUserId: jest.fn(),
     findByProductTypeId: jest.fn(),
     findArchivedByUserId: jest.fn(),
+    findArchivedPageByUserId: jest.fn(),
     reassignUserOwnership: jest.fn(),
     delete: jest.fn(),
     deleteByProductTypeId: jest.fn(),

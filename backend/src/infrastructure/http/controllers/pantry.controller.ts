@@ -1,5 +1,6 @@
 import {
   Body,
+  BadRequestException,
   Controller,
   Delete,
   ForbiddenException,
@@ -10,6 +11,7 @@ import {
   NotFoundException,
   Param,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -34,6 +36,7 @@ import {
   MAX_ACTIVE_INVENTORY_LOTS_PER_USER,
   MAX_ACTIVE_PRODUCT_TYPES_PER_USER,
   MAX_ARCHIVED_INVENTORY_LOTS_PER_USER,
+  MAX_ARCHIVED_PANTRY_PAGE_SIZE,
   MAX_ARCHIVED_PRODUCT_TYPES_PER_USER,
   MAX_INVENTORY_LOTS_PER_PRODUCT_TYPE,
   MAX_PRODUCT_TYPE_SEARCH_RESULTS,
@@ -44,6 +47,7 @@ import { AuthCookieService } from '../auth/auth-cookie.service';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
 import { ArchivedPantryItemsResponseDto } from '../dtos/archived-pantry-items-response.dto';
+import { ArchivedPantryQueryDto } from '../dtos/archived-pantry-query.dto';
 import { CheckoutPantryDto } from '../dtos/checkout-pantry.dto';
 import { CreateShoppingShareDto } from '../dtos/create-shopping-share.dto';
 import { InventoryLotResponseDto } from '../dtos/inventory-lot-response.dto';
@@ -109,12 +113,14 @@ export class PantryController {
   @ApiOperation({ summary: 'Obtener elementos archivados de la despensa' })
   async archived(
     @CurrentUser() currentUser: AuthenticatedUser,
+    @Query() query: ArchivedPantryQueryDto,
   ): Promise<ArchivedPantryItemsResponseDto> {
     const access = await this.resolveHouseholdPantryAccessUseCase.executeRead(
       currentUser.userId,
     );
-    const archivedItems = await this.getArchivedPantryItemsUseCase.execute(
+    const archivedItems = await this.getPaginatedArchivedItems(
       access.pantryOwnerUserId,
+      query,
     );
 
     return this.toArchivedResponse(archivedItems);
@@ -328,7 +334,35 @@ export class PantryController {
       inventoryLots: archivedItems.inventoryLots.map((lot) =>
         InventoryLotMapper.toResponse(InventoryLot.fromPrimitives(lot)),
       ),
+      pagination: archivedItems.pagination,
     };
+  }
+
+  private async getPaginatedArchivedItems(
+    pantryOwnerUserId: string,
+    query: ArchivedPantryQueryDto,
+  ): Promise<ArchivedPantryItems> {
+    try {
+      return await this.getArchivedPantryItemsUseCase.execute(
+        pantryOwnerUserId,
+        {
+          limit: query.limit,
+          productTypesCursor: query.productTypesCursor,
+          inventoryLotsCursor: query.inventoryLotsCursor,
+          includeProductTypes: query.includeProductTypes,
+          includeInventoryLots: query.includeInventoryLots,
+        },
+      );
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message.toLocaleLowerCase('en').includes('cursor')
+      ) {
+        throw new BadRequestException('Invalid archived pantry cursor');
+      }
+
+      throw error;
+    }
   }
 
   private getPantryDataLimits(): PantryDataLimitsResponseDto {
@@ -338,6 +372,7 @@ export class PantryController {
       productTypeSearchResults: MAX_PRODUCT_TYPE_SEARCH_RESULTS,
       activeInventoryLotsPerUser: MAX_ACTIVE_INVENTORY_LOTS_PER_USER,
       archivedInventoryLotsPerUser: MAX_ARCHIVED_INVENTORY_LOTS_PER_USER,
+      archivedPantryPageSize: MAX_ARCHIVED_PANTRY_PAGE_SIZE,
       inventoryLotsPerProductType: MAX_INVENTORY_LOTS_PER_PRODUCT_TYPE,
       shoppingCheckoutItems: MAX_SHOPPING_CHECKOUT_ITEMS,
     };

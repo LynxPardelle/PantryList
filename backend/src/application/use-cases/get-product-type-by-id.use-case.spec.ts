@@ -10,6 +10,7 @@ describe('GetProductTypeByIdUseCase', () => {
     findById: jest.fn(),
     findByUserId: jest.fn(),
     findArchivedByUserId: jest.fn(),
+    findArchivedPageByUserId: jest.fn(),
     searchByUserId: jest.fn(),
     findByBaseName: jest.fn(),
     reassignUserOwnership: jest.fn(),

@@ -13,6 +13,7 @@ describe('inventory lot archive use cases', () => {
     findById: jest.fn(),
     findByUserId: jest.fn(),
     findArchivedByUserId: jest.fn(),
+    findArchivedPageByUserId: jest.fn(),
     findByProductTypeId: jest.fn(),
     reassignUserOwnership: jest.fn(),
     delete: jest.fn(),

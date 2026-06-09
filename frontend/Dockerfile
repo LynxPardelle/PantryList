@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM node:22-alpine AS build
+FROM node:22-alpine@sha256:968df39aedcea65eeb078fb336ed7191baf48f972b4479711397108be0966920 AS build
 
 WORKDIR /app
 
@@ -12,7 +12,7 @@ RUN npm run build \
     && npm prune --omit=dev \
     && npm cache clean --force
 
-FROM node:22-alpine AS runtime
+FROM node:22-alpine@sha256:968df39aedcea65eeb078fb336ed7191baf48f972b4479711397108be0966920 AS runtime
 
 ENV NODE_ENV=production
 ENV PORT=4000

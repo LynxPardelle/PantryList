@@ -1,4 +1,5 @@
 import { ProductType } from '../entities/product-type.entity';
+import { CursorPage, CursorPageOptions } from './cursor-page';
 import { ProductTypeId } from '../value-objects/product-type-id.vo';
 import { UserId } from '../value-objects/user-id.vo';
 
@@ -7,6 +8,10 @@ export interface ProductTypeRepository {
   findById(id: ProductTypeId): Promise<ProductType | null>;
   findByUserId(userId: UserId): Promise<ProductType[]>;
   findArchivedByUserId(userId: UserId): Promise<ProductType[]>;
+  findArchivedPageByUserId(
+    userId: UserId,
+    options: CursorPageOptions,
+  ): Promise<CursorPage<ProductType>>;
   searchByUserId(userId: UserId, search?: string): Promise<ProductType[]>;
   findByBaseName(userId: UserId, baseName: string): Promise<ProductType | null>;
   reassignUserOwnership(fromUserId: UserId, toUserId: UserId): Promise<number>;

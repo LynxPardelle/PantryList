@@ -104,7 +104,79 @@ describe('DynamoDbProductTypeRepository', () => {
       expect.objectContaining({ Key: { id: 'type-2' } }),
     ]);
   });
+
+  it('pages archived product types without dropping filtered DynamoDB results', async () => {
+    const firstItem = {
+      ...buildProductTypeItem('type-1', 'Arroz'),
+      archivedAt: '2026-05-20T00:00:00.000Z',
+    };
+    const secondItem = {
+      ...buildProductTypeItem('type-2', 'Frijol'),
+      archivedAt: '2026-05-19T00:00:00.000Z',
+    };
+    const dynamoDb = {
+      send: jest
+        .fn()
+        .mockImplementationOnce(async (command: QueryCommand) => {
+          expect(command.input.Limit).toBe(2);
+
+          return {
+            Items: [firstItem],
+            LastEvaluatedKey: { id: firstItem.id },
+          };
+        })
+        .mockImplementationOnce(async (command: QueryCommand) => {
+          expect(command.input.Limit).toBe(1);
+          expect(command.input.ExclusiveStartKey).toEqual({ id: firstItem.id });
+
+          return {
+            Items: [secondItem],
+            LastEvaluatedKey: { id: secondItem.id },
+          };
+        }),
+    } as unknown as DynamoDbDocumentClientService;
+    const repository = new DynamoDbProductTypeRepository(
+      dynamoDb,
+      makeConfigService('product-types'),
+    );
+
+    const page = await repository.findArchivedPageByUserId(
+      UserId.fromString('user-1'),
+      { limit: 2 },
+    );
+
+    expect(page.items.map((item) => item.id.toString())).toEqual([
+      'type-1',
+      'type-2',
+    ]);
+    expect(page.nextCursor).toBeDefined();
+  });
+
+  it('rejects invalid archived product type cursors before querying DynamoDB', async () => {
+    const dynamoDb = {
+      send: jest.fn(),
+    } as unknown as DynamoDbDocumentClientService;
+    const repository = new DynamoDbProductTypeRepository(
+      dynamoDb,
+      makeConfigService('product-types'),
+    );
+
+    await expect(
+      repository.findArchivedPageByUserId(UserId.fromString('user-1'), {
+        limit: 2,
+        cursor: 'bad-cursor',
+      }),
+    ).rejects.toThrow('Invalid archived product type cursor');
+    expect(dynamoDb.send).not.toHaveBeenCalled();
+  });
 });
+
+function makeConfigService(tableName: string): ConfigService {
+  return {
+    getOrThrow: jest.fn().mockReturnValue(tableName),
+    get: jest.fn(),
+  } as unknown as ConfigService;
+}
 
 function buildProductTypeItem(id: string, baseName: string) {
   return {

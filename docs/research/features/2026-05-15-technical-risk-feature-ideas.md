@@ -213,7 +213,8 @@ Feature idea:
 Status note:
 
 - Request IDs and safe operation logs are partially implemented for key pantry, household, sharing, and checkout flows.
-- Metrics, alerting, and external error reporting remain pending.
+- A protected in-memory `/api/metrics` snapshot is implemented when `METRICS_ACCESS_TOKEN` is configured.
+- External metrics sinks, durable alert delivery, and external error reporting remain pending.
 
 ### 10. Pagination And Query Limits
 
@@ -239,7 +240,8 @@ Feature idea:
 Status note:
 
 - Current export/profile metadata exposes explicit query limits, and repository paths use bounded constants for several reads.
-- True cursor pagination for high-volume pantry, archived, and legacy data remains pending.
+- Archived pantry reads now support cursor pagination and export/profile metadata exposes the archived page size.
+- Active pantry overview reads and legacy product reads still need cursor pagination if volume starts stressing bounded query paths.
 
 ### 11. Security CI Pipeline
 
@@ -310,7 +312,8 @@ Feature idea:
 
 Status note:
 
-- Trivy image scanning is implemented in CI for backend and frontend images. Digest pinning and base-image cadence remain pending.
+- Trivy image scanning is implemented in CI for backend and frontend images.
+- Backend and frontend Dockerfiles are pinned to the current `node:22-alpine` digest, and a weekly workflow checks whether the base-image digest drifted.
 
 ### 14. GitHub Actions Node Runtime Migration
 
@@ -427,9 +430,9 @@ Feature idea:
 
 ## Recommended Next Technical Batch
 
-1. Metrics and alerting beyond current request-id logs.
-2. Cursor pagination for high-volume pantry, archived, and legacy reads.
-3. Optional Docker image digest pinning plus base-image update cadence.
+1. Full session/device list beyond Cognito global sign-out.
+2. External metrics sink and alert delivery for the protected metrics snapshot.
+3. Cursor pagination for active pantry overview and legacy product reads if production data volume requires it.
 4. Direct-origin validation checklist after CloudFront or Dokploy changes.
 5. Serverless microservice migration discovery for the Nest-to-AWS transition.
 

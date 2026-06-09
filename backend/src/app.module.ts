@@ -4,6 +4,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import * as Joi from 'joi';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { ApiMetricsService } from './application/services/api-metrics.service';
 import {
   COGNITO_AUTH_URL_BUILDER,
   COGNITO_TOKEN_CLIENT,
@@ -274,6 +275,16 @@ const shoppingShareRepositoryProvider = useDynamoDb
         RATE_LIMIT_TRUST_PROXY: Joi.string()
           .valid('true', 'false')
           .default('false'),
+        METRICS_SLOW_REQUEST_THRESHOLD_MS: Joi.number()
+          .integer()
+          .positive()
+          .default(1000),
+        METRICS_ERROR_RATE_ALERT_THRESHOLD: Joi.number()
+          .min(0)
+          .max(1)
+          .default(0.05),
+        METRICS_MAX_ROUTES: Joi.number().integer().positive().default(50),
+        METRICS_ACCESS_TOKEN: Joi.string().allow('').optional(),
         AUTH_ACCESS_COOKIE_TTL_SECONDS: Joi.number()
           .integer()
           .positive()
@@ -385,6 +396,7 @@ const shoppingShareRepositoryProvider = useDynamoDb
   ],
   providers: [
     AppService,
+    ApiMetricsService,
     AuthCookieService,
     AuthStepUpService,
     AccessTokenGuard,

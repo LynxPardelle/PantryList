@@ -1,5 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import { NestFastifyApplication } from '@nestjs/platform-fastify';
+import { ApiMetricsService } from './application/services/api-metrics.service';
 import { configureApp } from './app.setup';
 
 describe('configureApp hardening', () => {
@@ -52,6 +53,8 @@ describe('configureApp hardening', () => {
 });
 
 function makeApp(): NestFastifyApplication {
+  const metricsService = new ApiMetricsService();
+
   return {
     setGlobalPrefix: jest.fn(),
     enableCors: jest.fn(),
@@ -60,6 +63,7 @@ function makeApp(): NestFastifyApplication {
         addHook: jest.fn(),
       }),
     }),
+    get: jest.fn().mockReturnValue(metricsService),
     register: jest.fn().mockResolvedValue(undefined),
     useGlobalPipes: jest.fn(),
     useGlobalFilters: jest.fn(),
