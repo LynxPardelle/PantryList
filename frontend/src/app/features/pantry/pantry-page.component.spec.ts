@@ -18,10 +18,12 @@ import {
   PantryOverviewItem,
   PantryStapleItem,
   PantryValueInsights,
+  PriceReferenceItem,
   ProductType,
   SavedShoppingList,
   ShoppingShare,
   ShoppingPlanItem,
+  WasteEventSummary,
 } from '../../shared/models/pantry.model';
 import {
   selectExpiredEntryAlert,
@@ -1024,6 +1026,197 @@ describe('PantryPageComponent', () => {
       }),
     );
     expect(pantryService.registerLot).not.toHaveBeenCalled();
+  });
+
+  it('applies the prepared leftovers template with a short expiration', () => {
+    const leftoversTemplate = component.stapleTemplates.find(
+      (template) => template.label === 'Sobras preparadas',
+    );
+
+    expect(leftoversTemplate).toBeDefined();
+
+    component.applyStapleTemplate(leftoversTemplate!);
+    const rawValue = component.lotForm.getRawValue();
+
+    expect(rawValue).toEqual(
+      jasmine.objectContaining({
+        selectionMode: 'new',
+        newBaseName: 'Sobras de comida',
+        storageLocation: 'Sobras',
+        shoppingLocation: 'Otro',
+        householdStaple: false,
+        replenishWhenLow: false,
+      }),
+    );
+    expect(rawValue.expiresAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(rawValue.purchaseDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(pantryService.registerLot).not.toHaveBeenCalled();
+  });
+
+  it('builds a use-first list with risk estimates and leftover lots', () => {
+    const criticalLot = makePantryLotSummary({
+      lotId: 'lot-critical',
+      quantity: 2,
+      unit: 'lt',
+      expiresAt: new Date('2026-06-10T00:00:00.000Z'),
+      expirationStatus: 'critical',
+    });
+    const expiringGroup = {
+      productTypeId: 'type-milk',
+      baseName: 'Leche',
+      category: 'food' as const,
+      totalExpiringQuantity: 2,
+      nextExpirationAt: new Date('2026-06-10T00:00:00.000Z'),
+      lotCount: 1,
+      lots: [criticalLot],
+    };
+    const pantryGroups = [
+      makePantryGroup({
+        productTypeId: 'type-milk',
+        baseName: 'Leche',
+        category: 'food',
+        defaultUnit: 'lt',
+        lots: [criticalLot],
+        shoppingMetadata: {
+          householdStaple: true,
+          buyOnlyOnPromo: false,
+          replenishWhenLow: true,
+          estimatedUnitPrice: 20,
+        },
+      }),
+      makePantryGroup({
+        productTypeId: 'type-leftovers',
+        baseName: 'Sobras',
+        category: 'food',
+        defaultUnit: 'piezas',
+        lots: [
+          makePantryLotSummary({
+            lotId: 'lot-leftovers',
+            quantity: 1,
+            unit: 'piezas',
+            expirationStatus: 'none',
+          }),
+        ],
+        shoppingMetadata: {
+          storageLocation: 'Sobras',
+          householdStaple: false,
+          buyOnlyOnPromo: false,
+          replenishWhenLow: false,
+        },
+      }),
+    ];
+
+    const items = component.getUseFirstItems([expiringGroup], pantryGroups);
+
+    expect(items.map((item) => item.lot.lotId)).toEqual([
+      'lot-critical',
+      'lot-leftovers',
+    ]);
+    expect(items[0].estimatedLoss).toBe(40);
+    expect(component.getUseFirstAction(items[0])).toBe('Usar hoy');
+    expect(component.getUseFirstSummary(items)).toBe(
+      '2 prioridad(es) para usar primero · 40.00 moneda local en riesgo',
+    );
+  });
+
+  it('builds monthly staple and waste summaries', () => {
+    expect(
+      component.getMonthlyStapleReport([
+        {
+          productTypeId: 'type-rice',
+          baseName: 'Arroz',
+          category: 'food',
+          defaultUnit: 'kg',
+          totalQuantity: 1,
+          suggestedPurchaseQuantity: 2,
+          estimatedRestockTotal: 90,
+          status: 'low',
+        },
+      ]),
+    ).toBe('1 por revisar · 90.00 moneda local para reponer');
+
+    expect(
+      component.getMonthlyWasteProjection({
+        userId: 'tester',
+        generatedAt: new Date('2026-06-09T00:00:00.000Z'),
+        windowDays: 15,
+        eventCount: 2,
+        estimatedLossTotal: 50,
+        totalQuantityByUnit: [],
+        reasonBreakdown: [],
+        recentEvents: [],
+      }),
+    ).toBe('Mes estimado: 100.00 moneda local');
+  });
+
+  it('builds a recent pantry timeline from purchases, waste and prices', () => {
+    const wasteEvents: WasteEventSummary[] = [
+      {
+        id: 'waste-1',
+        productName: 'Pan',
+        quantity: 1,
+        unit: 'piezas',
+        reason: 'expired',
+        estimatedLoss: 18,
+        occurredAt: new Date('2026-06-08T12:00:00.000Z'),
+      },
+    ];
+    const priceReferences: PriceReferenceItem[] = [
+      {
+        productTypeId: 'type-milk',
+        baseName: 'Leche',
+        category: 'food',
+        defaultUnit: 'lt',
+        shoppingLocation: 'Supermercado',
+        estimatedUnitPrice: 24,
+        buyOnlyOnPromo: false,
+        updatedAt: new Date('2026-06-09T00:00:00.000Z'),
+        priceHistory: [
+          {
+            shoppingLocation: 'Supermercado',
+            unit: 'lt',
+            estimatedUnitPrice: 24,
+            recordedAt: new Date('2026-06-09T00:00:00.000Z'),
+          },
+        ],
+      },
+    ];
+
+    const timeline = component.getPantryTimeline(
+      [
+        makePantryGroup({
+          productTypeId: 'type-milk',
+          baseName: 'Leche',
+          category: 'food',
+          defaultUnit: 'lt',
+          lots: [
+            makePantryLotSummary({
+              lotId: 'lot-milk',
+              quantity: 2,
+              unit: 'lt',
+              purchaseDate: new Date('2026-06-07T12:00:00.000Z'),
+            }),
+          ],
+          shoppingMetadata: {
+            householdStaple: true,
+            buyOnlyOnPromo: false,
+            replenishWhenLow: true,
+            estimatedUnitPrice: 24,
+          },
+        }),
+      ],
+      wasteEvents,
+      priceReferences,
+    );
+
+    expect(timeline.map((item) => item.kind)).toEqual([
+      'price',
+      'waste',
+      'purchase',
+    ]);
+    expect(timeline[0].detail).toContain('Precio 24.00 moneda local');
+    expect(timeline[2].amount).toBe(48);
+    expect(component.getTimelineKindLabel('purchase')).toBe('Compra');
   });
 
   it('loads active shopping shares and formats expiry in Central time', () => {

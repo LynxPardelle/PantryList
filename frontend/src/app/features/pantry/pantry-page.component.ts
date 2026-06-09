@@ -30,6 +30,7 @@ import {
   DEPLETION_PERIODS,
   DepletionPeriod,
   ExpirationStatus,
+  ExpiringProductGroup,
   InventoryLot,
   PRODUCT_CATEGORIES,
   PRODUCT_UNITS,
@@ -58,6 +59,7 @@ import {
   ShoppingRouteGroup,
   WasteOverview,
   WasteReason,
+  WasteEventSummary,
 } from '../../shared/models/pantry.model';
 import * as PantryActions from '../../store/pantry/pantry.actions';
 import {
@@ -177,6 +179,28 @@ interface StapleTemplate {
   depletionConsumeAmount: number;
   depletionEveryAmount: number;
   depletionEveryPeriod: DepletionPeriod;
+  suggestedShelfLifeDays?: number;
+}
+
+interface UseFirstItem {
+  productTypeId: string;
+  baseName: string;
+  category: ProductCategory;
+  lot: PantryLotSummary;
+  priority: number;
+  reason: string;
+  estimatedLoss?: number;
+}
+
+type PantryTimelineItemKind = 'purchase' | 'waste' | 'price';
+
+interface PantryTimelineItem {
+  id: string;
+  kind: PantryTimelineItemKind;
+  title: string;
+  detail: string;
+  happenedAt: Date;
+  amount?: number;
 }
 
 const STAPLE_TEMPLATES: StapleTemplate[] = [
@@ -239,6 +263,22 @@ const STAPLE_TEMPLATES: StapleTemplate[] = [
     depletionConsumeAmount: 2,
     depletionEveryAmount: 1,
     depletionEveryPeriod: 'month',
+  },
+  {
+    label: 'Sobras preparadas',
+    baseName: 'Sobras de comida',
+    category: 'food',
+    unit: 'piezas',
+    storageLocation: 'Sobras',
+    shoppingLocation: 'Otro',
+    householdStaple: false,
+    buyOnlyOnPromo: false,
+    replenishWhenLow: false,
+    enableDurability: false,
+    depletionConsumeAmount: 1,
+    depletionEveryAmount: 1,
+    depletionEveryPeriod: 'week',
+    suggestedShelfLifeDays: 3,
   },
 ];
 const SHOPPING_LOCATION_ORDER = [
@@ -588,6 +628,17 @@ export class PantryPageComponent implements OnInit {
 
   applyStapleTemplate(template: StapleTemplate): void {
     this.setSelectionMode('new');
+    const now = new Date();
+    const suggestedExpirationDate =
+      template.suggestedShelfLifeDays === undefined
+        ? ''
+        : toDateInputValue(
+            new Date(
+              now.getFullYear(),
+              now.getMonth(),
+              now.getDate() + template.suggestedShelfLifeDays,
+            ),
+          );
     this.lotForm.patchValue(
       {
         newBaseName: template.baseName,
@@ -602,7 +653,11 @@ export class PantryPageComponent implements OnInit {
         depletionConsumeAmount: template.depletionConsumeAmount,
         depletionEveryAmount: template.depletionEveryAmount,
         depletionEveryPeriod: template.depletionEveryPeriod,
-        depletionAnchorDate: toDateInputValue(new Date()),
+        depletionAnchorDate: toDateInputValue(now),
+        expiresAt: suggestedExpirationDate,
+        purchaseDate: template.suggestedShelfLifeDays === undefined
+          ? ''
+          : toDateInputValue(now),
       },
       { emitEvent: false },
     );
@@ -1288,6 +1343,150 @@ export class PantryPageComponent implements OnInit {
     return `Semana estimada: ${this.formatShoppingPrice(weeklyLoss)}`;
   }
 
+  getMonthlyWasteProjection(overview: WasteOverview): string {
+    if (
+      overview.eventCount === 0 ||
+      overview.estimatedLossTotal <= 0 ||
+      overview.windowDays <= 0
+    ) {
+      return 'Mes estimado: 0.00 moneda local';
+    }
+
+    const monthlyLoss = Number(
+      ((overview.estimatedLossTotal / overview.windowDays) * 30).toFixed(2)
+    );
+
+    return `Mes estimado: ${this.formatShoppingPrice(monthlyLoss)}`;
+  }
+
+  getUseFirstItems(
+    expiringGroups: ExpiringProductGroup[],
+    pantryGroups: PantryOverviewItem[]
+  ): UseFirstItem[] {
+    const pantryGroupsByProductType = new Map(
+      pantryGroups.map((group) => [group.productTypeId, group])
+    );
+    const itemsByLotId = new Map<string, UseFirstItem>();
+
+    for (const group of expiringGroups) {
+      const pantryGroup = pantryGroupsByProductType.get(group.productTypeId);
+
+      for (const lot of group.lots) {
+        if (!['expired', 'critical', 'soon'].includes(lot.expirationStatus)) {
+          continue;
+        }
+
+        itemsByLotId.set(lot.lotId, {
+          productTypeId: group.productTypeId,
+          baseName: group.baseName,
+          category: group.category,
+          lot,
+          priority: this.getUseFirstPriority(lot.expirationStatus),
+          reason: this.getUseFirstReason(lot),
+          estimatedLoss: this.getEstimatedLotValue(pantryGroup, lot),
+        });
+      }
+    }
+
+    for (const group of pantryGroups) {
+      const storageLocation =
+        this.resolveShoppingMetadata(group.shoppingMetadata).storageLocation ??
+        '';
+
+      if (storageLocation.toLocaleLowerCase('es') !== 'sobras') {
+        continue;
+      }
+
+      for (const lot of group.lots) {
+        if (itemsByLotId.has(lot.lotId)) {
+          continue;
+        }
+
+        itemsByLotId.set(lot.lotId, {
+          productTypeId: group.productTypeId,
+          baseName: group.baseName,
+          category: group.category,
+          lot,
+          priority: 4,
+          reason: 'Sobra registrada',
+          estimatedLoss: this.getEstimatedLotValue(group, lot),
+        });
+      }
+    }
+
+    return Array.from(itemsByLotId.values())
+      .sort((left, right) => {
+        const priorityDifference = left.priority - right.priority;
+
+        if (priorityDifference !== 0) {
+          return priorityDifference;
+        }
+
+        const leftExpiration =
+          left.lot.expiresAt?.getTime() ?? Number.MAX_SAFE_INTEGER;
+        const rightExpiration =
+          right.lot.expiresAt?.getTime() ?? Number.MAX_SAFE_INTEGER;
+
+        if (leftExpiration !== rightExpiration) {
+          return leftExpiration - rightExpiration;
+        }
+
+        return left.baseName.localeCompare(right.baseName, 'es', {
+          sensitivity: 'base',
+        });
+      })
+      .slice(0, 8);
+  }
+
+  getUseFirstSummary(items: UseFirstItem[]): string {
+    if (items.length === 0) {
+      return 'Sin acciones urgentes de uso.';
+    }
+
+    const estimatedLoss = Number(
+      items
+        .reduce((sum, item) => sum + (item.estimatedLoss ?? 0), 0)
+        .toFixed(2)
+    );
+    const lossCopy =
+      estimatedLoss > 0
+        ? ` · ${this.formatShoppingPrice(estimatedLoss)} en riesgo`
+        : '';
+
+    return `${items.length} prioridad(es) para usar primero${lossCopy}`;
+  }
+
+  getUseFirstAction(item: UseFirstItem): string {
+    if (item.lot.expirationStatus === 'expired') {
+      return 'Separar o registrar merma';
+    }
+
+    if (item.lot.expirationStatus === 'critical') {
+      return 'Usar hoy';
+    }
+
+    if (item.lot.expirationStatus === 'soon') {
+      return 'Planear esta semana';
+    }
+
+    return 'Revisar antes de comprar más';
+  }
+
+  openUseFirstLot(item: UseFirstItem): void {
+    this.expandedProductTypeIds.add(item.productTypeId);
+    this.changeDetector.markForCheck();
+
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    setTimeout(() => {
+      document
+        .getElementById(`group-panel-${item.productTypeId}`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
+
   getDuplicatePurchaseWarningCount(items: ShoppingPlanItem[]): number {
     return items.filter((item) => item.totalQuantity > 0 && item.urgency !== 'depleted')
       .length;
@@ -1355,6 +1554,109 @@ export class PantryPageComponent implements OnInit {
     return total > 0
       ? `Reposición estimada: ${this.formatShoppingPrice(total)}`
       : 'Sin reposición estimada';
+  }
+
+  getMonthlyStapleReport(items: PantryStapleItem[]): string {
+    if (items.length === 0) {
+      return 'Sin básicos para reporte mensual';
+    }
+
+    const attentionCount = items.filter(
+      (item) => item.status !== 'available'
+    ).length;
+    const restockTotal = Number(
+      items
+        .reduce((sum, item) => sum + (item.estimatedRestockTotal ?? 0), 0)
+        .toFixed(2)
+    );
+
+    return `${attentionCount} por revisar · ${this.formatShoppingPrice(
+      restockTotal
+    )} para reponer`;
+  }
+
+  getPantryTimeline(
+    pantryGroups: PantryOverviewItem[],
+    wasteEvents: WasteEventSummary[] = [],
+    priceReferences: PriceReferenceItem[] = []
+  ): PantryTimelineItem[] {
+    const timeline: PantryTimelineItem[] = [];
+
+    for (const group of pantryGroups) {
+      for (const lot of group.lots) {
+        if (!lot.purchaseDate) {
+          continue;
+        }
+
+        timeline.push({
+          id: `purchase-${lot.lotId}`,
+          kind: 'purchase',
+          title: group.baseName,
+          detail: `${this.formatQuantity(lot.quantity, lot.unit)} comprado`,
+          happenedAt: lot.purchaseDate,
+          amount: this.getEstimatedLotValue(group, lot),
+        });
+      }
+    }
+
+    for (const event of wasteEvents) {
+      timeline.push({
+        id: `waste-${event.id}`,
+        kind: 'waste',
+        title: event.productName,
+        detail: `${this.wasteReasonLabels[event.reason]} · ${this.formatQuantity(
+          event.quantity,
+          event.unit
+        )}`,
+        happenedAt: event.occurredAt,
+        amount: event.estimatedLoss,
+      });
+    }
+
+    for (const item of priceReferences) {
+      const latestPrice = item.priceHistory
+        .slice()
+        .sort(
+          (left, right) =>
+            right.recordedAt.getTime() - left.recordedAt.getTime()
+        )[0];
+
+      if (!latestPrice) {
+        continue;
+      }
+
+      timeline.push({
+        id: `price-${item.productTypeId}-${latestPrice.recordedAt.getTime()}`,
+        kind: 'price',
+        title: item.baseName,
+        detail: `Precio ${this.formatShoppingPrice(
+          latestPrice.estimatedUnitPrice
+        )}${
+          latestPrice.shoppingLocation
+            ? ` · ${latestPrice.shoppingLocation}`
+            : ''
+        }`,
+        happenedAt: latestPrice.recordedAt,
+        amount: latestPrice.estimatedUnitPrice,
+      });
+    }
+
+    return timeline
+      .sort(
+        (left, right) =>
+          right.happenedAt.getTime() - left.happenedAt.getTime()
+      )
+      .slice(0, 10);
+  }
+
+  getTimelineKindLabel(kind: PantryTimelineItemKind): string {
+    const labels: Record<PantryTimelineItemKind, string> = {
+      purchase: 'Compra',
+      waste: 'Merma',
+      price: 'Precio',
+    };
+
+    return labels[kind];
   }
 
   buildShoppingPlanExportText(items: ShoppingPlanItem[]): string {
@@ -3307,6 +3609,43 @@ export class PantryPageComponent implements OnInit {
 
   private hasMissingShoppingPrices(items: ShoppingPlanItem[]): boolean {
     return items.some((item) => item.estimatedLineTotal === undefined);
+  }
+
+  private getUseFirstPriority(status: ExpirationStatus): number {
+    switch (status) {
+      case 'expired':
+        return 0;
+      case 'critical':
+        return 1;
+      case 'soon':
+        return 2;
+      default:
+        return 3;
+    }
+  }
+
+  private getUseFirstReason(lot: PantryLotSummary): string {
+    switch (lot.expirationStatus) {
+      case 'expired':
+        return 'Ya caducó';
+      case 'critical':
+        return 'Caduca hoy';
+      case 'soon':
+        return 'Caduca pronto';
+      default:
+        return 'Revisar';
+    }
+  }
+
+  private getEstimatedLotValue(
+    group: PantryOverviewItem | undefined,
+    lot: PantryLotSummary
+  ): number | undefined {
+    const estimatedUnitPrice = group?.shoppingMetadata?.estimatedUnitPrice;
+
+    return estimatedUnitPrice === undefined
+      ? undefined
+      : Number((estimatedUnitPrice * lot.quantity).toFixed(2));
   }
 
   private sumLotsByStatus(

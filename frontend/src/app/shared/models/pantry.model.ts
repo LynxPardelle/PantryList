@@ -63,6 +63,12 @@ export const STORAGE_LOCATION_OPTIONS = [
   'Botiquin',
   'Mascotas',
   'Bodega',
+  'Sobras',
+  'Comidas preparadas',
+  'Bebé',
+  'Oficina',
+  'Auto',
+  'Herramientas',
 ];
 export const SHOPPING_LOCATION_OPTIONS = [
   'Supermercado',

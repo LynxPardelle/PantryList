@@ -515,6 +515,54 @@
         }
       </article>
 
+      <article class="panel use-first-panel">
+        <div class="panel-header">
+          <div>
+            <p class="panel-kicker">Usar primero</p>
+            <h2>Evitar merma esta semana</h2>
+          </div>
+        </div>
+
+        @if (expiringGroups$ | async; as expiringGroups) {
+          @if (pantryGroups$ | async; as pantryGroups) {
+            @if (getUseFirstItems(expiringGroups, pantryGroups); as useFirstItems) {
+              <div class="shopping-plan-tools">
+                <strong>{{ getUseFirstSummary(useFirstItems) }}</strong>
+                <span>Gu&iacute;a desde caducidad, sobras y precio estimado</span>
+              </div>
+
+              @if (useFirstItems.length > 0) {
+                <div class="lot-table">
+                  @for (item of useFirstItems; track item.lot.lotId) {
+                    <article class="lot-row" [attr.data-status]="item.lot.expirationStatus">
+                      <div>
+                        <strong>{{ item.baseName }}</strong>
+                        <small>
+                          {{ getUseFirstAction(item) }} ·
+                          {{ item.reason }} ·
+                          {{ formatQuantity(item.lot.quantity, item.lot.unit) }}
+                          @if (item.estimatedLoss !== undefined) {
+                            · {{ formatShoppingPrice(item.estimatedLoss) }} en riesgo
+                          }
+                        </small>
+                      </div>
+                      <button type="button" class="secondary-button" (click)="openUseFirstLot(item)">
+                        Ver lote
+                      </button>
+                    </article>
+                  }
+                </div>
+              } @else {
+                <section class="empty-state compact-empty-state">
+                  <h3>Sin acciones urgentes.</h3>
+                  <p>Las sobras y lotes con caducidad cercana aparecer&aacute;n aqu&iacute; primero.</p>
+                </section>
+              }
+            }
+          }
+        }
+      </article>
+
       <article class="panel depletion-panel">
         <div class="panel-header">
           <div>
@@ -572,6 +620,7 @@
           <div class="shopping-plan-tools">
             <strong>{{ getStapleAttentionSummary(stapleItems) }}</strong>
             <span>{{ getStapleRestockSummary(stapleItems) }}</span>
+            <span>{{ getMonthlyStapleReport(stapleItems) }}</span>
           </div>
 
           @if (valueInsights$ | async; as valueInsights) {
@@ -654,6 +703,7 @@
             <strong>{{ waste.eventCount }} evento(s) en {{ waste.windowDays }} d&iacute;as</strong>
             <span>{{ formatShoppingPrice(waste.estimatedLossTotal) }}</span>
             <span>{{ getWeeklyWasteLossSummary(waste) }}</span>
+            <span>{{ getMonthlyWasteProjection(waste) }}</span>
             <span>{{ getWasteQuantitySummary(waste) }}</span>
           </div>
 
@@ -692,6 +742,46 @@
           }
         } @else if (wasteOverviewLoading) {
           <p class="loading-copy" aria-live="polite">Cargando merma...</p>
+        }
+      </article>
+
+      <article class="panel timeline-panel">
+        <div class="panel-header">
+          <div>
+            <p class="panel-kicker">Historial</p>
+            <h2>Compras, precios y merma</h2>
+          </div>
+        </div>
+
+        @if (pantryGroups$ | async; as pantryGroups) {
+          @if (priceReferenceItems$ | async; as priceReferenceItems) {
+            @if (getPantryTimeline(pantryGroups, wasteOverview?.recentEvents ?? [], priceReferenceItems); as timelineItems) {
+              @if (timelineItems.length > 0) {
+                <div class="lot-table">
+                  @for (event of timelineItems; track event.id) {
+                    <article class="lot-row" [attr.data-kind]="event.kind">
+                      <div>
+                        <strong>{{ event.title }}</strong>
+                        <small>
+                          {{ getTimelineKindLabel(event.kind) }} ·
+                          {{ event.detail }} ·
+                          {{ event.happenedAt | date:'dd MMM, HH:mm' }}
+                        </small>
+                      </div>
+                      @if (event.amount !== undefined) {
+                        <strong>{{ formatShoppingPrice(event.amount) }}</strong>
+                      }
+                    </article>
+                  }
+                </div>
+              } @else {
+                <section class="empty-state compact-empty-state">
+                  <h3>Sin historial reciente.</h3>
+                  <p>Las compras con fecha, precios y mermas registradas aparecer&aacute;n aqu&iacute;.</p>
+                </section>
+              }
+            }
+          }
         }
       </article>
 
