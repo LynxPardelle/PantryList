@@ -3,6 +3,7 @@ import { User } from '../../domain/entities/user.entity';
 import { UserAccountStatus } from '../../domain/enums';
 import { UserPreferences } from '../../domain/value-objects/user-preferences.vo';
 import { UserDao, UserPreferencesDao } from '../ports/daos';
+import { UserDeviceRepository } from '../../domain/repositories/user-device.repository';
 import { GetUserProfileUseCase } from './get-user-profile.use-case';
 
 describe('GetUserProfileUseCase', () => {
@@ -29,6 +30,12 @@ describe('GetUserProfileUseCase', () => {
         }),
       ),
     } as unknown as jest.Mocked<UserPreferencesDao>;
+    const userDeviceRepository = {
+      findById: jest.fn(),
+      findByUserId: jest.fn().mockResolvedValue([]),
+      save: jest.fn(),
+      deleteByUserId: jest.fn(),
+    } as unknown as jest.Mocked<UserDeviceRepository>;
     const configService = {
       get: jest.fn((key: string) => {
         const values: Record<string, string> = {
@@ -44,6 +51,7 @@ describe('GetUserProfileUseCase', () => {
     const profile = await new GetUserProfileUseCase(
       userDao,
       preferencesDao,
+      userDeviceRepository,
       configService,
     ).execute('user-1');
 
@@ -63,6 +71,8 @@ describe('GetUserProfileUseCase', () => {
         archivedRecordAutoDeleteEnabled: false,
         temporaryShoppingShareRetentionDays: 7,
       },
+      knownDevices: [],
     });
+    expect(userDeviceRepository.findByUserId).toHaveBeenCalled();
   });
 });

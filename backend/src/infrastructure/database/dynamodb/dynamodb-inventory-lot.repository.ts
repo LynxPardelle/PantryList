@@ -75,7 +75,7 @@ export class DynamoDbInventoryLotRepository implements InventoryLotRepository {
     const items = (result.Items ?? []) as InventoryLotItem[];
     const item = items[0];
 
-    return item ? this.toDomain(item) : null;
+    return item?.entityType === 'INVENTORY_LOT' ? this.toDomain(item) : null;
   }
 
   async findByUserId(userId: UserId): Promise<InventoryLot[]> {
@@ -130,9 +130,9 @@ export class DynamoDbInventoryLotRepository implements InventoryLotRepository {
         }),
       );
       items.push(
-        ...((result.Items ?? []) as InventoryLotItem[]).filter((item) =>
-          Boolean(item.archivedAt),
-        ),
+        ...((result.Items ?? []) as InventoryLotItem[])
+          .filter((item) => item.entityType === 'INVENTORY_LOT')
+          .filter((item) => Boolean(item.archivedAt)),
       );
       exclusiveStartKey = result.LastEvaluatedKey as
         | Record<string, unknown>
@@ -238,7 +238,11 @@ export class DynamoDbInventoryLotRepository implements InventoryLotRepository {
         }),
       );
 
-      items.push(...((result.Items ?? []) as InventoryLotItem[]));
+      items.push(
+        ...((result.Items ?? []) as InventoryLotItem[]).filter(
+          (item) => item.entityType === 'INVENTORY_LOT',
+        ),
+      );
       exclusiveStartKey = limit
         ? undefined
         : (result.LastEvaluatedKey as Record<string, unknown> | undefined);
@@ -273,7 +277,11 @@ export class DynamoDbInventoryLotRepository implements InventoryLotRepository {
         }),
       );
 
-      items.push(...((result.Items ?? []) as InventoryLotItem[]));
+      items.push(
+        ...((result.Items ?? []) as InventoryLotItem[]).filter(
+          (item) => item.entityType === 'INVENTORY_LOT',
+        ),
+      );
       exclusiveStartKey = limit
         ? undefined
         : (result.LastEvaluatedKey as Record<string, unknown> | undefined);

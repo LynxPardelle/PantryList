@@ -16,6 +16,9 @@ export class DeletePantryDataResponseDto {
 
   @ApiProperty()
   deletedShoppingShareCount: number;
+
+  @ApiProperty()
+  deletedWasteEventCount: number;
 }
 
 export class DeleteAccountDto {
@@ -25,6 +28,9 @@ export class DeleteAccountDto {
 }
 
 export class DeleteAccountResponseDto extends DeletePantryDataResponseDto {
+  @ApiProperty()
+  deletedKnownDeviceCount: number;
+
   @ApiProperty()
   deletedCognitoIdentityCount: number;
 }

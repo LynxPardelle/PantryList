@@ -14,9 +14,21 @@ describe('ProfileController', () => {
   it('returns the current profile with preferences', async () => {
     const { controller, getUserProfileUseCase } = makeController();
 
-    const profile = await controller.getProfile(makeCurrentUser());
+    const request = {
+      headers: {
+        'x-client-device-id': 'device-1',
+        'user-agent': 'Mozilla/5.0 Chrome/124.0 Windows',
+      },
+    } as unknown as FastifyRequest;
+    const profile = await controller.getProfile(makeCurrentUser(), request);
 
-    expect(getUserProfileUseCase.execute.mock.calls[0]).toEqual(['user-1']);
+    expect(getUserProfileUseCase.execute.mock.calls[0]).toEqual([
+      'user-1',
+      {
+        clientDeviceId: 'device-1',
+        userAgent: 'Mozilla/5.0 Chrome/124.0 Windows',
+      },
+    ]);
     expect(profile.preferences.expirationWarningDays).toBe(7);
     expect(profile.security.stepUp.fresh).toBe(true);
   });
@@ -72,6 +84,7 @@ describe('ProfileController', () => {
       deletedInventoryLotCount: 5,
       deletedProductTypeCount: 3,
       deletedShoppingShareCount: 2,
+      deletedWasteEventCount: 1,
     });
   });
 
@@ -194,6 +207,7 @@ function makeController(): {
       createdAt: new Date('2026-04-01T00:00:00.000Z'),
       updatedAt: new Date('2026-04-02T00:00:00.000Z'),
       preferences: UserPreferences.resolve().toPrimitives(),
+      knownDevices: [],
       retentionPolicy: {
         archivedRecordRetentionDays: 365,
         archivedRecordAutoDeleteEnabled: false,
@@ -215,6 +229,7 @@ function makeController(): {
       deletedInventoryLotCount: 5,
       deletedProductTypeCount: 3,
       deletedShoppingShareCount: 2,
+      deletedWasteEventCount: 1,
     }),
   } as unknown as jest.Mocked<DeletePantryDataUseCase>;
   const deleteAccountUseCase = {
@@ -222,6 +237,8 @@ function makeController(): {
       deletedInventoryLotCount: 5,
       deletedProductTypeCount: 3,
       deletedShoppingShareCount: 2,
+      deletedWasteEventCount: 1,
+      deletedKnownDeviceCount: 1,
       deletedCognitoIdentityCount: 1,
     }),
   } as unknown as jest.Mocked<DeleteAccountUseCase>;

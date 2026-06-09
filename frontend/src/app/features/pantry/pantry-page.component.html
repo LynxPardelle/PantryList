@@ -629,6 +629,71 @@
         }
       </article>
 
+      <article class="panel waste-panel">
+        <div class="panel-header panel-header-actions">
+          <div>
+            <p class="panel-kicker">Merma</p>
+            <h2>Desperdicio registrado</h2>
+          </div>
+          <button
+            type="button"
+            class="ghost-button"
+            [disabled]="wasteOverviewLoading"
+            (click)="loadWasteOverview()"
+          >
+            {{ wasteOverviewLoading ? 'Actualizando...' : 'Actualizar' }}
+          </button>
+        </div>
+
+        @if (wasteOverviewError) {
+          <p class="field-error" role="alert">{{ wasteOverviewError }}</p>
+        }
+
+        @if (wasteOverview; as waste) {
+          <div class="shopping-plan-tools">
+            <strong>{{ waste.eventCount }} evento(s) en {{ waste.windowDays }} d&iacute;as</strong>
+            <span>{{ formatShoppingPrice(waste.estimatedLossTotal) }}</span>
+            <span>{{ getWasteQuantitySummary(waste) }}</span>
+          </div>
+
+          @if (waste.reasonBreakdown.length > 0) {
+            <div class="price-history-list">
+              @for (reason of waste.reasonBreakdown; track reason.reason) {
+                <span>
+                  {{ wasteReasonLabels[reason.reason] }}:
+                  {{ reason.eventCount }} · {{ formatShoppingPrice(reason.estimatedLossTotal) }}
+                </span>
+              }
+            </div>
+          }
+
+          @if (waste.recentEvents.length > 0) {
+            <div class="lot-table">
+              @for (event of waste.recentEvents; track event.id) {
+                <article class="lot-row">
+                  <div>
+                    <strong>{{ event.productName }}</strong>
+                    <small>
+                      {{ wasteReasonLabels[event.reason] }} ·
+                      {{ formatQuantity(event.quantity, event.unit) }} ·
+                      {{ event.occurredAt | date:'dd MMM, HH:mm' }}
+                    </small>
+                  </div>
+                  <strong>{{ formatShoppingPrice(event.estimatedLoss) }}</strong>
+                </article>
+              }
+            </div>
+          } @else {
+            <section class="empty-state compact-empty-state">
+              <h3>Sin merma registrada.</h3>
+              <p>Cuando marques un lote como merma, aparecer&aacute; aqu&iacute;.</p>
+            </section>
+          }
+        } @else if (wasteOverviewLoading) {
+          <p class="loading-copy" aria-live="polite">Cargando merma...</p>
+        }
+      </article>
+
       <article class="panel shopping-plan-panel">
         <div class="panel-header">
           <div>
@@ -684,6 +749,65 @@
                 {{ shoppingModeActive ? 'Salir de compra' : 'Modo compra' }}
               </button>
             </div>
+
+            <section class="selection-card" aria-labelledby="saved-shopping-lists-title">
+              <div class="panel-header panel-header-actions">
+                <div>
+                  <p class="panel-kicker">Listas locales</p>
+                  <h3 id="saved-shopping-lists-title">Guardar para tienda u ocasión</h3>
+                </div>
+              </div>
+
+              <form class="budget-form" [formGroup]="savedShoppingListForm" (ngSubmit)="saveShoppingListSnapshot(shoppingPlanItems)">
+                <label class="field">
+                  <span>T&iacute;tulo</span>
+                  <input type="text" formControlName="title" placeholder="Compra semanal" />
+                </label>
+                <label class="field">
+                  <span>Ocasi&oacute;n</span>
+                  <input type="text" formControlName="occasion" placeholder="Quincena, fiesta, mayoreo" />
+                </label>
+                <label class="field">
+                  <span>Tienda</span>
+                  <input
+                    type="text"
+                    formControlName="shoppingLocation"
+                    list="shopping-location-options"
+                    placeholder="Todas"
+                  />
+                </label>
+                <button type="submit" class="secondary-button">Guardar lista</button>
+              </form>
+
+              @if (savedShoppingListStatus) {
+                <p class="helper-copy" aria-live="polite">{{ savedShoppingListStatus }}</p>
+              }
+
+              @if (savedShoppingLists.length > 0) {
+                <div class="lot-table">
+                  @for (list of savedShoppingLists; track trackBySavedShoppingListId($index, list)) {
+                    <article class="lot-row">
+                      <div>
+                        <strong>{{ list.title }}</strong>
+                        <small>
+                          {{ list.items.length }} producto(s) ·
+                          {{ list.shoppingLocation || 'Todas las tiendas' }} ·
+                          {{ list.createdAt | date:'dd MMM, HH:mm' }}
+                        </small>
+                      </div>
+                      <div class="lot-actions">
+                        <button type="button" class="ghost-button" (click)="copySavedShoppingList(list)">
+                          Copiar
+                        </button>
+                        <button type="button" class="danger-button" (click)="deleteSavedShoppingList(list.id)">
+                          Borrar
+                        </button>
+                      </div>
+                    </article>
+                  }
+                </div>
+              }
+            </section>
 
             @if (shoppingExportStatus) {
               <p class="helper-copy" aria-live="polite">{{ shoppingExportStatus }}</p>
@@ -1008,7 +1132,17 @@
           @if (isOffline) {
             <p class="helper-copy field-full" role="status">Sin conexi&oacute;n: los borradores quedan en este navegador.</p>
           }
+          @if (voiceCaptureSupported) {
+            <p class="helper-copy field-full" aria-live="polite">
+              {{ voiceCaptureStatus || 'Dictado listo para captura manual.' }}
+            </p>
+          }
           <div class="depletion-editor-actions field-full">
+            @if (voiceCaptureSupported) {
+              <button class="secondary-button" type="button" (click)="toggleQuickCaptureVoice()">
+                {{ voiceCaptureListening ? 'Detener dictado' : 'Dictar' }}
+              </button>
+            }
             <button class="primary-button" type="submit">Guardar borrador</button>
             @if (quickCaptureDrafts.length > 0) {
               <button class="secondary-button" type="button" (click)="clearQuickCaptureDrafts()">Limpiar borradores</button>
@@ -1660,6 +1794,32 @@
                               (click)="consumeLot(lot.lotId, consumeInput.valueAsNumber)"
                             >
                               {{ consumeBusyLotId === lot.lotId ? 'Consumiendo...' : 'Consumir' }}
+                            </button>
+                            <label>
+                              <span>Motivo merma</span>
+                              <select #wasteReason [disabled]="consumeBusyLotId !== null">
+                                @for (reason of wasteReasonOptions; track reason) {
+                                  <option [value]="reason">{{ wasteReasonLabels[reason] }}</option>
+                                }
+                              </select>
+                            </label>
+                            <label>
+                              <span>Nota</span>
+                              <input
+                                #wasteNote
+                                type="text"
+                                maxlength="160"
+                                placeholder="Opcional"
+                                [disabled]="consumeBusyLotId !== null"
+                              />
+                            </label>
+                            <button
+                              type="button"
+                              class="danger-button"
+                              [disabled]="consumeBusyLotId !== null"
+                              (click)="consumeLot(lot.lotId, consumeInput.valueAsNumber, wasteReason.value, wasteNote.value)"
+                            >
+                              Registrar merma
                             </button>
                             <button
                               type="button"

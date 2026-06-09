@@ -54,6 +54,8 @@ import {
   ShoppingPlanItem,
   ShoppingPlanUrgency,
   ShoppingRouteGroup,
+  WasteOverview,
+  WasteReason,
 } from '../../shared/models/pantry.model';
 import * as PantryActions from '../../store/pantry/pantry.actions';
 import {
@@ -116,8 +118,47 @@ interface PendingShoppingCheckout {
   items: CloseShoppingPurchaseItemRequest[];
 }
 
+interface SavedShoppingListSnapshotItem {
+  productTypeId: string;
+  baseName: string;
+  quantity: number;
+  unit: ProductUnit;
+  shoppingLocation?: string;
+  estimatedUnitPrice?: number;
+  estimatedLineTotal?: number;
+}
+
+interface SavedShoppingListSnapshot {
+  id: string;
+  title: string;
+  occasion?: string;
+  shoppingLocation?: string;
+  createdAt: Date;
+  items: SavedShoppingListSnapshotItem[];
+}
+
 interface ScreenWakeLock {
   release: () => Promise<void>;
+}
+
+interface SpeechRecognitionLike {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+}
+
+interface SpeechRecognitionEventLike {
+  results: ArrayLike<{
+    isFinal: boolean;
+    0: {
+      transcript: string;
+    };
+  }>;
 }
 
 interface StapleTemplate {
@@ -234,6 +275,8 @@ export class PantryPageComponent implements OnInit {
   private readonly shoppingTripStorageKey = 'pantrylist.shoppingTripDraft';
   private readonly pendingShoppingCheckoutStorageKey =
     'pantrylist.pendingShoppingCheckouts';
+  private readonly savedShoppingListsStorageKey =
+    'pantrylist.savedShoppingLists';
 
   readonly username$ = this.authFacade.currentUsername$;
   readonly loading$ = this.store.select(selectPantryLoading);
@@ -293,6 +336,20 @@ export class PantryPageComponent implements OnInit {
     missing: 'Falta en casa',
     low: 'Revisar pronto',
     available: 'Cubierto',
+  };
+  readonly wasteReasonOptions: WasteReason[] = [
+    'expired',
+    'spoiled',
+    'not_used',
+    'overbought',
+    'other',
+  ];
+  readonly wasteReasonLabels: Record<WasteReason, string> = {
+    expired: 'Caducado',
+    spoiled: 'Se echó a perder',
+    not_used: 'No se usó',
+    overbought: 'Compra de más',
+    other: 'Otro',
   };
 
   readonly lotForm = this.formBuilder.nonNullable.group({
@@ -375,6 +432,12 @@ export class PantryPageComponent implements OnInit {
     rawText: [''],
   });
 
+  readonly savedShoppingListForm = this.formBuilder.nonNullable.group({
+    title: ['', [Validators.maxLength(80)]],
+    occasion: ['', [Validators.maxLength(80)]],
+    shoppingLocation: ['', [Validators.maxLength(80)]],
+  });
+
   readonly existingTypeSuggestions$ =
     this.lotForm.controls.selectionMode.valueChanges.pipe(
       startWith(this.lotForm.controls.selectionMode.getRawValue()),
@@ -447,18 +510,29 @@ export class PantryPageComponent implements OnInit {
   privacyExportBusy = false;
   quickCaptureDrafts: QuickCaptureDraft[] = [];
   quickCaptureStatus: string | null = null;
+  savedShoppingLists: SavedShoppingListSnapshot[] = [];
+  savedShoppingListStatus: string | null = null;
+  wasteOverview: WasteOverview | null = null;
+  wasteOverviewLoading = false;
+  wasteOverviewError: string | null = null;
+  voiceCaptureSupported = false;
+  voiceCaptureListening = false;
+  voiceCaptureStatus: string | null = null;
   pendingShoppingCheckoutCount = 0;
   isOffline = false;
   readonly consumeErrors: Record<string, string> = {};
   private readonly expandedProductTypeIds = new Set<string>();
   private shoppingWakeLock: ScreenWakeLock | null = null;
   private pendingShoppingCheckoutSyncing = false;
+  private speechRecognition: SpeechRecognitionLike | null = null;
 
   ngOnInit(): void {
     if (isPlatformBrowser(this.platformId)) {
       this.loadOverview();
+      this.loadWasteOverview();
       this.watchNetworkState();
       this.loadLocalShoppingSupport();
+      this.setupVoiceCapture();
       this.loadActiveShoppingShares();
       this.destroyRef.onDestroy(() => {
         void this.releaseShoppingWakeLock();
@@ -811,7 +885,12 @@ export class PantryPageComponent implements OnInit {
       });
   }
 
-  consumeLot(lotId: string, quantity: number): void {
+  consumeLot(
+    lotId: string,
+    quantity: number,
+    wasteReason?: string,
+    wasteNote?: string,
+  ): void {
     if (this.consumeBusyLotId) {
       return;
     }
@@ -823,11 +902,18 @@ export class PantryPageComponent implements OnInit {
 
     delete this.consumeErrors[lotId];
     this.consumeBusyLotId = lotId;
+    const request = {
+      quantity: Number(quantity.toFixed(2)),
+      ...(this.toWasteReason(wasteReason)
+        ? { wasteReason: this.toWasteReason(wasteReason) }
+        : {}),
+      ...(this.toOptionalText(wasteNote)
+        ? { wasteNote: this.toOptionalText(wasteNote) }
+        : {}),
+    };
 
     this.pantryService
-      .consumeInventoryLot(lotId, {
-        quantity: Number(quantity.toFixed(2)),
-      })
+      .consumeInventoryLot(lotId, request)
       .pipe(
         finalize(() => {
           this.consumeBusyLotId = null;
@@ -836,6 +922,9 @@ export class PantryPageComponent implements OnInit {
       .subscribe({
         next: () => {
           this.loadOverview();
+          if (wasteReason) {
+            this.loadWasteOverview();
+          }
         },
         error: (error) => {
           this.consumeErrors[lotId] = this.getErrorMessage(error);
@@ -916,6 +1005,28 @@ export class PantryPageComponent implements OnInit {
         },
         error: (error) => {
           this.archivedError = this.getErrorMessage(error);
+        },
+      });
+  }
+
+  loadWasteOverview(): void {
+    this.wasteOverviewLoading = true;
+    this.wasteOverviewError = null;
+
+    this.pantryService
+      .getWasteOverview()
+      .pipe(
+        finalize(() => {
+          this.wasteOverviewLoading = false;
+          this.changeDetector.markForCheck();
+        })
+      )
+      .subscribe({
+        next: (overview) => {
+          this.wasteOverview = overview;
+        },
+        error: (error) => {
+          this.wasteOverviewError = this.getErrorMessage(error);
         },
       });
   }
@@ -1114,6 +1225,13 @@ export class PantryPageComponent implements OnInit {
     return item.productTypeId;
   }
 
+  trackBySavedShoppingListId(
+    _: number,
+    list: SavedShoppingListSnapshot,
+  ): string {
+    return list.id;
+  }
+
   getExpiredQuantity(group: { lots: PantryLotSummary[] }): number {
     return this.sumLotsByStatus(group.lots, ['expired']);
   }
@@ -1141,6 +1259,16 @@ export class PantryPageComponent implements OnInit {
     return value === undefined
       ? 'Sin estimado'
       : `${value.toFixed(2)} moneda local`;
+  }
+
+  getWasteQuantitySummary(overview: WasteOverview): string {
+    if (overview.totalQuantityByUnit.length === 0) {
+      return 'Sin cantidades registradas';
+    }
+
+    return overview.totalQuantityByUnit
+      .map((entry) => this.formatQuantity(entry.quantity, entry.unit))
+      .join(', ');
   }
 
   getShoppingPlanEstimatedTotal(items: ShoppingPlanItem[]): number {
@@ -1262,6 +1390,98 @@ export class PantryPageComponent implements OnInit {
     }
 
     return lines.join('\n').trimEnd();
+  }
+
+  saveShoppingListSnapshot(items: ShoppingPlanItem[]): void {
+    if (items.length === 0) {
+      this.savedShoppingListStatus = 'No hay compras sugeridas para guardar.';
+      return;
+    }
+
+    const rawValue = this.savedShoppingListForm.getRawValue();
+    const shoppingLocation = this.toOptionalText(rawValue.shoppingLocation);
+    const filteredItems = shoppingLocation
+      ? items.filter((item) => {
+          const metadata = this.resolveShoppingMetadata(item.shoppingMetadata);
+          return metadata.shoppingLocation === shoppingLocation;
+        })
+      : items;
+
+    if (filteredItems.length === 0) {
+      this.savedShoppingListStatus =
+        'No hay productos para esa tienda en la lista actual.';
+      return;
+    }
+
+    const snapshot: SavedShoppingListSnapshot = {
+      id: `${Date.now()}`,
+      title:
+        this.toOptionalText(rawValue.title) ??
+        `Lista ${this.savedShoppingLists.length + 1}`,
+      occasion: this.toOptionalText(rawValue.occasion),
+      shoppingLocation,
+      createdAt: new Date(),
+      items: filteredItems.map((item) => ({
+        productTypeId: item.productTypeId,
+        baseName: item.baseName,
+        quantity: item.suggestedPurchaseQuantity,
+        unit: item.defaultUnit,
+        shoppingLocation: this.resolveShoppingMetadata(item.shoppingMetadata)
+          .shoppingLocation,
+        estimatedUnitPrice: item.estimatedUnitPrice,
+        estimatedLineTotal: item.estimatedLineTotal,
+      })),
+    };
+
+    this.savedShoppingLists = [snapshot, ...this.savedShoppingLists].slice(
+      0,
+      12,
+    );
+    this.savedShoppingListStatus = 'Lista guardada en este navegador.';
+    this.savedShoppingListForm.reset({
+      title: '',
+      occasion: '',
+      shoppingLocation: '',
+    });
+    this.persistSavedShoppingLists();
+  }
+
+  async copySavedShoppingList(list: SavedShoppingListSnapshot): Promise<void> {
+    const exportText = this.buildSavedShoppingListExportText(list);
+    const copyResult = await this.copyTextToClipboard(exportText);
+
+    this.shoppingExportText = exportText;
+    this.savedShoppingListStatus =
+      copyResult === 'manual'
+        ? 'Lista lista para copiar manualmente.'
+        : 'Lista guardada copiada.';
+    this.changeDetector.markForCheck();
+  }
+
+  deleteSavedShoppingList(listId: string): void {
+    this.savedShoppingLists = this.savedShoppingLists.filter(
+      (list) => list.id !== listId,
+    );
+    this.savedShoppingListStatus = 'Lista guardada eliminada.';
+    this.persistSavedShoppingLists();
+  }
+
+  buildSavedShoppingListExportText(list: SavedShoppingListSnapshot): string {
+    const lines = [
+      `Lista PantryList: ${list.title}`,
+      list.occasion ? `Ocasión: ${list.occasion}` : '',
+      list.shoppingLocation ? `Tienda: ${list.shoppingLocation}` : '',
+      '',
+    ].filter((line) => line !== '');
+
+    for (const item of list.items) {
+      lines.push(`- ${item.baseName}: ${this.formatQuantity(item.quantity, item.unit)}`);
+      if (item.estimatedLineTotal !== undefined) {
+        lines.push(`  Aprox: ${this.formatShoppingPrice(item.estimatedLineTotal)}`);
+      }
+    }
+
+    return lines.join('\n');
   }
 
   async copyShoppingPlan(items: ShoppingPlanItem[]): Promise<void> {
@@ -1788,6 +2008,28 @@ export class PantryPageComponent implements OnInit {
       .filter((item): item is QuickCaptureItem => item !== null);
   }
 
+  toggleQuickCaptureVoice(): void {
+    if (!this.voiceCaptureSupported || !this.speechRecognition) {
+      this.voiceCaptureStatus = 'Dictado no disponible en este navegador.';
+      return;
+    }
+
+    if (this.voiceCaptureListening) {
+      this.speechRecognition.stop();
+      return;
+    }
+
+    this.voiceCaptureListening = true;
+    this.voiceCaptureStatus = 'Escuchando...';
+
+    try {
+      this.speechRecognition.start();
+    } catch {
+      this.voiceCaptureListening = false;
+      this.voiceCaptureStatus = 'No se pudo iniciar dictado.';
+    }
+  }
+
   saveQuickCaptureDraft(): void {
     const rawText = this.quickCaptureForm.controls.rawText.value.trim();
     const items = this.parseQuickCaptureText(rawText);
@@ -1936,6 +2178,24 @@ export class PantryPageComponent implements OnInit {
       }
     }
 
+    const storedSavedLists = this.getLocalValue(
+      this.savedShoppingListsStorageKey
+    );
+
+    if (storedSavedLists) {
+      try {
+        const parsedLists = JSON.parse(storedSavedLists) as Array<
+          Omit<SavedShoppingListSnapshot, 'createdAt'> & { createdAt: string }
+        >;
+        this.savedShoppingLists = parsedLists.map((list) => ({
+          ...list,
+          createdAt: new Date(list.createdAt),
+        }));
+      } catch {
+        this.savedShoppingLists = [];
+      }
+    }
+
     const storedTripDraft = this.getLocalValue(this.shoppingTripStorageKey);
 
     if (storedTripDraft) {
@@ -1965,6 +2225,52 @@ export class PantryPageComponent implements OnInit {
     }
   }
 
+  private setupVoiceCapture(): void {
+    const recognitionWindow = window as Window & {
+      SpeechRecognition?: new () => SpeechRecognitionLike;
+      webkitSpeechRecognition?: new () => SpeechRecognitionLike;
+    };
+    const recognitionConstructor =
+      recognitionWindow.SpeechRecognition ??
+      recognitionWindow.webkitSpeechRecognition;
+
+    if (!recognitionConstructor) {
+      this.voiceCaptureSupported = false;
+      return;
+    }
+
+    this.speechRecognition = new recognitionConstructor();
+    this.speechRecognition.lang = 'es-MX';
+    this.speechRecognition.interimResults = false;
+    this.speechRecognition.continuous = false;
+    this.speechRecognition.onresult = (event) => {
+      const transcript = Array.from(event.results)
+        .map((result) => result[0]?.transcript.trim())
+        .filter(Boolean)
+        .join('\n');
+
+      if (transcript) {
+        const currentText = this.quickCaptureForm.controls.rawText.value.trim();
+        this.quickCaptureForm.patchValue({
+          rawText: currentText ? `${currentText}\n${transcript}` : transcript,
+        });
+        this.voiceCaptureStatus = 'Dictado agregado.';
+      }
+
+      this.changeDetector.markForCheck();
+    };
+    this.speechRecognition.onerror = () => {
+      this.voiceCaptureListening = false;
+      this.voiceCaptureStatus = 'No se pudo completar dictado.';
+      this.changeDetector.markForCheck();
+    };
+    this.speechRecognition.onend = () => {
+      this.voiceCaptureListening = false;
+      this.changeDetector.markForCheck();
+    };
+    this.voiceCaptureSupported = true;
+  }
+
   private watchNetworkState(): void {
     this.isOffline =
       typeof navigator !== 'undefined' ? !navigator.onLine : false;
@@ -1991,6 +2297,18 @@ export class PantryPageComponent implements OnInit {
     this.setLocalValue(
       this.quickCaptureStorageKey,
       JSON.stringify(this.quickCaptureDrafts)
+    );
+  }
+
+  private persistSavedShoppingLists(): void {
+    if (this.savedShoppingLists.length === 0) {
+      this.removeLocalValue(this.savedShoppingListsStorageKey);
+      return;
+    }
+
+    this.setLocalValue(
+      this.savedShoppingListsStorageKey,
+      JSON.stringify(this.savedShoppingLists)
     );
   }
 
@@ -2541,6 +2859,12 @@ export class PantryPageComponent implements OnInit {
   private toOptionalText(value: string | undefined): string | undefined {
     const normalized = value?.trim();
     return normalized ? normalized : undefined;
+  }
+
+  private toWasteReason(value: string | undefined): WasteReason | undefined {
+    return this.wasteReasonOptions.includes(value as WasteReason)
+      ? (value as WasteReason)
+      : undefined;
   }
 
   private resolveShoppingMetadata(

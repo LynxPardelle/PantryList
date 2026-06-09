@@ -5,6 +5,7 @@ import * as Joi from 'joi';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ApiMetricsService } from './application/services/api-metrics.service';
+import { ApiMetricsAlertSinkService } from './application/services/api-metrics-alert-sink.service';
 import {
   COGNITO_AUTH_URL_BUILDER,
   COGNITO_TOKEN_CLIENT,
@@ -20,7 +21,9 @@ import {
   SCHEDULING_SERVICE,
   SHOPPING_SHARE_REPOSITORY,
   USER_DAO,
+  USER_DEVICE_REPOSITORY,
   USER_PREFERENCES_DAO,
+  WASTE_EVENT_REPOSITORY,
 } from './application/tokens';
 import { CognitoAuthTransactionService } from './application/services/cognito-auth-transaction.service';
 import { CognitoProfileSyncService } from './application/services/cognito-profile-sync.service';
@@ -59,6 +62,7 @@ import { GetProductTypeByIdUseCase } from './application/use-cases/get-product-t
 import { GetProductsByUserUseCase } from './application/use-cases/get-products-by-user.use-case';
 import { GetPantryOverviewUseCase } from './application/use-cases/get-pantry-overview.use-case';
 import { GetUserProfileUseCase } from './application/use-cases/get-user-profile.use-case';
+import { GetWasteOverviewUseCase } from './application/use-cases/get-waste-overview.use-case';
 import { ListInventoryLotsUseCase } from './application/use-cases/list-inventory-lots.use-case';
 import { RestoreInventoryLotUseCase } from './application/use-cases/restore-inventory-lot.use-case';
 import { RestoreProductTypeUseCase } from './application/use-cases/restore-product-type.use-case';
@@ -81,14 +85,18 @@ import { DynamoDbProductRepository } from './infrastructure/database/dynamodb/dy
 import { DynamoDbProductTypeRepository } from './infrastructure/database/dynamodb/dynamodb-product-type.repository';
 import { DynamoDbShoppingShareRepository } from './infrastructure/database/dynamodb/dynamodb-shopping-share.repository';
 import { DynamoDbUserDao } from './infrastructure/database/dynamodb/dynamodb-user.dao';
+import { DynamoDbUserDeviceRepository } from './infrastructure/database/dynamodb/dynamodb-user-device.repository';
 import { DynamoDbUserPreferencesDao } from './infrastructure/database/dynamodb/dynamodb-user-preferences.dao';
+import { DynamoDbWasteEventRepository } from './infrastructure/database/dynamodb/dynamodb-waste-event.repository';
 import { MongoInventoryLotRepository } from './infrastructure/database/mongodb/mongodb-inventory-lot.repository';
 import { MongoHouseholdRepository } from './infrastructure/database/mongodb/mongodb-household.repository';
 import { MongoProductRepository } from './infrastructure/database/mongodb/mongodb-product.repository';
 import { MongoProductTypeRepository } from './infrastructure/database/mongodb/mongodb-product-type.repository';
 import { MongoShoppingShareRepository } from './infrastructure/database/mongodb/mongodb-shopping-share.repository';
 import { MongoUserDao } from './infrastructure/database/mongodb/mongodb-user.dao';
+import { MongoUserDeviceRepository } from './infrastructure/database/mongodb/mongodb-user-device.repository';
 import { MongoUserPreferencesDao } from './infrastructure/database/mongodb/mongodb-user-preferences.dao';
+import { MongoWasteEventRepository } from './infrastructure/database/mongodb/mongodb-waste-event.repository';
 import {
   InventoryLotDocument,
   InventoryLotSchema,
@@ -109,6 +117,14 @@ import {
   UserDocument,
   UserSchema,
 } from './infrastructure/database/mongodb/schemas/user.schema';
+import {
+  UserDeviceDocument,
+  UserDeviceSchema,
+} from './infrastructure/database/mongodb/schemas/user-device.schema';
+import {
+  WasteEventDocument,
+  WasteEventSchema,
+} from './infrastructure/database/mongodb/schemas/waste-event.schema';
 import {
   ShoppingShareDocument,
   ShoppingShareSchema,
@@ -178,6 +194,8 @@ const databaseImports = useDynamoDb
         { name: InventoryLotDocument.name, schema: InventoryLotSchema },
         { name: HouseholdDocument.name, schema: HouseholdSchema },
         { name: UserDocument.name, schema: UserSchema },
+        { name: UserDeviceDocument.name, schema: UserDeviceSchema },
+        { name: WasteEventDocument.name, schema: WasteEventSchema },
         { name: ShoppingShareDocument.name, schema: ShoppingShareSchema },
       ]),
     ];
@@ -191,6 +209,8 @@ const databaseClassProviders = useDynamoDb
       DynamoDbProductTypeRepository,
       DynamoDbInventoryLotRepository,
       DynamoDbShoppingShareRepository,
+      DynamoDbUserDeviceRepository,
+      DynamoDbWasteEventRepository,
     ]
   : [
       MongoUserDao,
@@ -200,6 +220,8 @@ const databaseClassProviders = useDynamoDb
       MongoProductTypeRepository,
       MongoInventoryLotRepository,
       MongoShoppingShareRepository,
+      MongoUserDeviceRepository,
+      MongoWasteEventRepository,
     ];
 const userDaoProvider = useDynamoDb ? DynamoDbUserDao : MongoUserDao;
 const userPreferencesDaoProvider = useDynamoDb
@@ -220,6 +242,12 @@ const householdRepositoryProvider = useDynamoDb
 const shoppingShareRepositoryProvider = useDynamoDb
   ? DynamoDbShoppingShareRepository
   : MongoShoppingShareRepository;
+const userDeviceRepositoryProvider = useDynamoDb
+  ? DynamoDbUserDeviceRepository
+  : MongoUserDeviceRepository;
+const wasteEventRepositoryProvider = useDynamoDb
+  ? DynamoDbWasteEventRepository
+  : MongoWasteEventRepository;
 
 @Module({
   imports: [
@@ -285,6 +313,14 @@ const shoppingShareRepositoryProvider = useDynamoDb
           .default(0.05),
         METRICS_MAX_ROUTES: Joi.number().integer().positive().default(50),
         METRICS_ACCESS_TOKEN: Joi.string().allow('').optional(),
+        METRICS_ALERT_WEBHOOK_URL: Joi.string()
+          .uri({ scheme: ['http', 'https'] })
+          .allow('')
+          .optional(),
+        METRICS_ALERT_MIN_INTERVAL_SECONDS: Joi.number()
+          .integer()
+          .positive()
+          .default(300),
         AUTH_ACCESS_COOKIE_TTL_SECONDS: Joi.number()
           .integer()
           .positive()
@@ -397,6 +433,7 @@ const shoppingShareRepositoryProvider = useDynamoDb
   providers: [
     AppService,
     ApiMetricsService,
+    ApiMetricsAlertSinkService,
     AuthCookieService,
     AuthStepUpService,
     AccessTokenGuard,
@@ -426,6 +463,7 @@ const shoppingShareRepositoryProvider = useDynamoDb
     GetPantryOverviewUseCase,
     GetArchivedPantryItemsUseCase,
     GetUserProfileUseCase,
+    GetWasteOverviewUseCase,
     GetExpiringLotsUseCase,
     ListInventoryLotsUseCase,
     SearchProductTypesUseCase,
@@ -487,6 +525,14 @@ const shoppingShareRepositoryProvider = useDynamoDb
     {
       provide: SHOPPING_SHARE_REPOSITORY,
       useExisting: shoppingShareRepositoryProvider,
+    },
+    {
+      provide: USER_DEVICE_REPOSITORY,
+      useExisting: userDeviceRepositoryProvider,
+    },
+    {
+      provide: WASTE_EVENT_REPOSITORY,
+      useExisting: wasteEventRepositoryProvider,
     },
     {
       provide: SCHEDULING_SERVICE,

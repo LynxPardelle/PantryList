@@ -37,7 +37,10 @@ export class ProfileService {
 
   getProfile(): Observable<UserProfile> {
     return this.http
-      .get<ApiUserProfile>(this.profileUrl, { withCredentials: true })
+      .get<ApiUserProfile>(this.profileUrl, {
+        headers: this.getClientDeviceHeaders(),
+        withCredentials: true,
+      })
       .pipe(map((profile) => this.normalizeProfile(profile)));
   }
 
@@ -140,6 +143,11 @@ export class ProfileService {
       ...profile,
       createdAt: new Date(profile.createdAt),
       updatedAt: new Date(profile.updatedAt),
+      knownDevices: (profile.knownDevices ?? []).map((device) => ({
+        ...device,
+        firstSeenAt: new Date(device.firstSeenAt),
+        lastSeenAt: new Date(device.lastSeenAt),
+      })),
       security: {
         stepUp: {
           ...profile.security.stepUp,
@@ -206,5 +214,36 @@ export class ProfileService {
       ...activity,
       createdAt: new Date(activity.createdAt),
     };
+  }
+
+  private getClientDeviceHeaders(): Record<string, string> {
+    const deviceId = this.getOrCreateClientDeviceId();
+
+    return deviceId ? { 'X-Client-Device-Id': deviceId } : {};
+  }
+
+  private getOrCreateClientDeviceId(): string | undefined {
+    if (typeof localStorage === 'undefined') {
+      return undefined;
+    }
+
+    const storageKey = 'pantrylist.clientDeviceId';
+
+    try {
+      const existingDeviceId = localStorage.getItem(storageKey);
+
+      if (existingDeviceId) {
+        return existingDeviceId;
+      }
+
+      const nextDeviceId =
+        globalThis.crypto?.randomUUID?.() ??
+        `device-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      localStorage.setItem(storageKey, nextDeviceId);
+
+      return nextDeviceId;
+    } catch {
+      return undefined;
+    }
   }
 }

@@ -654,6 +654,52 @@ describe('PantryService', () => {
     });
   });
 
+  it('loads waste overview and normalizes event dates', () => {
+    service.getWasteOverview().subscribe((overview) => {
+      expect(overview.eventCount).toBe(1);
+      expect(overview.recentEvents[0].occurredAt).toEqual(
+        new Date('2026-06-09T00:00:00.000Z'),
+      );
+    });
+
+    const request = httpMock.expectOne(
+      `${environment.apiUrl}/pantry/waste-overview`,
+    );
+    expect(request.request.method).toBe('GET');
+    expect(request.request.withCredentials).toBeTrue();
+    request.flush({
+      userId: 'tester',
+      generatedAt: '2026-06-09T00:01:00.000Z',
+      windowDays: 30,
+      eventCount: 1,
+      estimatedLossTotal: 25,
+      totalQuantityByUnit: [
+        {
+          unit: 'piezas',
+          quantity: 1,
+        },
+      ],
+      reasonBreakdown: [
+        {
+          reason: 'expired',
+          eventCount: 1,
+          estimatedLossTotal: 25,
+        },
+      ],
+      recentEvents: [
+        {
+          id: 'waste-1',
+          productName: 'Leche',
+          quantity: 1,
+          unit: 'piezas',
+          reason: 'expired',
+          estimatedLoss: 25,
+          occurredAt: '2026-06-09T00:00:00.000Z',
+        },
+      ],
+    });
+  });
+
   it('creates, resolves, and revokes server-backed shopping share tokens', () => {
     service
       .createShoppingShare({ text: 'Lista de compras\n- Arroz' })

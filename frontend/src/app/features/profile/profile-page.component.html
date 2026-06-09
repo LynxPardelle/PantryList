@@ -337,6 +337,27 @@
         <h2>Sesiones y step-up</h2>
         @if (profile; as securityProfile) {
           <p>{{ stepUpLabel(securityProfile) }}</p>
+          @if (securityProfile.knownDevices.length > 0) {
+            <section aria-label="Dispositivos vistos">
+              <h3>Dispositivos vistos</h3>
+              <ul>
+                @for (device of securityProfile.knownDevices; track device.id) {
+                  <li>
+                    <strong>
+                      {{ device.label }}
+                      @if (device.current) {
+                        <span class="status-pill">Actual</span>
+                      }
+                    </strong>
+                    <span>
+                      {{ formatCentralDate(device.lastSeenAt) }} hora Central ·
+                      {{ device.seenCount }} visita(s)
+                    </span>
+                  </li>
+                }
+              </ul>
+            </section>
+          }
         }
         <p>Cierra la sesi&oacute;n actual y cualquier sesi&oacute;n Cognito activa en otros dispositivos.</p>
 

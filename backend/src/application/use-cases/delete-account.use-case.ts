@@ -6,8 +6,14 @@ import {
 } from '@nestjs/common';
 import { CognitoUserAdmin } from '../ports/cognito-auth.port';
 import { UserDao } from '../ports/daos';
-import { COGNITO_USER_ADMIN, HOUSEHOLD_REPOSITORY, USER_DAO } from '../tokens';
+import {
+  COGNITO_USER_ADMIN,
+  HOUSEHOLD_REPOSITORY,
+  USER_DAO,
+  USER_DEVICE_REPOSITORY,
+} from '../tokens';
 import { HouseholdRepository } from '../../domain/repositories/household.repository';
+import { UserDeviceRepository } from '../../domain/repositories/user-device.repository';
 import { UserId } from '../../domain/value-objects/user-id.vo';
 import { DeletePantryDataUseCase } from './delete-pantry-data.use-case';
 
@@ -17,6 +23,8 @@ export interface DeleteAccountResult {
   deletedInventoryLotCount: number;
   deletedProductTypeCount: number;
   deletedShoppingShareCount: number;
+  deletedWasteEventCount: number;
+  deletedKnownDeviceCount: number;
   deletedCognitoIdentityCount: number;
 }
 
@@ -29,6 +37,8 @@ export class DeleteAccountUseCase {
     private readonly householdRepository: HouseholdRepository,
     @Inject(COGNITO_USER_ADMIN)
     private readonly cognitoUserAdmin: CognitoUserAdmin,
+    @Inject(USER_DEVICE_REPOSITORY)
+    private readonly userDeviceRepository: UserDeviceRepository,
     private readonly deletePantryDataUseCase: DeletePantryDataUseCase,
   ) {}
 
@@ -56,12 +66,15 @@ export class DeleteAccountUseCase {
       confirmationText: 'ELIMINAR',
     });
     await this.deleteHouseholdOrMembership(command.userId);
+    const deletedKnownDeviceCount =
+      await this.userDeviceRepository.deleteByUserId(userId);
     const deletedCognitoIdentityCount =
       await this.cognitoUserAdmin.deleteUsersBySubjectIds(user.authSubjectIds);
     await this.userDao.delete(userId);
 
     return {
       ...pantryResult,
+      deletedKnownDeviceCount,
       deletedCognitoIdentityCount,
     };
   }

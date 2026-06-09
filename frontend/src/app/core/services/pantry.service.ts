@@ -7,6 +7,7 @@ import {
   ApiInventoryLot,
   ApiArchivedPantryItems,
   ApiPantryExport,
+  ApiWasteOverview,
   ApiDepletingProductGroup,
   ApiPantryLotSummary,
   ApiPantryOverview,
@@ -50,6 +51,7 @@ import {
   ShoppingPlanItem,
   ShoppingRouteCategoryGroup,
   ShoppingRouteGroup,
+  WasteOverview,
 } from '../../shared/models/pantry.model';
 
 @Injectable({
@@ -63,6 +65,7 @@ export class PantryService {
   private readonly archivedPantryUrl = `${this.apiUrl}/pantry/archived`;
   private readonly pantryExportUrl = `${this.apiUrl}/pantry/export`;
   private readonly pantryCheckoutUrl = `${this.apiUrl}/pantry/checkout`;
+  private readonly pantryWasteOverviewUrl = `${this.apiUrl}/pantry/waste-overview`;
   private readonly pantryShoppingSharesUrl = `${this.apiUrl}/pantry/shopping-shares`;
   private readonly publicShoppingSharesUrl = `${this.apiUrl}/shopping-shares`;
 
@@ -72,6 +75,14 @@ export class PantryService {
     return this.http
       .get<ApiPantryOverview>(this.pantryOverviewUrl, { withCredentials: true })
       .pipe(map((overview) => this.normalizePantryOverview(overview)));
+  }
+
+  getWasteOverview(): Observable<WasteOverview> {
+    return this.http
+      .get<ApiWasteOverview>(this.pantryWasteOverviewUrl, {
+        withCredentials: true,
+      })
+      .pipe(map((overview) => this.normalizeWasteOverview(overview)));
   }
 
   searchProductTypes(search: string): Observable<ProductType[]> {
@@ -411,6 +422,17 @@ export class PantryService {
       text: share.text,
       createdAt: new Date(share.createdAt),
       expiresAt: new Date(share.expiresAt),
+    };
+  }
+
+  private normalizeWasteOverview(overview: ApiWasteOverview): WasteOverview {
+    return {
+      ...overview,
+      generatedAt: new Date(overview.generatedAt),
+      recentEvents: overview.recentEvents.map((event) => ({
+        ...event,
+        occurredAt: new Date(event.occurredAt),
+      })),
     };
   }
 

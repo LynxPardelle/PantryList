@@ -12,4 +12,15 @@ export interface UserProfile {
   updatedAt: Date;
   preferences: UserPreferencesPrimitives;
   retentionPolicy: RetentionPolicyPrimitives;
+  knownDevices: KnownUserDevice[];
+}
+
+export interface KnownUserDevice {
+  id: string;
+  label: string;
+  userAgentSummary: string;
+  firstSeenAt: Date;
+  lastSeenAt: Date;
+  seenCount: number;
+  current: boolean;
 }

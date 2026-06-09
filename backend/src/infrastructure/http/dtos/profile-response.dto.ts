@@ -56,6 +56,29 @@ export class ProfileSecurityResponseDto {
   stepUp: StepUpSecurityResponseDto;
 }
 
+export class KnownUserDeviceResponseDto {
+  @ApiProperty()
+  id: string;
+
+  @ApiProperty()
+  label: string;
+
+  @ApiProperty()
+  userAgentSummary: string;
+
+  @ApiProperty()
+  firstSeenAt: Date;
+
+  @ApiProperty()
+  lastSeenAt: Date;
+
+  @ApiProperty()
+  seenCount: number;
+
+  @ApiProperty()
+  current: boolean;
+}
+
 export class UserProfileResponseDto {
   @ApiProperty()
   id: string;
@@ -86,4 +109,7 @@ export class UserProfileResponseDto {
 
   @ApiProperty({ type: ProfileSecurityResponseDto })
   security: ProfileSecurityResponseDto;
+
+  @ApiProperty({ type: [KnownUserDeviceResponseDto] })
+  knownDevices: KnownUserDeviceResponseDto[];
 }

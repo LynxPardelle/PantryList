@@ -21,6 +21,7 @@ import { CloseShoppingPurchaseUseCase } from '../../../application/use-cases/clo
 import { GetArchivedPantryItemsUseCase } from '../../../application/use-cases/get-archived-pantry-items.use-case';
 import { GetPantryOverviewUseCase } from '../../../application/use-cases/get-pantry-overview.use-case';
 import { GetUserProfileUseCase } from '../../../application/use-cases/get-user-profile.use-case';
+import { GetWasteOverviewUseCase } from '../../../application/use-cases/get-waste-overview.use-case';
 import {
   RecordHouseholdActivityUseCase,
   ResolveHouseholdPantryAccessUseCase,
@@ -57,6 +58,7 @@ import {
 } from '../dtos/pantry-export-response.dto';
 import { PantryOverviewResponseDto } from '../dtos/pantry-overview-response.dto';
 import { ShoppingShareResponseDto } from '../dtos/shopping-share-response.dto';
+import { WasteOverviewResponseDto } from '../dtos/waste-overview-response.dto';
 import { getRequestId } from '../request-id';
 import { InventoryLotMapper } from '../mappers/inventory-lot.mapper';
 import { PantryOverviewMapper } from '../mappers/pantry-overview.mapper';
@@ -76,6 +78,7 @@ export class PantryController {
     private readonly getPantryOverviewUseCase: GetPantryOverviewUseCase,
     private readonly getArchivedPantryItemsUseCase: GetArchivedPantryItemsUseCase,
     private readonly getUserProfileUseCase: GetUserProfileUseCase,
+    private readonly getWasteOverviewUseCase: GetWasteOverviewUseCase,
     private readonly closeShoppingPurchaseUseCase: CloseShoppingPurchaseUseCase,
     private readonly createShoppingShareUseCase: CreateShoppingShareUseCase,
     private readonly listActiveShoppingSharesUseCase: ListActiveShoppingSharesUseCase,
@@ -107,6 +110,18 @@ export class PantryController {
       `pantry_overview_completed requestId=${requestId} userId=${currentUser.userId} pantryOwnerUserId=${access.pantryOwnerUserId} householdId=${access.householdId} itemCount=${response.items.length}`,
     );
     return response;
+  }
+
+  @Get('waste-overview')
+  @ApiOperation({ summary: 'Obtener resumen de merma de la despensa' })
+  async wasteOverview(
+    @CurrentUser() currentUser: AuthenticatedUser,
+  ): Promise<WasteOverviewResponseDto> {
+    const access = await this.resolveHouseholdPantryAccessUseCase.executeRead(
+      currentUser.userId,
+    );
+
+    return this.getWasteOverviewUseCase.execute(access.pantryOwnerUserId);
   }
 
   @Get('archived')

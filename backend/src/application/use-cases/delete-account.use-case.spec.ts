@@ -5,6 +5,7 @@ import { User } from '../../domain/entities/user.entity';
 import { HouseholdMembership } from '../../domain/entities/household.entity';
 import { UserAccountStatus } from '../../domain/enums';
 import { HouseholdRepository } from '../../domain/repositories/household.repository';
+import { UserDeviceRepository } from '../../domain/repositories/user-device.repository';
 import { UserId } from '../../domain/value-objects/user-id.vo';
 import { DeletePantryDataUseCase } from './delete-pantry-data.use-case';
 import { DeleteAccountUseCase } from './delete-account.use-case';
@@ -46,6 +47,7 @@ describe('DeleteAccountUseCase', () => {
       userDao,
       householdRepository,
       cognitoUserAdmin,
+      userDeviceRepository,
       deletePantryDataUseCase,
     } = makeUseCase({
       membership: makeMembership('user-1', 'owner'),
@@ -61,6 +63,8 @@ describe('DeleteAccountUseCase', () => {
       deletedInventoryLotCount: 5,
       deletedProductTypeCount: 3,
       deletedShoppingShareCount: 2,
+      deletedWasteEventCount: 4,
+      deletedKnownDeviceCount: 2,
       deletedCognitoIdentityCount: 1,
     });
     expect(cognitoUserAdmin.deleteUsersBySubjectIds).toHaveBeenCalledWith([
@@ -73,9 +77,17 @@ describe('DeleteAccountUseCase', () => {
     expect(householdRepository.deleteHouseholdCascade).toHaveBeenCalledWith(
       'household-1',
     );
+    expect(userDeviceRepository.deleteByUserId).toHaveBeenCalledWith(
+      UserId.fromString('user-1'),
+    );
     expect(userDao.delete).toHaveBeenCalledWith(UserId.fromString('user-1'));
     expect(
       deletePantryDataUseCase.execute.mock.invocationCallOrder[0],
+    ).toBeLessThan(
+      cognitoUserAdmin.deleteUsersBySubjectIds.mock.invocationCallOrder[0],
+    );
+    expect(
+      userDeviceRepository.deleteByUserId.mock.invocationCallOrder[0],
     ).toBeLessThan(
       cognitoUserAdmin.deleteUsersBySubjectIds.mock.invocationCallOrder[0],
     );
@@ -124,12 +136,17 @@ function makeUseCase(
       deletedInventoryLotCount: 5,
       deletedProductTypeCount: 3,
       deletedShoppingShareCount: 2,
+      deletedWasteEventCount: 4,
     }),
   } as unknown as jest.Mocked<DeletePantryDataUseCase>;
+  const userDeviceRepository = {
+    deleteByUserId: jest.fn().mockResolvedValue(2),
+  } as unknown as jest.Mocked<UserDeviceRepository>;
   const useCase = new DeleteAccountUseCase(
     userDao,
     householdRepository,
     cognitoUserAdmin,
+    userDeviceRepository,
     deletePantryDataUseCase,
   );
 
@@ -138,6 +155,7 @@ function makeUseCase(
     userDao,
     householdRepository,
     cognitoUserAdmin,
+    userDeviceRepository,
     deletePantryDataUseCase,
   };
 }

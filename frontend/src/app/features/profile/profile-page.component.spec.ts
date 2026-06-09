@@ -58,6 +58,17 @@ describe('ProfilePageComponent', () => {
             fresh: true,
           },
         },
+        knownDevices: [
+          {
+            id: 'device-hash-1',
+            label: 'Chrome en Windows',
+            userAgentSummary: 'Chrome en Windows',
+            firstSeenAt: new Date('2026-06-08T00:00:00.000Z'),
+            lastSeenAt: new Date('2026-06-08T00:01:00.000Z'),
+            seenCount: 2,
+            current: true,
+          },
+        ],
       }),
     );
     profileService.updatePreferences.and.returnValue(
@@ -74,6 +85,7 @@ describe('ProfilePageComponent', () => {
         deletedInventoryLotCount: 5,
         deletedProductTypeCount: 3,
         deletedShoppingShareCount: 2,
+        deletedWasteEventCount: 1,
       }),
     );
     profileService.deleteAccount.and.returnValue(
@@ -81,6 +93,8 @@ describe('ProfilePageComponent', () => {
         deletedInventoryLotCount: 5,
         deletedProductTypeCount: 3,
         deletedShoppingShareCount: 2,
+        deletedWasteEventCount: 1,
+        deletedKnownDeviceCount: 1,
         deletedCognitoIdentityCount: 1,
       }),
     );
@@ -147,6 +161,17 @@ describe('ProfilePageComponent', () => {
               fresh: true,
             },
           },
+          knownDevices: [
+            {
+              id: 'device-hash-1',
+              label: 'Chrome en Windows',
+              userAgentSummary: 'Chrome en Windows',
+              firstSeenAt: '2026-06-08T00:00:00.000Z',
+              lastSeenAt: '2026-06-08T00:01:00.000Z',
+              seenCount: 2,
+              current: true,
+            },
+          ],
         },
         overview: {
           userId: 'user-1',
@@ -229,6 +254,8 @@ describe('ProfilePageComponent', () => {
     );
     expect(compiled.textContent).toContain('Archivados se conservan');
     expect(compiled.textContent).toContain('Step-up esta preparado');
+    expect(compiled.textContent).toContain('Dispositivos vistos');
+    expect(compiled.textContent).toContain('Chrome en Windows');
   });
 
   it('loads the household workspace and renders collaboration controls', () => {
@@ -369,7 +396,7 @@ describe('ProfilePageComponent', () => {
       confirmationText: 'ELIMINAR',
     });
     expect(component.deleteMessage).toBe(
-      'Datos eliminados: 5 lotes, 3 tipos base y 2 enlaces compartidos.',
+      'Datos eliminados: 5 lotes, 3 tipos base, 2 enlaces compartidos y 1 eventos de merma.',
     );
   });
 

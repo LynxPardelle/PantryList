@@ -27,6 +27,9 @@ describe('ProfileService', () => {
     service.getProfile().subscribe((profile) => {
       createdAt = profile.createdAt;
       expect(profile.preferences.expirationWarningDays).toBe(10);
+      expect(profile.knownDevices[0].lastSeenAt).toEqual(
+        new Date('2026-06-08T00:01:00.000Z'),
+      );
       expect(profile.security.stepUp.authenticatedAt).toEqual(
         new Date('2026-06-08T00:00:00.000Z'),
       );
@@ -35,6 +38,7 @@ describe('ProfileService', () => {
     const request = http.expectOne('/api/profile');
     expect(request.request.method).toBe('GET');
     expect(request.request.withCredentials).toBeTrue();
+    expect(request.request.headers.has('X-Client-Device-Id')).toBeTrue();
     request.flush({
       id: 'user-1',
       email: 'chef@example.com',
@@ -57,6 +61,17 @@ describe('ProfileService', () => {
         permanentlyDeletedRecords: 'removed_immediately',
         accountDeletion: 'local_and_cognito_delete_requested',
       },
+      knownDevices: [
+        {
+          id: 'device-hash-1',
+          label: 'Chrome en Windows',
+          userAgentSummary: 'Chrome en Windows',
+          firstSeenAt: '2026-06-08T00:00:00.000Z',
+          lastSeenAt: '2026-06-08T00:01:00.000Z',
+          seenCount: 2,
+          current: true,
+        },
+      ],
       security: {
         stepUp: {
           enabled: true,
@@ -101,6 +116,7 @@ describe('ProfileService', () => {
           deletedInventoryLotCount: 5,
           deletedProductTypeCount: 3,
           deletedShoppingShareCount: 2,
+          deletedWasteEventCount: 1,
         });
       });
 
@@ -114,6 +130,7 @@ describe('ProfileService', () => {
       deletedInventoryLotCount: 5,
       deletedProductTypeCount: 3,
       deletedShoppingShareCount: 2,
+      deletedWasteEventCount: 1,
     });
   });
 
@@ -134,6 +151,8 @@ describe('ProfileService', () => {
       deletedInventoryLotCount: 5,
       deletedProductTypeCount: 3,
       deletedShoppingShareCount: 2,
+      deletedWasteEventCount: 1,
+      deletedKnownDeviceCount: 1,
       deletedCognitoIdentityCount: 1,
     });
   });

@@ -136,6 +136,10 @@ export class InventoryLotsController {
       id,
       access.pantryOwnerUserId,
       consumeInventoryLotDto.quantity,
+      {
+        wasteReason: consumeInventoryLotDto.wasteReason,
+        wasteNote: consumeInventoryLotDto.wasteNote,
+      },
     );
 
     return inventoryLot ? InventoryLotMapper.toResponse(inventoryLot) : null;

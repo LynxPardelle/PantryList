@@ -28,6 +28,12 @@ export type DepletionPeriod = 'day' | 'week' | 'month';
 export type ShoppingPlanUrgency = 'depleted' | 'critical' | 'upcoming';
 export type PantryStapleStatus = 'available' | 'low' | 'missing';
 export type PlanningSettingSource = 'profile' | 'productType';
+export type WasteReason =
+  | 'expired'
+  | 'spoiled'
+  | 'not_used'
+  | 'overbought'
+  | 'other';
 
 export const PRODUCT_UNITS: ProductUnit[] = [
   'piezas',
@@ -389,6 +395,41 @@ export interface PublicShoppingShare {
 
 export interface ConsumeInventoryLotRequest {
   quantity: number;
+  wasteReason?: WasteReason;
+  wasteNote?: string;
+}
+
+export interface WasteQuantityTotal {
+  unit: ProductUnit;
+  quantity: number;
+}
+
+export interface WasteReasonSummary {
+  reason: WasteReason;
+  eventCount: number;
+  estimatedLossTotal: number;
+}
+
+export interface WasteEventSummary {
+  id: string;
+  productName: string;
+  quantity: number;
+  unit: ProductUnit;
+  reason: WasteReason;
+  note?: string;
+  estimatedLoss?: number;
+  occurredAt: Date;
+}
+
+export interface WasteOverview {
+  userId: string;
+  generatedAt: Date;
+  windowDays: number;
+  eventCount: number;
+  estimatedLossTotal: number;
+  totalQuantityByUnit: WasteQuantityTotal[];
+  reasonBreakdown: WasteReasonSummary[];
+  recentEvents: WasteEventSummary[];
 }
 
 export interface ArchivePantryItemRequest {
@@ -626,6 +667,28 @@ export interface ApiArchivedPantryItems {
   productTypes: ApiProductType[];
   inventoryLots: ApiInventoryLot[];
   pagination?: ArchivedPantryPagination;
+}
+
+export interface ApiWasteEventSummary {
+  id: string;
+  productName: string;
+  quantity: number;
+  unit: ProductUnit;
+  reason: WasteReason;
+  note?: string;
+  estimatedLoss?: number;
+  occurredAt: string;
+}
+
+export interface ApiWasteOverview {
+  userId: string;
+  generatedAt: string;
+  windowDays: number;
+  eventCount: number;
+  estimatedLossTotal: number;
+  totalQuantityByUnit: WasteQuantityTotal[];
+  reasonBreakdown: WasteReasonSummary[];
+  recentEvents: ApiWasteEventSummary[];
 }
 
 export interface ArchivedPantryPagination {

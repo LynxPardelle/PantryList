@@ -5,6 +5,7 @@ import { CloseShoppingPurchaseUseCase } from '../../../application/use-cases/clo
 import { GetArchivedPantryItemsUseCase } from '../../../application/use-cases/get-archived-pantry-items.use-case';
 import { GetPantryOverviewUseCase } from '../../../application/use-cases/get-pantry-overview.use-case';
 import { GetUserProfileUseCase } from '../../../application/use-cases/get-user-profile.use-case';
+import { GetWasteOverviewUseCase } from '../../../application/use-cases/get-waste-overview.use-case';
 import {
   RecordHouseholdActivityUseCase,
   ResolveHouseholdPantryAccessUseCase,
@@ -25,6 +26,7 @@ describe('PantryController', () => {
   let getPantryOverviewUseCase: jest.Mocked<GetPantryOverviewUseCase>;
   let getArchivedPantryItemsUseCase: jest.Mocked<GetArchivedPantryItemsUseCase>;
   let getUserProfileUseCase: jest.Mocked<GetUserProfileUseCase>;
+  let getWasteOverviewUseCase: jest.Mocked<GetWasteOverviewUseCase>;
   let closeShoppingPurchaseUseCase: jest.Mocked<CloseShoppingPurchaseUseCase>;
   let createShoppingShareUseCase: jest.Mocked<CreateShoppingShareUseCase>;
   let listActiveShoppingSharesUseCase: jest.Mocked<ListActiveShoppingSharesUseCase>;
@@ -44,6 +46,9 @@ describe('PantryController', () => {
     getUserProfileUseCase = {
       execute: jest.fn().mockResolvedValue(makeProfile()),
     } as unknown as jest.Mocked<GetUserProfileUseCase>;
+    getWasteOverviewUseCase = {
+      execute: jest.fn().mockResolvedValue(makeWasteOverview()),
+    } as unknown as jest.Mocked<GetWasteOverviewUseCase>;
     closeShoppingPurchaseUseCase = {
       execute: jest.fn().mockResolvedValue([makeInventoryLot()]),
     } as unknown as jest.Mocked<CloseShoppingPurchaseUseCase>;
@@ -91,6 +96,7 @@ describe('PantryController', () => {
       getPantryOverviewUseCase,
       getArchivedPantryItemsUseCase,
       getUserProfileUseCase,
+      getWasteOverviewUseCase,
       closeShoppingPurchaseUseCase,
       createShoppingShareUseCase,
       listActiveShoppingSharesUseCase,
@@ -177,6 +183,23 @@ describe('PantryController', () => {
       hasMoreProductTypes: true,
       hasMoreInventoryLots: true,
     });
+  });
+
+  it('loads waste overview from the household owner scope', async () => {
+    resolveHouseholdPantryAccessUseCase.executeRead.mockResolvedValueOnce(
+      makeHouseholdAccess({
+        requesterUserId: 'member-user',
+        pantryOwnerUserId: 'owner-user',
+        role: 'viewer',
+      }),
+    );
+
+    const response = await controller.wasteOverview(
+      makeCurrentUser('member-user'),
+    );
+
+    expect(getWasteOverviewUseCase.execute).toHaveBeenCalledWith('owner-user');
+    expect(response.eventCount).toBe(1);
   });
 
   it('logs request ids for overview and export reads', async () => {
@@ -472,6 +495,41 @@ function makeProfile() {
       accountDeletion: 'local_and_cognito_delete_requested' as const,
     },
     preferences: makePreferences(),
+    knownDevices: [],
+  };
+}
+
+function makeWasteOverview() {
+  return {
+    userId: 'user-1',
+    generatedAt: new Date('2026-06-09T00:00:00.000Z'),
+    windowDays: 30,
+    eventCount: 1,
+    estimatedLossTotal: 25,
+    totalQuantityByUnit: [
+      {
+        unit: QuantityUnit.PIECE,
+        quantity: 1,
+      },
+    ],
+    reasonBreakdown: [
+      {
+        reason: 'expired' as const,
+        eventCount: 1,
+        estimatedLossTotal: 25,
+      },
+    ],
+    recentEvents: [
+      {
+        id: 'waste-1',
+        productName: 'Leche',
+        quantity: 1,
+        unit: QuantityUnit.PIECE,
+        reason: 'expired' as const,
+        estimatedLoss: 25,
+        occurredAt: new Date('2026-06-09T00:00:00.000Z'),
+      },
+    ],
   };
 }
 

@@ -28,6 +28,7 @@ export class ProfileMapper {
       preferences: profile.preferences,
       retentionPolicy: profile.retentionPolicy,
       security,
+      knownDevices: profile.knownDevices,
     };
   }
 

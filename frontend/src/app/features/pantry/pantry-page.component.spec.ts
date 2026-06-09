@@ -55,6 +55,7 @@ describe('PantryPageComponent', () => {
       'listActiveShoppingShares',
       'revokeShoppingShareById',
       'revokeShoppingShare',
+      'getWasteOverview',
     ]);
     pantryService.searchProductTypes.and.returnValue(of([]));
     pantryService.registerLot.and.returnValue(of({} as any));
@@ -108,6 +109,39 @@ describe('PantryPageComponent', () => {
         createdAt: new Date('2026-05-19T00:00:00.000Z'),
         expiresAt: new Date('2026-05-26T18:00:00.000Z'),
         revokedAt: new Date('2026-05-20T00:00:00.000Z'),
+      }),
+    );
+    pantryService.getWasteOverview.and.returnValue(
+      of({
+        userId: 'tester',
+        generatedAt: new Date('2026-06-09T00:00:00.000Z'),
+        windowDays: 30,
+        eventCount: 1,
+        estimatedLossTotal: 25,
+        totalQuantityByUnit: [
+          {
+            unit: 'piezas',
+            quantity: 1,
+          },
+        ],
+        reasonBreakdown: [
+          {
+            reason: 'expired',
+            eventCount: 1,
+            estimatedLossTotal: 25,
+          },
+        ],
+        recentEvents: [
+          {
+            id: 'waste-1',
+            productName: 'Leche',
+            quantity: 1,
+            unit: 'piezas',
+            reason: 'expired',
+            estimatedLoss: 25,
+            occurredAt: new Date('2026-06-09T00:00:00.000Z'),
+          },
+        ],
       }),
     );
     authFacade = new AuthFacadeStub();
@@ -180,6 +214,17 @@ describe('PantryPageComponent', () => {
         quantity: 1,
       },
     ]);
+  });
+
+  it('sends waste metadata when consuming a lot as waste', () => {
+    component.consumeLot('lot-1', 1, 'expired', 'Fecha vencida');
+
+    expect(pantryService.consumeInventoryLot).toHaveBeenCalledWith('lot-1', {
+      quantity: 1,
+      wasteReason: 'expired',
+      wasteNote: 'Fecha vencida',
+    });
+    expect(pantryService.getWasteOverview).toHaveBeenCalled();
   });
 
   it('renders an explicit label for the existing type search input', () => {
@@ -502,6 +547,38 @@ describe('PantryPageComponent', () => {
     expect((component as any).getWhatsAppShoppingUrl(exportText)).toBe(
       `https://wa.me/?text=${encodeURIComponent(exportText)}`,
     );
+  });
+
+  it('saves and copies a local shopping list snapshot by store', async () => {
+    localStorage.removeItem('pantrylist.savedShoppingLists');
+    component.savedShoppingListForm.patchValue({
+      title: 'Mayoreo semanal',
+      occasion: 'Quincena',
+      shoppingLocation: 'Mayoreo',
+    });
+
+    component.saveShoppingListSnapshot([
+      makeShoppingPlanItem({
+        shoppingMetadata: {
+          shoppingLocation: 'Mayoreo',
+          householdStaple: true,
+          buyOnlyOnPromo: false,
+          replenishWhenLow: true,
+        },
+      }),
+    ]);
+
+    expect(component.savedShoppingLists[0]).toEqual(
+      jasmine.objectContaining({
+        title: 'Mayoreo semanal',
+        occasion: 'Quincena',
+        shoppingLocation: 'Mayoreo',
+      }),
+    );
+
+    await component.copySavedShoppingList(component.savedShoppingLists[0]);
+
+    expect(component.shoppingExportText).toContain('Mayoreo semanal');
   });
 
   it('compares the smart basket against a stored household budget', () => {

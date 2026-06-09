@@ -55,9 +55,14 @@ export class ProfileController {
   @ApiOperation({ summary: 'Obtener perfil y preferencias del usuario' })
   async getProfile(
     @CurrentUser() currentUser: AuthenticatedUser,
+    @Req() request: FastifyRequest,
   ): Promise<UserProfileResponseDto> {
     const profile = await this.getUserProfileUseCase.execute(
       currentUser.userId,
+      {
+        clientDeviceId: getFirstHeader(request.headers['x-client-device-id']),
+        userAgent: getFirstHeader(request.headers['user-agent']),
+      },
     );
 
     return ProfileMapper.toProfileResponse(profile, {
@@ -151,4 +156,10 @@ export class ProfileController {
       localSessionCleared: true,
     };
   }
+}
+
+function getFirstHeader(
+  value: string | string[] | undefined,
+): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
 }

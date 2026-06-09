@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
+import { ApiMetricsAlertSinkService } from '../../application/services/api-metrics-alert-sink.service';
 import { ApiMetricsService } from '../../application/services/api-metrics.service';
 
 const REQUEST_STARTED_AT = Symbol('requestStartedAt');
@@ -10,6 +11,7 @@ type MetricsFastifyRequest = FastifyRequest & {
 export function registerApiMetricsHook(
   fastify: FastifyInstance,
   metricsService: ApiMetricsService,
+  alertSink?: ApiMetricsAlertSinkService,
 ): void {
   fastify.addHook(
     'onRequest',
@@ -33,6 +35,7 @@ export function registerApiMetricsHook(
         statusCode: reply.statusCode,
         durationMs,
       });
+      alertSink?.reportIfNeeded(metricsService.getSnapshot());
       done();
     },
   );

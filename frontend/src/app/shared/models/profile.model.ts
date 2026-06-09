@@ -16,6 +16,7 @@ export interface DeletePantryDataResult {
   deletedInventoryLotCount: number;
   deletedProductTypeCount: number;
   deletedShoppingShareCount: number;
+  deletedWasteEventCount: number;
 }
 
 export interface DeleteAccountRequest {
@@ -26,6 +27,8 @@ export interface DeleteAccountResult {
   deletedInventoryLotCount: number;
   deletedProductTypeCount: number;
   deletedShoppingShareCount: number;
+  deletedWasteEventCount: number;
+  deletedKnownDeviceCount: number;
   deletedCognitoIdentityCount: number;
 }
 
@@ -68,6 +71,26 @@ export interface ApiProfileSecurity {
 
 export interface ProfileSecurity {
   stepUp: StepUpSecurity;
+}
+
+export interface ApiKnownUserDevice {
+  id: string;
+  label: string;
+  userAgentSummary: string;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  seenCount: number;
+  current: boolean;
+}
+
+export interface KnownUserDevice {
+  id: string;
+  label: string;
+  userAgentSummary: string;
+  firstSeenAt: Date;
+  lastSeenAt: Date;
+  seenCount: number;
+  current: boolean;
 }
 
 export type HouseholdRole = 'owner' | 'editor' | 'viewer';
@@ -201,6 +224,7 @@ export interface UserProfile {
   preferences: UserPreferences;
   retentionPolicy: RetentionPolicy;
   security: ProfileSecurity;
+  knownDevices: KnownUserDevice[];
 }
 
 export interface ApiUserProfile {
@@ -214,4 +238,5 @@ export interface ApiUserProfile {
   preferences: UserPreferences;
   retentionPolicy: RetentionPolicy;
   security: ApiProfileSecurity;
+  knownDevices?: ApiKnownUserDevice[];
 }

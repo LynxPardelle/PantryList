@@ -280,7 +280,7 @@ export class ProfilePageComponent implements OnInit {
       .subscribe({
         next: (result) => {
           this.deletePantryDataForm.reset({ confirmationText: '' });
-          this.deleteMessage = `Datos eliminados: ${result.deletedInventoryLotCount} lotes, ${result.deletedProductTypeCount} tipos base y ${result.deletedShoppingShareCount} enlaces compartidos.`;
+          this.deleteMessage = `Datos eliminados: ${result.deletedInventoryLotCount} lotes, ${result.deletedProductTypeCount} tipos base, ${result.deletedShoppingShareCount} enlaces compartidos y ${result.deletedWasteEventCount} eventos de merma.`;
           this.changeDetector.markForCheck();
         },
         error: (error) => {
