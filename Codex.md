@@ -54,3 +54,7 @@
 - Root EBS volume `vol-0bd5f763909f1383b` was snapshotted as `snap-0e2ffccfd85932b9f`, expanded from 80 GB to 120 GB, repaired with `e2fsck`, resized with `resize2fs`, and cleaned offline through helper instance `i-0d33f07ef8509f918`.
 - Helper instance `i-0d33f07ef8509f918` was terminated and temporary SSH security group rule `sgr-0ddcd029ee29e4d60` for `201.137.54.26/32` was revoked.
 - After recovery, SSM returned `Online`, `/healthz` and `/api/healthz` returned `200`, and production-smoke curl calls were hardened with connect/response timeouts.
+- Active Dokploy service path is `/etc/dokploy/compose/compose-compress-back-end-port-hiewlq/code`; older `/etc/dokploy/compose/pantrylist-prod/code` is not the active routed service. Preserve Dokploy-generated `docker-compose.dokploy.prod.yml` labels when resetting the active worktree.
+- The Dokploy host uses `/usr/local/bin/docker-compose` rather than `docker compose`, and the active service uses `.env` rather than `.env.production.local`.
+- After manual recovery, the active service was reset to `2235b5b`, frontend was rebuilt without cache, production served `main-6HS7YGRD.js`, and the Stripe panel marker was present in `chunk-6V23M5MG.js`.
+- Temporary SSH security group rule `sgr-0a452c81e8018a820` for `201.137.54.26/32` was revoked after the manual production audit/deploy.

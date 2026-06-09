@@ -4,6 +4,7 @@
 
 - Added explicit connect and response timeouts to production smoke curl calls.
 - Prevents the GitHub production-smoke job from hanging when the Dokploy host accepts TCP but does not return HTTP bytes.
+- Added a deployed frontend asset marker check so production smoke does not pass while CloudFront/Dokploy still serves a stale pre-monetization bundle.
 
 ## Incident Notes
 
@@ -20,3 +21,5 @@
 - Production `/healthz`: 200.
 - Production `/api/healthz`: 200.
 - Production `/login/`: 200.
+- Production `/login/` served `main-6HS7YGRD.js`.
+- Production JS assets include the `Plan y Stripe` marker in `chunk-6V23M5MG.js`.

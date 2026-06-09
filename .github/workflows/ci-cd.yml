@@ -222,10 +222,29 @@ jobs:
           frontend="$(curl --fail --show-error --silent --connect-timeout 5 --max-time 10 "$PRODUCTION_BASE_URL/healthz" || true)"
           backend="$(curl --fail --show-error --silent --connect-timeout 5 --max-time 10 "$PRODUCTION_BASE_URL/api/healthz" || true)"
           login_headers="$(curl --fail --show-error --silent --connect-timeout 5 --max-time 10 --head "$PRODUCTION_BASE_URL/login/" || true)"
+          login_html="$(curl --fail --show-error --silent --connect-timeout 5 --max-time 10 "$PRODUCTION_BASE_URL/login/" || true)"
+          initial_assets="$(printf '%s' "$login_html" | grep -oE '(main|chunk)-[A-Z0-9]+\.js' | sort -u || true)"
+          referenced_assets=""
+
+          for asset in $initial_assets; do
+            asset_body="$(curl --fail --show-error --silent --connect-timeout 5 --max-time 10 "$PRODUCTION_BASE_URL/$asset" || true)"
+            referenced_assets="$referenced_assets $(printf '%s' "$asset_body" | grep -oE 'chunk-[A-Z0-9]+\.js' | sort -u || true)"
+          done
+
+          deployed_marker_found="false"
+          all_assets="$(printf '%s\n%s\n' "$initial_assets" "$referenced_assets" | tr ' ' '\n' | sort -u)"
+          for asset in $all_assets; do
+            asset_body="$(curl --fail --show-error --silent --connect-timeout 5 --max-time 10 "$PRODUCTION_BASE_URL/$asset" || true)"
+            if printf '%s' "$asset_body" | grep -q 'Plan y Stripe'; then
+              deployed_marker_found="true"
+              break
+            fi
+          done
 
           if echo "$frontend" | grep -q '"service":"pantrylist-frontend"' \
             && echo "$backend" | grep -q '"service":"pantrylist-backend"' \
-            && echo "$login_headers" | grep -qi '^Cache-Control: no-cache'; then
+            && echo "$login_headers" | grep -qi '^Cache-Control: no-cache' \
+            && [ "$deployed_marker_found" = "true" ]; then
             echo "Production smoke passed."
             exit 0
           fi
