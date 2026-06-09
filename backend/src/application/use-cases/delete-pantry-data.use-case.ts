@@ -1,12 +1,14 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { InventoryLotRepository } from '../../domain/repositories/inventory-lot.repository';
 import { ProductTypeRepository } from '../../domain/repositories/product-type.repository';
+import { ShoppingListRepository } from '../../domain/repositories/shopping-list.repository';
 import { ShoppingShareRepository } from '../../domain/repositories/shopping-share.repository';
 import { WasteEventRepository } from '../../domain/repositories/waste-event.repository';
 import { UserId } from '../../domain/value-objects/user-id.vo';
 import {
   INVENTORY_LOT_REPOSITORY,
   PRODUCT_TYPE_REPOSITORY,
+  SHOPPING_LIST_REPOSITORY,
   SHOPPING_SHARE_REPOSITORY,
   WASTE_EVENT_REPOSITORY,
 } from '../tokens';
@@ -19,6 +21,7 @@ export interface DeletePantryDataCommand {
 export interface DeletePantryDataResult {
   deletedInventoryLotCount: number;
   deletedProductTypeCount: number;
+  deletedShoppingListCount: number;
   deletedShoppingShareCount: number;
   deletedWasteEventCount: number;
 }
@@ -34,6 +37,8 @@ export class DeletePantryDataUseCase {
     private readonly inventoryLotRepository: InventoryLotRepository,
     @Inject(SHOPPING_SHARE_REPOSITORY)
     private readonly shoppingShareRepository: ShoppingShareRepository,
+    @Inject(SHOPPING_LIST_REPOSITORY)
+    private readonly shoppingListRepository: ShoppingListRepository,
     @Inject(WASTE_EVENT_REPOSITORY)
     private readonly wasteEventRepository: WasteEventRepository,
   ) {}
@@ -48,6 +53,8 @@ export class DeletePantryDataUseCase {
     }
 
     const userId = UserId.fromString(command.userId);
+    const deletedShoppingListCount =
+      await this.shoppingListRepository.deleteByOwnerUserId(userId);
     const deletedShoppingShareCount =
       await this.shoppingShareRepository.deleteByOwnerUserId(userId);
     const deletedWasteEventCount =
@@ -60,6 +67,7 @@ export class DeletePantryDataUseCase {
     return {
       deletedInventoryLotCount,
       deletedProductTypeCount,
+      deletedShoppingListCount,
       deletedShoppingShareCount,
       deletedWasteEventCount,
     };

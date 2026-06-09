@@ -50,6 +50,7 @@ import {
   ProductType,
   ProductTypeSelectionMode,
   ProductUnit,
+  SavedShoppingList,
   ShoppingShare,
   ShoppingPlanItem,
   ShoppingPlanUrgency,
@@ -116,25 +117,6 @@ interface PendingShoppingCheckout {
   id: string;
   createdAt: Date;
   items: CloseShoppingPurchaseItemRequest[];
-}
-
-interface SavedShoppingListSnapshotItem {
-  productTypeId: string;
-  baseName: string;
-  quantity: number;
-  unit: ProductUnit;
-  shoppingLocation?: string;
-  estimatedUnitPrice?: number;
-  estimatedLineTotal?: number;
-}
-
-interface SavedShoppingListSnapshot {
-  id: string;
-  title: string;
-  occasion?: string;
-  shoppingLocation?: string;
-  createdAt: Date;
-  items: SavedShoppingListSnapshotItem[];
 }
 
 interface ScreenWakeLock {
@@ -510,7 +492,7 @@ export class PantryPageComponent implements OnInit {
   privacyExportBusy = false;
   quickCaptureDrafts: QuickCaptureDraft[] = [];
   quickCaptureStatus: string | null = null;
-  savedShoppingLists: SavedShoppingListSnapshot[] = [];
+  savedShoppingLists: SavedShoppingList[] = [];
   savedShoppingListStatus: string | null = null;
   wasteOverview: WasteOverview | null = null;
   wasteOverviewLoading = false;
@@ -532,6 +514,7 @@ export class PantryPageComponent implements OnInit {
       this.loadWasteOverview();
       this.watchNetworkState();
       this.loadLocalShoppingSupport();
+      this.loadSavedShoppingLists();
       this.setupVoiceCapture();
       this.loadActiveShoppingShares();
       this.destroyRef.onDestroy(() => {
@@ -1227,7 +1210,7 @@ export class PantryPageComponent implements OnInit {
 
   trackBySavedShoppingListId(
     _: number,
-    list: SavedShoppingListSnapshot,
+    list: SavedShoppingList,
   ): string {
     return list.id;
   }
@@ -1269,6 +1252,31 @@ export class PantryPageComponent implements OnInit {
     return overview.totalQuantityByUnit
       .map((entry) => this.formatQuantity(entry.quantity, entry.unit))
       .join(', ');
+  }
+
+  getWeeklyWasteLossSummary(overview: WasteOverview): string {
+    if (overview.eventCount === 0 || overview.estimatedLossTotal <= 0) {
+      return 'Semana estimada: 0.00 moneda local';
+    }
+
+    const weeklyLoss = Number(
+      ((overview.estimatedLossTotal / overview.windowDays) * 7).toFixed(2)
+    );
+
+    return `Semana estimada: ${this.formatShoppingPrice(weeklyLoss)}`;
+  }
+
+  getDuplicatePurchaseWarningCount(items: ShoppingPlanItem[]): number {
+    return items.filter((item) => item.totalQuantity > 0 && item.urgency !== 'depleted')
+      .length;
+  }
+
+  getDuplicatePurchaseSummary(items: ShoppingPlanItem[]): string {
+    const warningCount = this.getDuplicatePurchaseWarningCount(items);
+
+    return warningCount === 1
+      ? '1 producto sugerido todavía tiene stock físico.'
+      : `${warningCount} productos sugeridos todavía tienen stock físico.`;
   }
 
   getShoppingPlanEstimatedTotal(items: ShoppingPlanItem[]): number {
@@ -1413,14 +1421,12 @@ export class PantryPageComponent implements OnInit {
       return;
     }
 
-    const snapshot: SavedShoppingListSnapshot = {
-      id: `${Date.now()}`,
+    const listPayload = {
       title:
         this.toOptionalText(rawValue.title) ??
         `Lista ${this.savedShoppingLists.length + 1}`,
       occasion: this.toOptionalText(rawValue.occasion),
       shoppingLocation,
-      createdAt: new Date(),
       items: filteredItems.map((item) => ({
         productTypeId: item.productTypeId,
         baseName: item.baseName,
@@ -1433,20 +1439,41 @@ export class PantryPageComponent implements OnInit {
       })),
     };
 
-    this.savedShoppingLists = [snapshot, ...this.savedShoppingLists].slice(
-      0,
-      12,
-    );
-    this.savedShoppingListStatus = 'Lista guardada en este navegador.';
-    this.savedShoppingListForm.reset({
-      title: '',
-      occasion: '',
-      shoppingLocation: '',
+    this.savedShoppingListStatus = 'Guardando lista...';
+    this.pantryService.createSavedShoppingList(listPayload).subscribe({
+      next: (list) => {
+        this.savedShoppingLists = [list, ...this.savedShoppingLists]
+          .filter(
+            (candidate, index, lists) =>
+              lists.findIndex((entry) => entry.id === candidate.id) === index,
+          )
+          .slice(0, 25);
+        this.savedShoppingListStatus = 'Lista sincronizada en tu cuenta.';
+        this.resetSavedShoppingListForm();
+        this.persistSavedShoppingLists();
+        this.changeDetector.markForCheck();
+      },
+      error: (error) => {
+        const now = new Date();
+        const localList: SavedShoppingList = {
+          id: `local-${now.getTime()}`,
+          ...listPayload,
+          createdAt: now,
+          updatedAt: now,
+        };
+        this.savedShoppingLists = [localList, ...this.savedShoppingLists].slice(
+          0,
+          25,
+        );
+        this.savedShoppingListStatus = `${this.getErrorMessage(error)} Lista guardada solo en este navegador.`;
+        this.resetSavedShoppingListForm();
+        this.persistSavedShoppingLists();
+        this.changeDetector.markForCheck();
+      },
     });
-    this.persistSavedShoppingLists();
   }
 
-  async copySavedShoppingList(list: SavedShoppingListSnapshot): Promise<void> {
+  async copySavedShoppingList(list: SavedShoppingList): Promise<void> {
     const exportText = this.buildSavedShoppingListExportText(list);
     const copyResult = await this.copyTextToClipboard(exportText);
 
@@ -1459,14 +1486,33 @@ export class PantryPageComponent implements OnInit {
   }
 
   deleteSavedShoppingList(listId: string): void {
-    this.savedShoppingLists = this.savedShoppingLists.filter(
-      (list) => list.id !== listId,
-    );
-    this.savedShoppingListStatus = 'Lista guardada eliminada.';
-    this.persistSavedShoppingLists();
+    const list = this.savedShoppingLists.find((entry) => entry.id === listId);
+
+    if (!list) {
+      return;
+    }
+
+    if (!list.ownerUserId) {
+      this.removeSavedShoppingList(listId);
+      this.savedShoppingListStatus = 'Lista local eliminada.';
+      return;
+    }
+
+    this.savedShoppingListStatus = 'Eliminando lista...';
+    this.pantryService.deleteSavedShoppingList(listId).subscribe({
+      next: () => {
+        this.removeSavedShoppingList(listId);
+        this.savedShoppingListStatus = 'Lista sincronizada eliminada.';
+        this.changeDetector.markForCheck();
+      },
+      error: (error) => {
+        this.savedShoppingListStatus = this.getErrorMessage(error);
+        this.changeDetector.markForCheck();
+      },
+    });
   }
 
-  buildSavedShoppingListExportText(list: SavedShoppingListSnapshot): string {
+  buildSavedShoppingListExportText(list: SavedShoppingList): string {
     const lines = [
       `Lista PantryList: ${list.title}`,
       list.occasion ? `Ocasión: ${list.occasion}` : '',
@@ -2185,11 +2231,17 @@ export class PantryPageComponent implements OnInit {
     if (storedSavedLists) {
       try {
         const parsedLists = JSON.parse(storedSavedLists) as Array<
-          Omit<SavedShoppingListSnapshot, 'createdAt'> & { createdAt: string }
+          Omit<SavedShoppingList, 'createdAt' | 'updatedAt'> & {
+            createdAt: string;
+            updatedAt?: string;
+          }
         >;
         this.savedShoppingLists = parsedLists.map((list) => ({
           ...list,
           createdAt: new Date(list.createdAt),
+          updatedAt: list.updatedAt
+            ? new Date(list.updatedAt)
+            : new Date(list.createdAt),
         }));
       } catch {
         this.savedShoppingLists = [];
@@ -2223,6 +2275,30 @@ export class PantryPageComponent implements OnInit {
     if (!this.isOffline) {
       this.flushPendingShoppingCheckouts();
     }
+  }
+
+  private loadSavedShoppingLists(): void {
+    this.pantryService.listSavedShoppingLists().subscribe({
+      next: (serverLists) => {
+        const localOnlyLists = this.savedShoppingLists.filter(
+          (list) =>
+            !list.ownerUserId &&
+            !serverLists.some((serverList) => serverList.id === list.id),
+        );
+        this.savedShoppingLists = [...serverLists, ...localOnlyLists].slice(
+          0,
+          25,
+        );
+        this.persistSavedShoppingLists();
+        this.changeDetector.markForCheck();
+      },
+      error: (error) => {
+        this.savedShoppingListStatus = this.savedShoppingLists.length
+          ? 'Listas locales disponibles; sincronización no disponible.'
+          : this.getErrorMessage(error);
+        this.changeDetector.markForCheck();
+      },
+    });
   }
 
   private setupVoiceCapture(): void {
@@ -2310,6 +2386,21 @@ export class PantryPageComponent implements OnInit {
       this.savedShoppingListsStorageKey,
       JSON.stringify(this.savedShoppingLists)
     );
+  }
+
+  private resetSavedShoppingListForm(): void {
+    this.savedShoppingListForm.reset({
+      title: '',
+      occasion: '',
+      shoppingLocation: '',
+    });
+  }
+
+  private removeSavedShoppingList(listId: string): void {
+    this.savedShoppingLists = this.savedShoppingLists.filter(
+      (list) => list.id !== listId,
+    );
+    this.persistSavedShoppingLists();
   }
 
   private ensureShoppingTripDraft(items: ShoppingPlanItem[]): void {

@@ -293,6 +293,7 @@ describe('buildPantryOverview depletion forecasts', () => {
       unpricedShoppingItemCount: 0,
       promoOnlyShoppingItemCount: 0,
       estimatedPromoOnlyTotal: 0,
+      duplicatePurchaseWarningCount: 1,
     });
   });
 

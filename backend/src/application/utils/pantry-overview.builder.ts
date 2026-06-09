@@ -352,6 +352,9 @@ export function buildPantryOverview(
       .reduce((sum, item) => sum + (item.estimatedLineTotal ?? 0), 0)
       .toFixed(2),
   );
+  const duplicatePurchaseWarningCount = shoppingPlanItems.filter(
+    (item) => item.totalQuantity > 0 && item.urgency !== 'depleted',
+  ).length;
 
   return {
     userId,
@@ -379,6 +382,7 @@ export function buildPantryOverview(
       unpricedShoppingItemCount,
       promoOnlyShoppingItemCount: promoOnlyShoppingItems.length,
       estimatedPromoOnlyTotal,
+      duplicatePurchaseWarningCount,
     },
   };
 }

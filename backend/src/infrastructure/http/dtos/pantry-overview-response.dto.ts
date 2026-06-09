@@ -186,6 +186,9 @@ export class PantryValueInsightsResponseDto {
 
   @ApiProperty()
   estimatedPromoOnlyTotal: number;
+
+  @ApiProperty()
+  duplicatePurchaseWarningCount: number;
 }
 
 export class DepletingProductGroupResponseDto {

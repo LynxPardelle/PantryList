@@ -16,7 +16,13 @@ import {
   RevokeShoppingShareByIdUseCase,
   RevokeShoppingShareUseCase,
 } from '../../../application/use-cases/shopping-share.use-cases';
+import {
+  CreateShoppingListUseCase,
+  DeleteShoppingListUseCase,
+  ListShoppingListsUseCase,
+} from '../../../application/use-cases/shopping-list.use-cases';
 import { ShoppingShare } from '../../../domain/entities/shopping-share.entity';
+import { ShoppingList } from '../../../domain/entities/shopping-list.entity';
 import { InventoryLot } from '../../../domain/entities/inventory-lot.entity';
 import { ProductCategory, QuantityUnit } from '../../../domain/enums';
 import { PantryController } from './pantry.controller';
@@ -29,9 +35,12 @@ describe('PantryController', () => {
   let getWasteOverviewUseCase: jest.Mocked<GetWasteOverviewUseCase>;
   let closeShoppingPurchaseUseCase: jest.Mocked<CloseShoppingPurchaseUseCase>;
   let createShoppingShareUseCase: jest.Mocked<CreateShoppingShareUseCase>;
+  let createShoppingListUseCase: jest.Mocked<CreateShoppingListUseCase>;
   let listActiveShoppingSharesUseCase: jest.Mocked<ListActiveShoppingSharesUseCase>;
+  let listShoppingListsUseCase: jest.Mocked<ListShoppingListsUseCase>;
   let revokeShoppingShareByIdUseCase: jest.Mocked<RevokeShoppingShareByIdUseCase>;
   let revokeShoppingShareUseCase: jest.Mocked<RevokeShoppingShareUseCase>;
+  let deleteShoppingListUseCase: jest.Mocked<DeleteShoppingListUseCase>;
   let resolveHouseholdPantryAccessUseCase: jest.Mocked<ResolveHouseholdPantryAccessUseCase>;
   let recordHouseholdActivityUseCase: jest.Mocked<RecordHouseholdActivityUseCase>;
   let authCookieService: jest.Mocked<AuthCookieService>;
@@ -58,11 +67,19 @@ describe('PantryController', () => {
         token: 'opaque-token',
       }),
     } as unknown as jest.Mocked<CreateShoppingShareUseCase>;
+    createShoppingListUseCase = {
+      execute: jest.fn().mockResolvedValue(makeShoppingList()),
+    } as unknown as jest.Mocked<CreateShoppingListUseCase>;
     listActiveShoppingSharesUseCase = {
       execute: jest
         .fn()
         .mockResolvedValue([makeShoppingShare({ id: 'share-active-1' })]),
     } as unknown as jest.Mocked<ListActiveShoppingSharesUseCase>;
+    listShoppingListsUseCase = {
+      execute: jest
+        .fn()
+        .mockResolvedValue([makeShoppingList({ id: 'list-1' })]),
+    } as unknown as jest.Mocked<ListShoppingListsUseCase>;
     revokeShoppingShareByIdUseCase = {
       execute: jest.fn().mockResolvedValue(
         makeShoppingShare({
@@ -80,6 +97,9 @@ describe('PantryController', () => {
         }),
       ),
     } as unknown as jest.Mocked<RevokeShoppingShareUseCase>;
+    deleteShoppingListUseCase = {
+      execute: jest.fn().mockResolvedValue(makeShoppingList({ id: 'list-1' })),
+    } as unknown as jest.Mocked<DeleteShoppingListUseCase>;
     resolveHouseholdPantryAccessUseCase = {
       executeRead: jest.fn().mockResolvedValue(makeHouseholdAccess()),
       executeWrite: jest.fn().mockResolvedValue(makeHouseholdAccess()),
@@ -99,9 +119,12 @@ describe('PantryController', () => {
       getWasteOverviewUseCase,
       closeShoppingPurchaseUseCase,
       createShoppingShareUseCase,
+      createShoppingListUseCase,
       listActiveShoppingSharesUseCase,
+      listShoppingListsUseCase,
       revokeShoppingShareByIdUseCase,
       revokeShoppingShareUseCase,
+      deleteShoppingListUseCase,
       resolveHouseholdPantryAccessUseCase,
       recordHouseholdActivityUseCase,
       authCookieService,
@@ -121,6 +144,7 @@ describe('PantryController', () => {
     expect(exported.overview.userId).toBe('user-1');
     expect(exported.archived.productTypes[0].baseName).toBe('Detergente');
     expect(exported.archived.inventoryLots[0].variantName).toBe('Botella');
+    expect(exported.shoppingLists[0].title).toBe('Mayoreo semanal');
     expect(getUserProfileUseCase.execute).toHaveBeenCalledWith('user-1');
     expect(getPantryOverviewUseCase.execute).toHaveBeenCalledWith('user-1');
     expect(getArchivedPantryItemsUseCase.execute).toHaveBeenCalledWith(
@@ -143,6 +167,8 @@ describe('PantryController', () => {
       archivedPantryPageSize: 50,
       inventoryLotsPerProductType: 500,
       shoppingCheckoutItems: 50,
+      savedShoppingListsPerUser: 25,
+      savedShoppingListItems: 100,
     });
   });
 
@@ -322,6 +348,110 @@ describe('PantryController', () => {
     });
     expect(response.token).toBe('opaque-token');
     expect(response.expiresAt).toEqual(new Date('2026-05-26T00:00:00.000Z'));
+  });
+
+  it('lists server-backed saved shopping lists for the household owner scope', async () => {
+    const response = await controller.listShoppingLists(
+      makeCurrentUser('user-1'),
+      {
+        method: 'GET',
+        headers: {
+          'x-request-id': 'req-list-shopping-lists-1',
+        },
+      } as unknown as FastifyRequest,
+    );
+
+    expect(listShoppingListsUseCase.execute).toHaveBeenCalledWith('user-1');
+    expect(response[0].title).toBe('Mayoreo semanal');
+    expect(response[0].items[0].baseName).toBe('Arroz');
+  });
+
+  it('saves a server-backed shopping list for the household owner scope', async () => {
+    const request = {
+      method: 'POST',
+      headers: {
+        'x-request-id': 'req-save-shopping-list-1',
+      },
+    } as unknown as FastifyRequest;
+
+    const response = await controller.createShoppingList(
+      makeCurrentUser('user-1'),
+      {
+        title: 'Mayoreo semanal',
+        occasion: 'Quincena',
+        shoppingLocation: 'Mayoreo',
+        items: [
+          {
+            productTypeId: 'type-rice',
+            baseName: 'Arroz',
+            quantity: 2,
+            unit: QuantityUnit.KILOGRAM,
+            shoppingLocation: 'Mayoreo',
+            estimatedUnitPrice: 35,
+            estimatedLineTotal: 70,
+          },
+        ],
+      },
+      request,
+    );
+
+    expect(authCookieService.ensureXsrfForRequest).toHaveBeenCalledWith(
+      request,
+    );
+    expect(createShoppingListUseCase.execute).toHaveBeenCalledWith({
+      ownerUserId: 'user-1',
+      title: 'Mayoreo semanal',
+      occasion: 'Quincena',
+      shoppingLocation: 'Mayoreo',
+      items: [
+        {
+          productTypeId: 'type-rice',
+          baseName: 'Arroz',
+          quantity: 2,
+          unit: QuantityUnit.KILOGRAM,
+          shoppingLocation: 'Mayoreo',
+          estimatedUnitPrice: 35,
+          estimatedLineTotal: 70,
+        },
+      ],
+    });
+    expect(recordHouseholdActivityUseCase.execute).toHaveBeenCalledWith({
+      householdId: 'household-1',
+      type: 'shopping_list_saved',
+      actorUserId: 'user-1',
+      targetLabel: 'Mayoreo semanal',
+    });
+    expect(response.title).toBe('Mayoreo semanal');
+  });
+
+  it('deletes a server-backed shopping list by id', async () => {
+    const request = {
+      method: 'DELETE',
+      headers: {
+        'x-request-id': 'req-delete-shopping-list-1',
+      },
+    } as unknown as FastifyRequest;
+
+    const response = await controller.deleteShoppingList(
+      makeCurrentUser('user-1'),
+      'list-1',
+      request,
+    );
+
+    expect(authCookieService.ensureXsrfForRequest).toHaveBeenCalledWith(
+      request,
+    );
+    expect(deleteShoppingListUseCase.execute).toHaveBeenCalledWith({
+      ownerUserId: 'user-1',
+      listId: 'list-1',
+    });
+    expect(recordHouseholdActivityUseCase.execute).toHaveBeenCalledWith({
+      householdId: 'household-1',
+      type: 'shopping_list_deleted',
+      actorUserId: 'user-1',
+      targetLabel: 'Mayoreo semanal',
+    });
+    expect(response.id).toBe('list-1');
   });
 
   it('lists active temporary shopping shares for the current user without raw tokens', async () => {
@@ -565,6 +695,7 @@ function makeOverview() {
       unpricedShoppingItemCount: 0,
       promoOnlyShoppingItemCount: 0,
       estimatedPromoOnlyTotal: 0,
+      duplicatePurchaseWarningCount: 0,
     },
   };
 }
@@ -633,6 +764,32 @@ function makeShoppingShare(
     text: 'Lista de compras\n- Arroz',
     createdAt: new Date('2026-05-19T00:00:00.000Z'),
     expiresAt: new Date('2026-05-26T00:00:00.000Z'),
+    updatedAt: new Date('2026-05-19T00:00:00.000Z'),
+    ...overrides,
+  });
+}
+
+function makeShoppingList(
+  overrides: Partial<ReturnType<ShoppingList['toPrimitives']>> = {},
+): ShoppingList {
+  return ShoppingList.fromPrimitives({
+    id: 'list-1',
+    ownerUserId: 'user-1',
+    title: 'Mayoreo semanal',
+    occasion: 'Quincena',
+    shoppingLocation: 'Mayoreo',
+    items: [
+      {
+        productTypeId: 'type-rice',
+        baseName: 'Arroz',
+        quantity: 2,
+        unit: QuantityUnit.KILOGRAM,
+        shoppingLocation: 'Mayoreo',
+        estimatedUnitPrice: 35,
+        estimatedLineTotal: 70,
+      },
+    ],
+    createdAt: new Date('2026-05-19T00:00:00.000Z'),
     updatedAt: new Date('2026-05-19T00:00:00.000Z'),
     ...overrides,
   });

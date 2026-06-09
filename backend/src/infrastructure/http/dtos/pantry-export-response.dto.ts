@@ -2,6 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { ArchivedPantryItemsResponseDto } from './archived-pantry-items-response.dto';
 import { PantryOverviewResponseDto } from './pantry-overview-response.dto';
 import { UserProfileResponseDto } from './profile-response.dto';
+import { ShoppingListResponseDto } from './shopping-list.dto';
 
 export class PantryDataLimitsResponseDto {
   @ApiProperty({ example: 500 })
@@ -27,6 +28,12 @@ export class PantryDataLimitsResponseDto {
 
   @ApiProperty({ example: 50 })
   shoppingCheckoutItems: number;
+
+  @ApiProperty({ example: 25 })
+  savedShoppingListsPerUser: number;
+
+  @ApiProperty({ example: 100 })
+  savedShoppingListItems: number;
 }
 
 export class PantryExportResponseDto {
@@ -44,6 +51,9 @@ export class PantryExportResponseDto {
 
   @ApiProperty({ type: ArchivedPantryItemsResponseDto })
   archived: ArchivedPantryItemsResponseDto;
+
+  @ApiProperty({ type: [ShoppingListResponseDto] })
+  shoppingLists: ShoppingListResponseDto[];
 
   @ApiProperty({ type: PantryDataLimitsResponseDto })
   limits: PantryDataLimitsResponseDto;

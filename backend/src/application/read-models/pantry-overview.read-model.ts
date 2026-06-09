@@ -72,6 +72,7 @@ export interface PantryValueInsights {
   unpricedShoppingItemCount: number;
   promoOnlyShoppingItemCount: number;
   estimatedPromoOnlyTotal: number;
+  duplicatePurchaseWarningCount: number;
 }
 
 export interface ShoppingPlanItem {

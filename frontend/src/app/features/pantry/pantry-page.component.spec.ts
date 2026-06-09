@@ -19,6 +19,7 @@ import {
   PantryStapleItem,
   PantryValueInsights,
   ProductType,
+  SavedShoppingList,
   ShoppingShare,
   ShoppingPlanItem,
 } from '../../shared/models/pantry.model';
@@ -52,6 +53,9 @@ describe('PantryPageComponent', () => {
       'getArchivedPantryItems',
       'closeShoppingPurchase',
       'createShoppingShare',
+      'listSavedShoppingLists',
+      'createSavedShoppingList',
+      'deleteSavedShoppingList',
       'listActiveShoppingShares',
       'revokeShoppingShareById',
       'revokeShoppingShare',
@@ -77,6 +81,26 @@ describe('PantryPageComponent', () => {
       of({ productTypes: [], inventoryLots: [] }),
     );
     pantryService.closeShoppingPurchase.and.returnValue(of([]));
+    pantryService.listSavedShoppingLists.and.returnValue(of([]));
+    pantryService.createSavedShoppingList.and.callFake((request) =>
+      of({
+        id: 'list-server-1',
+        ownerUserId: 'tester',
+        ...request,
+        createdAt: new Date('2026-06-09T00:00:00.000Z'),
+        updatedAt: new Date('2026-06-09T00:00:00.000Z'),
+      } as SavedShoppingList),
+    );
+    pantryService.deleteSavedShoppingList.and.returnValue(
+      of({
+        id: 'list-server-1',
+        ownerUserId: 'tester',
+        title: 'Mayoreo semanal',
+        createdAt: new Date('2026-06-09T00:00:00.000Z'),
+        updatedAt: new Date('2026-06-09T00:00:00.000Z'),
+        items: [],
+      }),
+    );
     pantryService.listActiveShoppingShares.and.returnValue(
       of([
         {
@@ -549,7 +573,7 @@ describe('PantryPageComponent', () => {
     );
   });
 
-  it('saves and copies a local shopping list snapshot by store', async () => {
+  it('saves and copies a server-backed shopping list snapshot by store', async () => {
     localStorage.removeItem('pantrylist.savedShoppingLists');
     component.savedShoppingListForm.patchValue({
       title: 'Mayoreo semanal',
@@ -570,15 +594,53 @@ describe('PantryPageComponent', () => {
 
     expect(component.savedShoppingLists[0]).toEqual(
       jasmine.objectContaining({
+        id: 'list-server-1',
+        ownerUserId: 'tester',
         title: 'Mayoreo semanal',
         occasion: 'Quincena',
         shoppingLocation: 'Mayoreo',
+      }),
+    );
+    expect(pantryService.createSavedShoppingList).toHaveBeenCalledWith(
+      jasmine.objectContaining({
+        title: 'Mayoreo semanal',
+        occasion: 'Quincena',
+        shoppingLocation: 'Mayoreo',
+        items: [
+          jasmine.objectContaining({
+            productTypeId: 'type-detergent',
+            baseName: 'Detergente',
+          }),
+        ],
       }),
     );
 
     await component.copySavedShoppingList(component.savedShoppingLists[0]);
 
     expect(component.shoppingExportText).toContain('Mayoreo semanal');
+  });
+
+  it('deletes a server-backed saved shopping list', () => {
+    component.savedShoppingLists = [
+      {
+        id: 'list-server-1',
+        ownerUserId: 'tester',
+        title: 'Mayoreo semanal',
+        createdAt: new Date('2026-06-09T00:00:00.000Z'),
+        updatedAt: new Date('2026-06-09T00:00:00.000Z'),
+        items: [],
+      },
+    ];
+
+    component.deleteSavedShoppingList('list-server-1');
+
+    expect(pantryService.deleteSavedShoppingList).toHaveBeenCalledWith(
+      'list-server-1',
+    );
+    expect(component.savedShoppingLists).toEqual([]);
+    expect(component.savedShoppingListStatus).toBe(
+      'Lista sincronizada eliminada.',
+    );
   });
 
   it('compares the smart basket against a stored household budget', () => {

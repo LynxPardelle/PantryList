@@ -280,7 +280,7 @@ export class ProfilePageComponent implements OnInit {
       .subscribe({
         next: (result) => {
           this.deletePantryDataForm.reset({ confirmationText: '' });
-          this.deleteMessage = `Datos eliminados: ${result.deletedInventoryLotCount} lotes, ${result.deletedProductTypeCount} tipos base, ${result.deletedShoppingShareCount} enlaces compartidos y ${result.deletedWasteEventCount} eventos de merma.`;
+          this.deleteMessage = `Datos eliminados: ${result.deletedInventoryLotCount} lotes, ${result.deletedProductTypeCount} tipos base, ${result.deletedShoppingListCount} listas guardadas, ${result.deletedShoppingShareCount} enlaces compartidos y ${result.deletedWasteEventCount} eventos de merma.`;
           this.changeDetector.markForCheck();
         },
         error: (error) => {
@@ -571,6 +571,8 @@ export class ProfilePageComponent implements OnInit {
       member_removed: `Miembro quitado${target}${role}`,
       shopping_share_created: 'Lista temporal compartida',
       shopping_share_revoked: 'Lista temporal revocada',
+      shopping_list_saved: `Lista guardada${target}`,
+      shopping_list_deleted: `Lista guardada eliminada${target}`,
     };
 
     return labels[activity.type];

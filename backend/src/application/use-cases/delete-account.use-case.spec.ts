@@ -62,6 +62,7 @@ describe('DeleteAccountUseCase', () => {
     ).resolves.toEqual({
       deletedInventoryLotCount: 5,
       deletedProductTypeCount: 3,
+      deletedShoppingListCount: 1,
       deletedShoppingShareCount: 2,
       deletedWasteEventCount: 4,
       deletedKnownDeviceCount: 2,
@@ -135,6 +136,7 @@ function makeUseCase(
     execute: jest.fn().mockResolvedValue({
       deletedInventoryLotCount: 5,
       deletedProductTypeCount: 3,
+      deletedShoppingListCount: 1,
       deletedShoppingShareCount: 2,
       deletedWasteEventCount: 4,
     }),

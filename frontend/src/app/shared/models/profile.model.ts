@@ -15,6 +15,7 @@ export interface DeletePantryDataRequest {
 export interface DeletePantryDataResult {
   deletedInventoryLotCount: number;
   deletedProductTypeCount: number;
+  deletedShoppingListCount: number;
   deletedShoppingShareCount: number;
   deletedWasteEventCount: number;
 }
@@ -26,6 +27,7 @@ export interface DeleteAccountRequest {
 export interface DeleteAccountResult {
   deletedInventoryLotCount: number;
   deletedProductTypeCount: number;
+  deletedShoppingListCount: number;
   deletedShoppingShareCount: number;
   deletedWasteEventCount: number;
   deletedKnownDeviceCount: number;
@@ -101,7 +103,9 @@ export type HouseholdActivityType =
   | 'invite_revoked'
   | 'member_removed'
   | 'shopping_share_created'
-  | 'shopping_share_revoked';
+  | 'shopping_share_revoked'
+  | 'shopping_list_saved'
+  | 'shopping_list_deleted';
 
 export interface ApiHousehold {
   id: string;

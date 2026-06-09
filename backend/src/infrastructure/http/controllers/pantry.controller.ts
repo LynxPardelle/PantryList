@@ -32,6 +32,11 @@ import {
   RevokeShoppingShareByIdUseCase,
   RevokeShoppingShareUseCase,
 } from '../../../application/use-cases/shopping-share.use-cases';
+import {
+  CreateShoppingListUseCase,
+  DeleteShoppingListUseCase,
+  ListShoppingListsUseCase,
+} from '../../../application/use-cases/shopping-list.use-cases';
 import { ShoppingShareNotFoundError } from '../../../application/use-cases/shopping-share.errors';
 import {
   MAX_ACTIVE_INVENTORY_LOTS_PER_USER,
@@ -40,6 +45,8 @@ import {
   MAX_ARCHIVED_PANTRY_PAGE_SIZE,
   MAX_ARCHIVED_PRODUCT_TYPES_PER_USER,
   MAX_INVENTORY_LOTS_PER_PRODUCT_TYPE,
+  MAX_SAVED_SHOPPING_LIST_ITEMS,
+  MAX_SAVED_SHOPPING_LISTS_PER_USER,
   MAX_PRODUCT_TYPE_SEARCH_RESULTS,
   MAX_SHOPPING_CHECKOUT_ITEMS,
 } from '../../../application/constants/query-limits';
@@ -58,6 +65,10 @@ import {
 } from '../dtos/pantry-export-response.dto';
 import { PantryOverviewResponseDto } from '../dtos/pantry-overview-response.dto';
 import { ShoppingShareResponseDto } from '../dtos/shopping-share-response.dto';
+import {
+  CreateShoppingListDto,
+  ShoppingListResponseDto,
+} from '../dtos/shopping-list.dto';
 import { WasteOverviewResponseDto } from '../dtos/waste-overview-response.dto';
 import { getRequestId } from '../request-id';
 import { InventoryLotMapper } from '../mappers/inventory-lot.mapper';
@@ -67,6 +78,7 @@ import { ProductTypeMapper } from '../mappers/product-type.mapper';
 import { ArchivedPantryItems } from '../../../application/read-models/archived-pantry-items.read-model';
 import { InventoryLot } from '../../../domain/entities/inventory-lot.entity';
 import { ProductType } from '../../../domain/entities/product-type.entity';
+import { ShoppingList } from '../../../domain/entities/shopping-list.entity';
 
 @Controller('pantry')
 @ApiTags('pantry')
@@ -81,9 +93,12 @@ export class PantryController {
     private readonly getWasteOverviewUseCase: GetWasteOverviewUseCase,
     private readonly closeShoppingPurchaseUseCase: CloseShoppingPurchaseUseCase,
     private readonly createShoppingShareUseCase: CreateShoppingShareUseCase,
+    private readonly createShoppingListUseCase: CreateShoppingListUseCase,
     private readonly listActiveShoppingSharesUseCase: ListActiveShoppingSharesUseCase,
+    private readonly listShoppingListsUseCase: ListShoppingListsUseCase,
     private readonly revokeShoppingShareByIdUseCase: RevokeShoppingShareByIdUseCase,
     private readonly revokeShoppingShareUseCase: RevokeShoppingShareUseCase,
+    private readonly deleteShoppingListUseCase: DeleteShoppingListUseCase,
     private readonly resolveHouseholdPantryAccessUseCase: ResolveHouseholdPantryAccessUseCase,
     private readonly recordHouseholdActivityUseCase: RecordHouseholdActivityUseCase,
     private readonly authCookieService: AuthCookieService,
@@ -155,11 +170,14 @@ export class PantryController {
     const access = await this.resolveHouseholdPantryAccessUseCase.executeRead(
       currentUser.userId,
     );
-    const [profile, overview, archivedItems] = await Promise.all([
-      this.getUserProfileUseCase.execute(currentUser.userId),
-      this.getPantryOverviewUseCase.execute(access.pantryOwnerUserId),
-      this.getArchivedPantryItemsUseCase.execute(access.pantryOwnerUserId),
-    ]);
+    const [profile, overview, archivedItems, shoppingLists] = await Promise.all(
+      [
+        this.getUserProfileUseCase.execute(currentUser.userId),
+        this.getPantryOverviewUseCase.execute(access.pantryOwnerUserId),
+        this.getArchivedPantryItemsUseCase.execute(access.pantryOwnerUserId),
+        this.listShoppingListsUseCase.execute(access.pantryOwnerUserId),
+      ],
+    );
 
     const response: PantryExportResponseDto = {
       formatVersion: 1,
@@ -167,6 +185,9 @@ export class PantryController {
       profile: ProfileMapper.toProfileResponse(profile),
       overview: PantryOverviewMapper.toResponse(overview),
       archived: this.toArchivedResponse(archivedItems),
+      shoppingLists: shoppingLists.map((list) =>
+        this.toShoppingListResponse(list),
+      ),
       limits: this.getPantryDataLimits(),
     };
     this.logger.log(
@@ -209,6 +230,96 @@ export class PantryController {
     );
 
     return inventoryLots.map((lot) => InventoryLotMapper.toResponse(lot));
+  }
+
+  @Get('shopping-lists')
+  @ApiOperation({ summary: 'Listar listas de compra guardadas' })
+  async listShoppingLists(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Req() request: FastifyRequest,
+  ): Promise<ShoppingListResponseDto[]> {
+    const requestId = getRequestId(request) ?? 'none';
+    this.logger.log(
+      `shopping_list_list_requested requestId=${requestId} userId=${currentUser.userId}`,
+    );
+    const access = await this.resolveHouseholdPantryAccessUseCase.executeRead(
+      currentUser.userId,
+    );
+    const lists = await this.listShoppingListsUseCase.execute(
+      access.pantryOwnerUserId,
+    );
+    this.logger.log(
+      `shopping_list_list_completed requestId=${requestId} userId=${currentUser.userId} pantryOwnerUserId=${access.pantryOwnerUserId} householdId=${access.householdId} listCount=${lists.length}`,
+    );
+
+    return lists.map((list) => this.toShoppingListResponse(list));
+  }
+
+  @Post('shopping-lists')
+  @ApiOperation({ summary: 'Guardar lista de compra en la cuenta' })
+  async createShoppingList(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Body() dto: CreateShoppingListDto,
+    @Req() request: FastifyRequest,
+  ): Promise<ShoppingListResponseDto> {
+    this.authCookieService.ensureXsrfForRequest(request);
+    const requestId = getRequestId(request) ?? 'none';
+    this.logger.log(
+      `shopping_list_create_requested requestId=${requestId} userId=${currentUser.userId} itemCount=${dto.items.length}`,
+    );
+    const access = await this.resolveHouseholdPantryAccessUseCase.executeWrite(
+      currentUser.userId,
+    );
+    const list = await this.createShoppingListUseCase.execute({
+      ownerUserId: access.pantryOwnerUserId,
+      title: dto.title,
+      occasion: dto.occasion,
+      shoppingLocation: dto.shoppingLocation,
+      items: dto.items,
+    });
+    await this.recordHouseholdActivityUseCase.execute({
+      householdId: access.householdId,
+      type: 'shopping_list_saved',
+      actorUserId: currentUser.userId,
+      targetLabel: list.toPrimitives().title,
+    });
+    this.logger.log(
+      `shopping_list_create_completed requestId=${requestId} userId=${currentUser.userId} pantryOwnerUserId=${access.pantryOwnerUserId} householdId=${access.householdId} listId=${list.id}`,
+    );
+
+    return this.toShoppingListResponse(list);
+  }
+
+  @Delete('shopping-lists/:listId')
+  @ApiOperation({ summary: 'Eliminar lista de compra guardada' })
+  async deleteShoppingList(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('listId') listId: string,
+    @Req() request: FastifyRequest,
+  ): Promise<ShoppingListResponseDto> {
+    this.authCookieService.ensureXsrfForRequest(request);
+    const requestId = getRequestId(request) ?? 'none';
+    this.logger.log(
+      `shopping_list_delete_requested requestId=${requestId} userId=${currentUser.userId} listId=${listId}`,
+    );
+    const access = await this.resolveHouseholdPantryAccessUseCase.executeWrite(
+      currentUser.userId,
+    );
+    const list = await this.deleteShoppingListUseCase.execute({
+      ownerUserId: access.pantryOwnerUserId,
+      listId,
+    });
+    await this.recordHouseholdActivityUseCase.execute({
+      householdId: access.householdId,
+      type: 'shopping_list_deleted',
+      actorUserId: currentUser.userId,
+      targetLabel: list.toPrimitives().title,
+    });
+    this.logger.log(
+      `shopping_list_delete_completed requestId=${requestId} userId=${currentUser.userId} pantryOwnerUserId=${access.pantryOwnerUserId} householdId=${access.householdId} listId=${listId}`,
+    );
+
+    return this.toShoppingListResponse(list);
   }
 
   @Post('shopping-shares')
@@ -390,6 +501,23 @@ export class PantryController {
       archivedPantryPageSize: MAX_ARCHIVED_PANTRY_PAGE_SIZE,
       inventoryLotsPerProductType: MAX_INVENTORY_LOTS_PER_PRODUCT_TYPE,
       shoppingCheckoutItems: MAX_SHOPPING_CHECKOUT_ITEMS,
+      savedShoppingListsPerUser: MAX_SAVED_SHOPPING_LISTS_PER_USER,
+      savedShoppingListItems: MAX_SAVED_SHOPPING_LIST_ITEMS,
+    };
+  }
+
+  private toShoppingListResponse(list: ShoppingList): ShoppingListResponseDto {
+    const primitives = list.toPrimitives();
+
+    return {
+      id: primitives.id,
+      ownerUserId: primitives.ownerUserId,
+      title: primitives.title,
+      occasion: primitives.occasion,
+      shoppingLocation: primitives.shoppingLocation,
+      items: primitives.items,
+      createdAt: primitives.createdAt,
+      updatedAt: primitives.updatedAt,
     };
   }
 

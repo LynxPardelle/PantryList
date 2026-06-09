@@ -84,6 +84,7 @@ describe('ProfilePageComponent', () => {
       of({
         deletedInventoryLotCount: 5,
         deletedProductTypeCount: 3,
+        deletedShoppingListCount: 1,
         deletedShoppingShareCount: 2,
         deletedWasteEventCount: 1,
       }),
@@ -92,6 +93,7 @@ describe('ProfilePageComponent', () => {
       of({
         deletedInventoryLotCount: 5,
         deletedProductTypeCount: 3,
+        deletedShoppingListCount: 1,
         deletedShoppingShareCount: 2,
         deletedWasteEventCount: 1,
         deletedKnownDeviceCount: 1,
@@ -188,11 +190,29 @@ describe('ProfilePageComponent', () => {
           depletingItems: [],
           shoppingPlanItems: [],
           shoppingPlanEstimatedTotal: 0,
+          shoppingRouteGroups: [],
+          priceReferenceItems: [],
+          stapleItems: [],
+          stapleCatalogGroups: [],
+          valueInsights: {
+            stapleCount: 0,
+            stapleAttentionCount: 0,
+            estimatedShoppingTotal: 0,
+            estimatedExpiringValue: 0,
+            estimatedWasteAtRisk: 0,
+            estimatedStapleRestockTotal: 0,
+            pricedShoppingItemCount: 0,
+            unpricedShoppingItemCount: 0,
+            promoOnlyShoppingItemCount: 0,
+            estimatedPromoOnlyTotal: 0,
+            duplicatePurchaseWarningCount: 0,
+          },
         },
         archived: {
           productTypes: [],
           inventoryLots: [],
         },
+        shoppingLists: [],
         limits: {
           activeProductTypesPerUser: 500,
           archivedProductTypesPerUser: 250,
@@ -202,6 +222,8 @@ describe('ProfilePageComponent', () => {
           archivedPantryPageSize: 50,
           inventoryLotsPerProductType: 500,
           shoppingCheckoutItems: 50,
+          savedShoppingListsPerUser: 25,
+          savedShoppingListItems: 100,
         },
       }),
     );
@@ -396,7 +418,7 @@ describe('ProfilePageComponent', () => {
       confirmationText: 'ELIMINAR',
     });
     expect(component.deleteMessage).toBe(
-      'Datos eliminados: 5 lotes, 3 tipos base, 2 enlaces compartidos y 1 eventos de merma.',
+      'Datos eliminados: 5 lotes, 3 tipos base, 1 listas guardadas, 2 enlaces compartidos y 1 eventos de merma.',
     );
   });
 

@@ -20,6 +20,7 @@ import {
   PRODUCT_TYPE_REPOSITORY,
   SCHEDULING_SERVICE,
   SHOPPING_SHARE_REPOSITORY,
+  SHOPPING_LIST_REPOSITORY,
   USER_DAO,
   USER_DEVICE_REPOSITORY,
   USER_PREFERENCES_DAO,
@@ -41,6 +42,11 @@ import {
   RevokeShoppingShareByIdUseCase,
   RevokeShoppingShareUseCase,
 } from './application/use-cases/shopping-share.use-cases';
+import {
+  CreateShoppingListUseCase,
+  DeleteShoppingListUseCase,
+  ListShoppingListsUseCase,
+} from './application/use-cases/shopping-list.use-cases';
 import { DeleteInventoryLotUseCase } from './application/use-cases/delete-inventory-lot.use-case';
 import { DeleteAccountUseCase } from './application/use-cases/delete-account.use-case';
 import { DeletePantryDataUseCase } from './application/use-cases/delete-pantry-data.use-case';
@@ -84,6 +90,7 @@ import { DynamoDbHouseholdRepository } from './infrastructure/database/dynamodb/
 import { DynamoDbProductRepository } from './infrastructure/database/dynamodb/dynamodb-product.repository';
 import { DynamoDbProductTypeRepository } from './infrastructure/database/dynamodb/dynamodb-product-type.repository';
 import { DynamoDbShoppingShareRepository } from './infrastructure/database/dynamodb/dynamodb-shopping-share.repository';
+import { DynamoDbShoppingListRepository } from './infrastructure/database/dynamodb/dynamodb-shopping-list.repository';
 import { DynamoDbUserDao } from './infrastructure/database/dynamodb/dynamodb-user.dao';
 import { DynamoDbUserDeviceRepository } from './infrastructure/database/dynamodb/dynamodb-user-device.repository';
 import { DynamoDbUserPreferencesDao } from './infrastructure/database/dynamodb/dynamodb-user-preferences.dao';
@@ -93,6 +100,7 @@ import { MongoHouseholdRepository } from './infrastructure/database/mongodb/mong
 import { MongoProductRepository } from './infrastructure/database/mongodb/mongodb-product.repository';
 import { MongoProductTypeRepository } from './infrastructure/database/mongodb/mongodb-product-type.repository';
 import { MongoShoppingShareRepository } from './infrastructure/database/mongodb/mongodb-shopping-share.repository';
+import { MongoShoppingListRepository } from './infrastructure/database/mongodb/mongodb-shopping-list.repository';
 import { MongoUserDao } from './infrastructure/database/mongodb/mongodb-user.dao';
 import { MongoUserDeviceRepository } from './infrastructure/database/mongodb/mongodb-user-device.repository';
 import { MongoUserPreferencesDao } from './infrastructure/database/mongodb/mongodb-user-preferences.dao';
@@ -129,6 +137,10 @@ import {
   ShoppingShareDocument,
   ShoppingShareSchema,
 } from './infrastructure/database/mongodb/schemas/shopping-share.schema';
+import {
+  ShoppingListDocument,
+  ShoppingListSchema,
+} from './infrastructure/database/mongodb/schemas/shopping-list.schema';
 import { AuthCookieService } from './infrastructure/http/auth/auth-cookie.service';
 import { AuthStepUpService } from './infrastructure/http/auth/auth-step-up.service';
 import { AccessTokenGuard } from './infrastructure/http/auth/access-token.guard';
@@ -197,6 +209,7 @@ const databaseImports = useDynamoDb
         { name: UserDeviceDocument.name, schema: UserDeviceSchema },
         { name: WasteEventDocument.name, schema: WasteEventSchema },
         { name: ShoppingShareDocument.name, schema: ShoppingShareSchema },
+        { name: ShoppingListDocument.name, schema: ShoppingListSchema },
       ]),
     ];
 const databaseClassProviders = useDynamoDb
@@ -209,6 +222,7 @@ const databaseClassProviders = useDynamoDb
       DynamoDbProductTypeRepository,
       DynamoDbInventoryLotRepository,
       DynamoDbShoppingShareRepository,
+      DynamoDbShoppingListRepository,
       DynamoDbUserDeviceRepository,
       DynamoDbWasteEventRepository,
     ]
@@ -220,6 +234,7 @@ const databaseClassProviders = useDynamoDb
       MongoProductTypeRepository,
       MongoInventoryLotRepository,
       MongoShoppingShareRepository,
+      MongoShoppingListRepository,
       MongoUserDeviceRepository,
       MongoWasteEventRepository,
     ];
@@ -242,6 +257,9 @@ const householdRepositoryProvider = useDynamoDb
 const shoppingShareRepositoryProvider = useDynamoDb
   ? DynamoDbShoppingShareRepository
   : MongoShoppingShareRepository;
+const shoppingListRepositoryProvider = useDynamoDb
+  ? DynamoDbShoppingListRepository
+  : MongoShoppingListRepository;
 const userDeviceRepositoryProvider = useDynamoDb
   ? DynamoDbUserDeviceRepository
   : MongoUserDeviceRepository;
@@ -455,6 +473,7 @@ const wasteEventRepositoryProvider = useDynamoDb
     CreateProductUseCase,
     CreateProductTypeUseCase,
     CreateShoppingShareUseCase,
+    CreateShoppingListUseCase,
     CreateInventoryLotUseCase,
     ConsumeInventoryLotUseCase,
     GetProductByIdUseCase,
@@ -482,9 +501,11 @@ const wasteEventRepositoryProvider = useDynamoDb
     UpdateProductQuantityUseCase,
     UpdateUserPreferencesUseCase,
     ListActiveShoppingSharesUseCase,
+    ListShoppingListsUseCase,
     ResolveShoppingShareUseCase,
     RevokeShoppingShareByIdUseCase,
     RevokeShoppingShareUseCase,
+    DeleteShoppingListUseCase,
     ...databaseClassProviders,
     {
       provide: USER_DAO,
@@ -525,6 +546,10 @@ const wasteEventRepositoryProvider = useDynamoDb
     {
       provide: SHOPPING_SHARE_REPOSITORY,
       useExisting: shoppingShareRepositoryProvider,
+    },
+    {
+      provide: SHOPPING_LIST_REPOSITORY,
+      useExisting: shoppingListRepositoryProvider,
     },
     {
       provide: USER_DEVICE_REPOSITORY,

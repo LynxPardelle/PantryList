@@ -104,7 +104,7 @@ function requiresPrivacyReview(file) {
   const sensitivePatterns = [
     /(^|\/)(ai|ocr)(\/|\.|-)/i,
     /(receipt|receipts|photo|photos|image-capture|shelf-scan|barcode)/i,
-    /(household|invite|shopping-share|shared-shopping-list|temporary-share)/i,
+    /(household|invite|shopping-share|shopping-list|shared-shopping-list|temporary-share)/i,
     /(session|sessions|device|devices|mfa|step-up|auth_time|retention|delete-account|delete-pantry-data)/i,
     /(waste|merma|loss|losses|consumption-history|depletion-history)/i,
     /(payment|billing|subscription|stripe|mercadopago|sponsored|affiliate|retailer)/i,

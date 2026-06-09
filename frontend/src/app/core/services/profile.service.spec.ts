@@ -115,6 +115,7 @@ describe('ProfileService', () => {
         expect(result).toEqual({
           deletedInventoryLotCount: 5,
           deletedProductTypeCount: 3,
+          deletedShoppingListCount: 1,
           deletedShoppingShareCount: 2,
           deletedWasteEventCount: 1,
         });
@@ -129,6 +130,7 @@ describe('ProfileService', () => {
     request.flush({
       deletedInventoryLotCount: 5,
       deletedProductTypeCount: 3,
+      deletedShoppingListCount: 1,
       deletedShoppingShareCount: 2,
       deletedWasteEventCount: 1,
     });

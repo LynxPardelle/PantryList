@@ -15,6 +15,9 @@ export class DeletePantryDataResponseDto {
   deletedProductTypeCount: number;
 
   @ApiProperty()
+  deletedShoppingListCount: number;
+
+  @ApiProperty()
   deletedShoppingShareCount: number;
 
   @ApiProperty()

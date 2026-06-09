@@ -12,6 +12,8 @@ export const HOUSEHOLD_ACTIVITY_TYPES = [
   'member_removed',
   'shopping_share_created',
   'shopping_share_revoked',
+  'shopping_list_saved',
+  'shopping_list_deleted',
 ] as const;
 export type HouseholdActivityType = (typeof HOUSEHOLD_ACTIVITY_TYPES)[number];
 

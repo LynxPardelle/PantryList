@@ -22,6 +22,7 @@ const DELETE_ACCOUNT_CONFIRMATION = 'ELIMINAR CUENTA';
 export interface DeleteAccountResult {
   deletedInventoryLotCount: number;
   deletedProductTypeCount: number;
+  deletedShoppingListCount: number;
   deletedShoppingShareCount: number;
   deletedWasteEventCount: number;
   deletedKnownDeviceCount: number;

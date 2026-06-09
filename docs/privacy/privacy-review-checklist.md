@@ -1,6 +1,6 @@
 # Privacy Review Checklist
 
-Use this checklist when a change touches AI/OCR, receipt/photo capture, household sharing, temporary links, sessions/devices, waste tracking, payments, billing, subscriptions, sponsored offers, or partner/retailer handoff.
+Use this checklist when a change touches AI/OCR, receipt/photo capture, household sharing, temporary links, saved shopping lists, sessions/devices, waste tracking, payments, billing, subscriptions, sponsored offers, or partner/retailer handoff.
 
 ## Required Checks
 

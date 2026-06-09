@@ -22,6 +22,7 @@ import {
   ApiShoppingPlanItem,
   ApiShoppingRouteCategoryGroup,
   ApiShoppingRouteGroup,
+  ApiSavedShoppingList,
   ArchivedPantryItems,
   ArchivedPantryQuery,
   ArchivePantryItemRequest,
@@ -29,6 +30,7 @@ import {
   ConsumeInventoryLotRequest,
   CreateInventoryLotRequest,
   CreateShoppingShareRequest,
+  CreateSavedShoppingListRequest,
   CreateProductTypeRequest,
   DeletePantryItemRequest,
   DepletingProductGroup,
@@ -47,6 +49,7 @@ import {
   ProductType,
   PublicShoppingShare,
   RegisterLotRequest,
+  SavedShoppingList,
   ShoppingShare,
   ShoppingPlanItem,
   ShoppingRouteCategoryGroup,
@@ -67,6 +70,7 @@ export class PantryService {
   private readonly pantryCheckoutUrl = `${this.apiUrl}/pantry/checkout`;
   private readonly pantryWasteOverviewUrl = `${this.apiUrl}/pantry/waste-overview`;
   private readonly pantryShoppingSharesUrl = `${this.apiUrl}/pantry/shopping-shares`;
+  private readonly pantryShoppingListsUrl = `${this.apiUrl}/pantry/shopping-lists`;
   private readonly publicShoppingSharesUrl = `${this.apiUrl}/shopping-shares`;
 
   constructor(private readonly http: HttpClient) {}
@@ -315,6 +319,37 @@ export class PantryService {
       );
   }
 
+  listSavedShoppingLists(): Observable<SavedShoppingList[]> {
+    return this.http
+      .get<ApiSavedShoppingList[]>(this.pantryShoppingListsUrl, {
+        withCredentials: true,
+      })
+      .pipe(
+        map((lists) =>
+          lists.map((list) => this.normalizeSavedShoppingList(list)),
+        ),
+      );
+  }
+
+  createSavedShoppingList(
+    request: CreateSavedShoppingListRequest,
+  ): Observable<SavedShoppingList> {
+    return this.http
+      .post<ApiSavedShoppingList>(this.pantryShoppingListsUrl, request, {
+        withCredentials: true,
+      })
+      .pipe(map((list) => this.normalizeSavedShoppingList(list)));
+  }
+
+  deleteSavedShoppingList(listId: string): Observable<SavedShoppingList> {
+    return this.http
+      .delete<ApiSavedShoppingList>(
+        `${this.pantryShoppingListsUrl}/${encodeURIComponent(listId)}`,
+        { withCredentials: true },
+      )
+      .pipe(map((list) => this.normalizeSavedShoppingList(list)));
+  }
+
   createShoppingShare(
     request: CreateShoppingShareRequest,
   ): Observable<ShoppingShare> {
@@ -425,6 +460,16 @@ export class PantryService {
     };
   }
 
+  private normalizeSavedShoppingList(
+    list: ApiSavedShoppingList,
+  ): SavedShoppingList {
+    return {
+      ...list,
+      createdAt: new Date(list.createdAt),
+      updatedAt: new Date(list.updatedAt),
+    };
+  }
+
   private normalizeWasteOverview(overview: ApiWasteOverview): WasteOverview {
     return {
       ...overview,
@@ -488,6 +533,7 @@ export class PantryService {
         unpricedShoppingItemCount: 0,
         promoOnlyShoppingItemCount: 0,
         estimatedPromoOnlyTotal: 0,
+        duplicatePurchaseWarningCount: 0,
       },
     };
   }

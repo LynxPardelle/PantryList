@@ -83,6 +83,7 @@ describe('ProfileController', () => {
     expect(result).toEqual({
       deletedInventoryLotCount: 5,
       deletedProductTypeCount: 3,
+      deletedShoppingListCount: 1,
       deletedShoppingShareCount: 2,
       deletedWasteEventCount: 1,
     });
@@ -228,6 +229,7 @@ function makeController(): {
     execute: jest.fn().mockResolvedValue({
       deletedInventoryLotCount: 5,
       deletedProductTypeCount: 3,
+      deletedShoppingListCount: 1,
       deletedShoppingShareCount: 2,
       deletedWasteEventCount: 1,
     }),
@@ -236,6 +238,7 @@ function makeController(): {
     execute: jest.fn().mockResolvedValue({
       deletedInventoryLotCount: 5,
       deletedProductTypeCount: 3,
+      deletedShoppingListCount: 1,
       deletedShoppingShareCount: 2,
       deletedWasteEventCount: 1,
       deletedKnownDeviceCount: 1,

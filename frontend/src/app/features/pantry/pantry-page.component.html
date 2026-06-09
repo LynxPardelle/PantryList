@@ -653,6 +653,7 @@
           <div class="shopping-plan-tools">
             <strong>{{ waste.eventCount }} evento(s) en {{ waste.windowDays }} d&iacute;as</strong>
             <span>{{ formatShoppingPrice(waste.estimatedLossTotal) }}</span>
+            <span>{{ getWeeklyWasteLossSummary(waste) }}</span>
             <span>{{ getWasteQuantitySummary(waste) }}</span>
           </div>
 
@@ -713,6 +714,11 @@
                 >
                   {{ getBudgetStatusLabel(getShoppingPlanEstimatedTotal(shoppingPlanItems)) }}
                 </p>
+                @if (getDuplicatePurchaseWarningCount(shoppingPlanItems) > 0) {
+                  <p class="helper-copy budget-status" data-tone="over">
+                    {{ getDuplicatePurchaseSummary(shoppingPlanItems) }}
+                  </p>
+                }
               </div>
               <form class="budget-form" [formGroup]="shoppingBudgetForm" (ngSubmit)="saveShoppingBudget()">
                 <label class="field" for="shoppingBudgetAmount">
@@ -753,7 +759,7 @@
             <section class="selection-card" aria-labelledby="saved-shopping-lists-title">
               <div class="panel-header panel-header-actions">
                 <div>
-                  <p class="panel-kicker">Listas locales</p>
+                  <p class="panel-kicker">Listas guardadas</p>
                   <h3 id="saved-shopping-lists-title">Guardar para tienda u ocasión</h3>
                 </div>
               </div>
@@ -792,7 +798,10 @@
                         <small>
                           {{ list.items.length }} producto(s) ·
                           {{ list.shoppingLocation || 'Todas las tiendas' }} ·
-                          {{ list.createdAt | date:'dd MMM, HH:mm' }}
+                          {{ list.updatedAt | date:'dd MMM, HH:mm' }}
+                          @if (!list.ownerUserId) {
+                            · Local
+                          }
                         </small>
                       </div>
                       <div class="lot-actions">
@@ -807,6 +816,19 @@
                   }
                 </div>
               }
+            </section>
+
+            <section class="selection-card plus-preview-card" aria-labelledby="plus-preview-title">
+              <div>
+                <p class="panel-kicker">Plus preview</p>
+                <h3 id="plus-preview-title">Ahorro y respaldo avanzado</h3>
+                <p class="helper-copy">
+                  Reportes semanales, respaldos y restauraci&oacute;n aparecer&aacute;n aqu&iacute; antes de activar cobro real.
+                </p>
+              </div>
+              <button type="button" class="secondary-button" disabled>
+                Plus todav&iacute;a no disponible
+              </button>
             </section>
 
             @if (shoppingExportStatus) {

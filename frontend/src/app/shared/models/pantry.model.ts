@@ -305,6 +305,8 @@ export interface PantryValueInsights {
   unpricedShoppingItemCount: number;
   promoOnlyShoppingItemCount: number;
   estimatedPromoOnlyTotal: number;
+  duplicatePurchaseWarningCount?: number;
+  weeklyWasteLossEstimate?: number;
 }
 
 export interface PantryStapleCatalogGroup {
@@ -359,6 +361,40 @@ export interface CloseShoppingPurchaseItemRequest {
 
 export interface CloseShoppingPurchaseRequest {
   items: CloseShoppingPurchaseItemRequest[];
+}
+
+export interface SavedShoppingListItem {
+  productTypeId: string;
+  baseName: string;
+  quantity: number;
+  unit: ProductUnit;
+  shoppingLocation?: string;
+  estimatedUnitPrice?: number;
+  estimatedLineTotal?: number;
+}
+
+export interface SavedShoppingList {
+  id: string;
+  ownerUserId?: string;
+  title: string;
+  occasion?: string;
+  shoppingLocation?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  items: SavedShoppingListItem[];
+}
+
+export interface ApiSavedShoppingList
+  extends Omit<SavedShoppingList, 'createdAt' | 'updatedAt'> {
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateSavedShoppingListRequest {
+  title: string;
+  occasion?: string;
+  shoppingLocation?: string;
+  items: SavedShoppingListItem[];
 }
 
 export interface CreateShoppingShareRequest {
@@ -716,6 +752,8 @@ export interface PantryDataLimits {
   archivedPantryPageSize: number;
   inventoryLotsPerProductType: number;
   shoppingCheckoutItems: number;
+  savedShoppingListsPerUser: number;
+  savedShoppingListItems: number;
 }
 
 export interface ApiPantryExport {
@@ -724,5 +762,6 @@ export interface ApiPantryExport {
   profile: ApiUserProfile;
   overview: ApiPantryOverview;
   archived: ApiArchivedPantryItems;
+  shoppingLists: ApiSavedShoppingList[];
   limits: PantryDataLimits;
 }
