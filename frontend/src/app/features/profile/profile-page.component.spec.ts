@@ -20,6 +20,13 @@ describe('ProfilePageComponent', () => {
       'getProfile',
       'updatePreferences',
       'deletePantryData',
+      'deleteAccount',
+      'signOutAllSessions',
+      'getHouseholdWorkspace',
+      'createHouseholdInvite',
+      'acceptHouseholdInvite',
+      'revokeHouseholdInvite',
+      'removeHouseholdMember',
     ]);
     profileService.getProfile.and.returnValue(
       of({
@@ -37,6 +44,20 @@ describe('ProfilePageComponent', () => {
           shoppingPlanLeadDays: 5,
           showGuidanceTips: false,
         },
+        retentionPolicy: {
+          archivedRecordRetentionDays: 365,
+          archivedRecordAutoDeleteEnabled: false,
+          temporaryShoppingShareRetentionDays: 7,
+          permanentlyDeletedRecords: 'removed_immediately',
+          accountDeletion: 'local_and_cognito_delete_requested',
+        },
+        security: {
+          stepUp: {
+            enabled: false,
+            maxAgeSeconds: 900,
+            fresh: true,
+          },
+        },
       }),
     );
     profileService.updatePreferences.and.returnValue(
@@ -53,6 +74,41 @@ describe('ProfilePageComponent', () => {
         deletedInventoryLotCount: 5,
         deletedProductTypeCount: 3,
         deletedShoppingShareCount: 2,
+      }),
+    );
+    profileService.deleteAccount.and.returnValue(
+      of({
+        deletedInventoryLotCount: 5,
+        deletedProductTypeCount: 3,
+        deletedShoppingShareCount: 2,
+        deletedCognitoIdentityCount: 1,
+      }),
+    );
+    profileService.signOutAllSessions.and.returnValue(
+      of({
+        revokedCognitoSessionCount: 1,
+        localSessionCleared: true,
+      }),
+    );
+    profileService.getHouseholdWorkspace.and.returnValue(
+      of(makeHouseholdWorkspace()),
+    );
+    profileService.createHouseholdInvite.and.returnValue(
+      of({
+        invite: makeHouseholdWorkspace().invites[0],
+        token: 'invite-token-safe-123',
+      }),
+    );
+    profileService.acceptHouseholdInvite.and.returnValue(
+      of(makeHouseholdWorkspace()),
+    );
+    profileService.revokeHouseholdInvite.and.returnValue(
+      of(makeHouseholdWorkspace().invites[0]),
+    );
+    profileService.removeHouseholdMember.and.returnValue(
+      of({
+        ...makeHouseholdWorkspace(),
+        members: [makeHouseholdWorkspace().members[0]],
       }),
     );
     pantryService = jasmine.createSpyObj<PantryService>('PantryService', [
@@ -76,6 +132,20 @@ describe('ProfilePageComponent', () => {
             depletionWarningThresholdRatio: 1.5,
             shoppingPlanLeadDays: 5,
             showGuidanceTips: false,
+          },
+          retentionPolicy: {
+            archivedRecordRetentionDays: 365,
+            archivedRecordAutoDeleteEnabled: false,
+            temporaryShoppingShareRetentionDays: 7,
+            permanentlyDeletedRecords: 'removed_immediately',
+            accountDeletion: 'local_and_cognito_delete_requested',
+          },
+          security: {
+            stepUp: {
+              enabled: false,
+              maxAgeSeconds: 900,
+              fresh: true,
+            },
           },
         },
         overview: {
@@ -151,11 +221,24 @@ describe('ProfilePageComponent', () => {
 
     expect(compiled.textContent).toContain('Ciclo de vida de datos');
     expect(compiled.textContent).toContain(
-      'La identidad Cognito se gestiona por separado',
+      'Borrar cuenta elimina datos locales',
     );
     expect(compiled.textContent).toContain(
       'Exportar datos no crea permisos compartidos',
     );
+    expect(compiled.textContent).toContain('Archivados se conservan');
+    expect(compiled.textContent).toContain('Step-up esta preparado');
+  });
+
+  it('loads the household workspace and renders collaboration controls', () => {
+    const compiled = fixture.nativeElement as HTMLElement;
+
+    expect(profileService.getHouseholdWorkspace).toHaveBeenCalled();
+    expect(component.householdWorkspace?.household.name).toBe('Hogar de chef');
+    expect(compiled.textContent).toContain('Colaboración');
+    expect(compiled.textContent).toContain('familia@example.com');
+    expect(compiled.textContent).toContain('Actividad reciente');
+    expect(compiled.textContent).toContain('Hogar creado');
   });
 
   it('prevents saving invalid preference ranges', () => {
@@ -198,6 +281,46 @@ describe('ProfilePageComponent', () => {
 
     expect(pantryService.exportPantryData).toHaveBeenCalled();
     expect(component.exportMessage).toBe('Export listo.');
+  });
+
+  it('creates a household invite and exposes a shareable link', () => {
+    component.householdInviteForm.patchValue({
+      email: 'familia@example.com',
+      role: 'editor',
+    });
+
+    component.createHouseholdInvite();
+
+    expect(profileService.createHouseholdInvite).toHaveBeenCalledWith({
+      email: 'familia@example.com',
+      role: 'editor',
+    });
+    expect(component.householdInviteToken).toBe('invite-token-safe-123');
+    expect(component.householdInviteLink).toContain(
+      '/profile?householdInvite=invite-token-safe-123',
+    );
+  });
+
+  it('accepts invites and lets owners revoke invites or remove members', () => {
+    component.householdAcceptForm.patchValue({ token: 'invite-token-safe-123' });
+    component.acceptHouseholdInvite();
+
+    expect(profileService.acceptHouseholdInvite).toHaveBeenCalledWith(
+      'invite-token-safe-123',
+    );
+    expect(component.householdMessage).toBe('Invitacion aceptada.');
+
+    component.revokeHouseholdInvite(makeHouseholdWorkspace().invites[0]);
+
+    expect(profileService.revokeHouseholdInvite).toHaveBeenCalledWith(
+      'invite-1',
+    );
+
+    component.removeHouseholdMember('member-1');
+
+    expect(profileService.removeHouseholdMember).toHaveBeenCalledWith(
+      'member-1',
+    );
   });
 
   it('shows an error when pantry export fails', () => {
@@ -252,9 +375,9 @@ describe('ProfilePageComponent', () => {
   it('keeps the pantry deletion button disabled until the exact confirmation is entered', () => {
     fixture.detectChanges();
 
-    const deleteButton = fixture.nativeElement.querySelector(
-      '.danger-panel button[type="submit"]',
-    ) as HTMLButtonElement;
+    const deleteButton = Array.from(
+      fixture.nativeElement.querySelectorAll('.danger-panel button[type="submit"]'),
+    ).at(1) as HTMLButtonElement;
 
     expect(deleteButton.disabled).toBeTrue();
 
@@ -265,4 +388,104 @@ describe('ProfilePageComponent', () => {
 
     expect(deleteButton.disabled).toBeFalse();
   });
+
+  it('requires confirmation before requesting all-session sign out', () => {
+    profileService.signOutAllSessions.and.returnValue(
+      throwError(() => new Error('Session revoke failed')),
+    );
+
+    expect(component.canSignOutAllSessions).toBeFalse();
+
+    component.signOutAllSessionsForm.patchValue({
+      confirmationText: 'CERRAR SESIONES',
+    });
+
+    expect(component.canSignOutAllSessions).toBeTrue();
+
+    component.signOutAllSessions();
+
+    expect(profileService.signOutAllSessions).toHaveBeenCalledWith({
+      confirmationText: 'CERRAR SESIONES',
+    });
+    expect(component.signOutAllSessionsError).toBe('Session revoke failed');
+  });
+
+  it('keeps account deletion disabled until the exact confirmation is entered', () => {
+    fixture.detectChanges();
+
+    const accountDeleteButton = Array.from(
+      fixture.nativeElement.querySelectorAll('.danger-panel button[type="submit"]'),
+    ).at(-1) as HTMLButtonElement;
+
+    expect(accountDeleteButton.disabled).toBeTrue();
+
+    component.deleteAccountForm.patchValue({
+      confirmationText: 'ELIMINAR CUENTA',
+    });
+    fixture.detectChanges();
+
+    expect(accountDeleteButton.disabled).toBeFalse();
+  });
 });
+
+function makeHouseholdWorkspace() {
+  return {
+    household: {
+      id: 'household-1',
+      name: 'Hogar de chef',
+      ownerUserId: 'user-1',
+      createdAt: new Date('2026-06-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-06-01T00:00:00.000Z'),
+    },
+    currentMember: {
+      householdId: 'household-1',
+      userId: 'user-1',
+      email: 'chef@example.com',
+      username: 'chef',
+      role: 'owner' as const,
+      joinedAt: new Date('2026-06-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-06-01T00:00:00.000Z'),
+    },
+    members: [
+      {
+        householdId: 'household-1',
+        userId: 'user-1',
+        email: 'chef@example.com',
+        username: 'chef',
+        role: 'owner' as const,
+        joinedAt: new Date('2026-06-01T00:00:00.000Z'),
+        updatedAt: new Date('2026-06-01T00:00:00.000Z'),
+      },
+      {
+        householdId: 'household-1',
+        userId: 'member-1',
+        email: 'familia@example.com',
+        username: 'familia',
+        role: 'editor' as const,
+        joinedAt: new Date('2026-06-01T00:00:00.000Z'),
+        updatedAt: new Date('2026-06-01T00:00:00.000Z'),
+      },
+    ],
+    invites: [
+      {
+        id: 'invite-1',
+        householdId: 'household-1',
+        invitedEmail: 'familia@example.com',
+        invitedByUserId: 'user-1',
+        role: 'editor' as const,
+        createdAt: new Date('2026-06-01T00:00:00.000Z'),
+        expiresAt: new Date('2026-06-08T00:00:00.000Z'),
+        updatedAt: new Date('2026-06-01T00:00:00.000Z'),
+      },
+    ],
+    activities: [
+      {
+        id: 'activity-1',
+        householdId: 'household-1',
+        type: 'household_created' as const,
+        actorUserId: 'user-1',
+        createdAt: new Date('2026-06-01T00:00:00.000Z'),
+      },
+    ],
+  };
+}

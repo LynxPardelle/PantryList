@@ -8,8 +8,10 @@ import {
   COGNITO_AUTH_URL_BUILDER,
   COGNITO_TOKEN_CLIENT,
   COGNITO_TOKEN_VERIFIER,
+  COGNITO_USER_ADMIN,
   INVENTORY_LOT_DAO,
   INVENTORY_LOT_REPOSITORY,
+  HOUSEHOLD_REPOSITORY,
   PRODUCT_DAO,
   PRODUCT_REPOSITORY,
   PRODUCT_TYPE_DAO,
@@ -30,13 +32,25 @@ import { CreateProductUseCase } from './application/use-cases/create-product.use
 import { CreateProductTypeUseCase } from './application/use-cases/create-product-type.use-case';
 import {
   CreateShoppingShareUseCase,
+  ListActiveShoppingSharesUseCase,
   ResolveShoppingShareUseCase,
+  RevokeShoppingShareByIdUseCase,
   RevokeShoppingShareUseCase,
 } from './application/use-cases/shopping-share.use-cases';
 import { DeleteInventoryLotUseCase } from './application/use-cases/delete-inventory-lot.use-case';
+import { DeleteAccountUseCase } from './application/use-cases/delete-account.use-case';
 import { DeletePantryDataUseCase } from './application/use-cases/delete-pantry-data.use-case';
 import { DeleteProductTypeUseCase } from './application/use-cases/delete-product-type.use-case';
 import { GetArchivedPantryItemsUseCase } from './application/use-cases/get-archived-pantry-items.use-case';
+import {
+  AcceptHouseholdInviteUseCase,
+  CreateHouseholdInviteUseCase,
+  GetHouseholdWorkspaceUseCase,
+  RecordHouseholdActivityUseCase,
+  RemoveHouseholdMemberUseCase,
+  ResolveHouseholdPantryAccessUseCase,
+  RevokeHouseholdInviteUseCase,
+} from './application/use-cases/household.use-cases';
 import { GetExpiringLotsUseCase } from './application/use-cases/get-expiring-lots.use-case';
 import { GetCurrentUserUseCase } from './application/use-cases/get-current-user.use-case';
 import { GetProductByIdUseCase } from './application/use-cases/get-product-by-id.use-case';
@@ -48,6 +62,7 @@ import { ListInventoryLotsUseCase } from './application/use-cases/list-inventory
 import { RestoreInventoryLotUseCase } from './application/use-cases/restore-inventory-lot.use-case';
 import { RestoreProductTypeUseCase } from './application/use-cases/restore-product-type.use-case';
 import { SearchProductTypesUseCase } from './application/use-cases/search-product-types.use-case';
+import { SignOutAllSessionsUseCase } from './application/use-cases/sign-out-all-sessions.use-case';
 import { UpdateProductTypePlanningSettingsUseCase } from './application/use-cases/update-product-type-planning-settings.use-case';
 import { UpdateProductTypeShoppingMetadataUseCase } from './application/use-cases/update-product-type-shopping-metadata.use-case';
 import { UpdateUserPreferencesUseCase } from './application/use-cases/update-user-preferences.use-case';
@@ -57,14 +72,17 @@ import { SchedulingDomainService } from './domain/services/scheduling.service';
 import { CognitoAuthUrlBuilderService } from './infrastructure/auth/cognito/cognito-auth-url-builder.service';
 import { CognitoTokenClientService } from './infrastructure/auth/cognito/cognito-token-client.service';
 import { CognitoTokenVerifierService } from './infrastructure/auth/cognito/cognito-token-verifier.service';
+import { CognitoUserAdminService } from './infrastructure/auth/cognito/cognito-user-admin.service';
 import { DynamoDbDocumentClientService } from './infrastructure/database/dynamodb/dynamodb-document-client.service';
 import { DynamoDbInventoryLotRepository } from './infrastructure/database/dynamodb/dynamodb-inventory-lot.repository';
+import { DynamoDbHouseholdRepository } from './infrastructure/database/dynamodb/dynamodb-household.repository';
 import { DynamoDbProductRepository } from './infrastructure/database/dynamodb/dynamodb-product.repository';
 import { DynamoDbProductTypeRepository } from './infrastructure/database/dynamodb/dynamodb-product-type.repository';
 import { DynamoDbShoppingShareRepository } from './infrastructure/database/dynamodb/dynamodb-shopping-share.repository';
 import { DynamoDbUserDao } from './infrastructure/database/dynamodb/dynamodb-user.dao';
 import { DynamoDbUserPreferencesDao } from './infrastructure/database/dynamodb/dynamodb-user-preferences.dao';
 import { MongoInventoryLotRepository } from './infrastructure/database/mongodb/mongodb-inventory-lot.repository';
+import { MongoHouseholdRepository } from './infrastructure/database/mongodb/mongodb-household.repository';
 import { MongoProductRepository } from './infrastructure/database/mongodb/mongodb-product.repository';
 import { MongoProductTypeRepository } from './infrastructure/database/mongodb/mongodb-product-type.repository';
 import { MongoShoppingShareRepository } from './infrastructure/database/mongodb/mongodb-shopping-share.repository';
@@ -74,6 +92,10 @@ import {
   InventoryLotDocument,
   InventoryLotSchema,
 } from './infrastructure/database/mongodb/schemas/inventory-lot.schema';
+import {
+  HouseholdDocument,
+  HouseholdSchema,
+} from './infrastructure/database/mongodb/schemas/household.schema';
 import {
   ProductDocument,
   ProductSchema,
@@ -91,8 +113,10 @@ import {
   ShoppingShareSchema,
 } from './infrastructure/database/mongodb/schemas/shopping-share.schema';
 import { AuthCookieService } from './infrastructure/http/auth/auth-cookie.service';
+import { AuthStepUpService } from './infrastructure/http/auth/auth-step-up.service';
 import { AccessTokenGuard } from './infrastructure/http/auth/access-token.guard';
 import { AuthController } from './infrastructure/http/controllers/auth.controller';
+import { HouseholdController } from './infrastructure/http/controllers/household.controller';
 import { InventoryLotsController } from './infrastructure/http/controllers/inventory-lots.controller';
 import { PantryController } from './infrastructure/http/controllers/pantry.controller';
 import { ProfileController } from './infrastructure/http/controllers/profile.controller';
@@ -151,6 +175,7 @@ const databaseImports = useDynamoDb
         { name: ProductDocument.name, schema: ProductSchema },
         { name: ProductTypeDocument.name, schema: ProductTypeSchema },
         { name: InventoryLotDocument.name, schema: InventoryLotSchema },
+        { name: HouseholdDocument.name, schema: HouseholdSchema },
         { name: UserDocument.name, schema: UserSchema },
         { name: ShoppingShareDocument.name, schema: ShoppingShareSchema },
       ]),
@@ -160,6 +185,7 @@ const databaseClassProviders = useDynamoDb
       DynamoDbDocumentClientService,
       DynamoDbUserDao,
       DynamoDbUserPreferencesDao,
+      DynamoDbHouseholdRepository,
       DynamoDbProductRepository,
       DynamoDbProductTypeRepository,
       DynamoDbInventoryLotRepository,
@@ -168,6 +194,7 @@ const databaseClassProviders = useDynamoDb
   : [
       MongoUserDao,
       MongoUserPreferencesDao,
+      MongoHouseholdRepository,
       MongoProductRepository,
       MongoProductTypeRepository,
       MongoInventoryLotRepository,
@@ -186,6 +213,9 @@ const productTypeRepositoryProvider = useDynamoDb
 const inventoryLotRepositoryProvider = useDynamoDb
   ? DynamoDbInventoryLotRepository
   : MongoInventoryLotRepository;
+const householdRepositoryProvider = useDynamoDb
+  ? DynamoDbHouseholdRepository
+  : MongoHouseholdRepository;
 const shoppingShareRepositoryProvider = useDynamoDb
   ? DynamoDbShoppingShareRepository
   : MongoShoppingShareRepository;
@@ -252,6 +282,24 @@ const shoppingShareRepositoryProvider = useDynamoDb
           .integer()
           .positive()
           .default(2592000),
+        AUTH_STEP_UP_ENABLED: Joi.string()
+          .valid('true', 'false')
+          .default('false'),
+        AUTH_STEP_UP_MAX_AGE_SECONDS: Joi.number()
+          .integer()
+          .positive()
+          .default(900),
+        ARCHIVED_RECORD_RETENTION_DAYS: Joi.number()
+          .integer()
+          .positive()
+          .default(365),
+        ARCHIVED_RECORD_AUTO_DELETE_ENABLED: Joi.string()
+          .valid('true', 'false')
+          .default('false'),
+        TEMPORARY_SHOPPING_SHARE_RETENTION_DAYS: Joi.number()
+          .integer()
+          .positive()
+          .default(7),
         COGNITO_ENABLED: Joi.string().valid('true', 'false').default('false'),
         COGNITO_ISSUER: Joi.when('COGNITO_ENABLED', {
           is: 'true',
@@ -278,6 +326,8 @@ const shoppingShareRepositoryProvider = useDynamoDb
           then: Joi.string().required(),
           otherwise: Joi.string().allow('').optional(),
         }),
+        COGNITO_USER_POOL_ID: Joi.string().allow('').optional(),
+        COGNITO_REGION: Joi.string().allow('').optional(),
         COGNITO_CLIENT_SECRET: Joi.string().allow('').optional(),
         COGNITO_REDIRECT_URI: Joi.when('COGNITO_ENABLED', {
           is: 'true',
@@ -325,6 +375,7 @@ const shoppingShareRepositoryProvider = useDynamoDb
   controllers: [
     AppController,
     AuthController,
+    HouseholdController,
     ProductsController,
     ProductTypesController,
     InventoryLotsController,
@@ -335,13 +386,22 @@ const shoppingShareRepositoryProvider = useDynamoDb
   providers: [
     AppService,
     AuthCookieService,
+    AuthStepUpService,
     AccessTokenGuard,
     CognitoAuthTransactionService,
     CognitoProfileSyncService,
     CognitoAuthUrlBuilderService,
     CognitoTokenClientService,
     CognitoTokenVerifierService,
+    CognitoUserAdminService,
     GetCurrentUserUseCase,
+    GetHouseholdWorkspaceUseCase,
+    RecordHouseholdActivityUseCase,
+    CreateHouseholdInviteUseCase,
+    AcceptHouseholdInviteUseCase,
+    RevokeHouseholdInviteUseCase,
+    RemoveHouseholdMemberUseCase,
+    ResolveHouseholdPantryAccessUseCase,
     CloseShoppingPurchaseUseCase,
     CreateProductUseCase,
     CreateProductTypeUseCase,
@@ -364,12 +424,16 @@ const shoppingShareRepositoryProvider = useDynamoDb
     RestoreProductTypeUseCase,
     DeleteProductTypeUseCase,
     DeletePantryDataUseCase,
+    DeleteAccountUseCase,
+    SignOutAllSessionsUseCase,
     ArchiveInventoryLotUseCase,
     RestoreInventoryLotUseCase,
     DeleteInventoryLotUseCase,
     UpdateProductQuantityUseCase,
     UpdateUserPreferencesUseCase,
+    ListActiveShoppingSharesUseCase,
     ResolveShoppingShareUseCase,
+    RevokeShoppingShareByIdUseCase,
     RevokeShoppingShareUseCase,
     ...databaseClassProviders,
     {
@@ -405,6 +469,10 @@ const shoppingShareRepositoryProvider = useDynamoDb
       useExisting: inventoryLotRepositoryProvider,
     },
     {
+      provide: HOUSEHOLD_REPOSITORY,
+      useExisting: householdRepositoryProvider,
+    },
+    {
       provide: SHOPPING_SHARE_REPOSITORY,
       useExisting: shoppingShareRepositoryProvider,
     },
@@ -423,6 +491,10 @@ const shoppingShareRepositoryProvider = useDynamoDb
     {
       provide: COGNITO_TOKEN_VERIFIER,
       useExisting: CognitoTokenVerifierService,
+    },
+    {
+      provide: COGNITO_USER_ADMIN,
+      useExisting: CognitoUserAdminService,
     },
   ],
 })

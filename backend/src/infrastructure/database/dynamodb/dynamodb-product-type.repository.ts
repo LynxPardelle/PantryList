@@ -14,6 +14,7 @@ import {
   MAX_ARCHIVED_PRODUCT_TYPES_PER_USER,
   MAX_PRODUCT_TYPE_SEARCH_RESULTS,
 } from '../../../application/constants/query-limits';
+import { getArchivedRecordRetentionExpiresAt } from '../../../application/policies/retention-policy';
 import { ProductTypeRepository } from '../../../domain/repositories/product-type.repository';
 import { ProductTypeId } from '../../../domain/value-objects/product-type-id.vo';
 import { UserId } from '../../../domain/value-objects/user-id.vo';
@@ -33,6 +34,7 @@ type ProductTypeItem = Omit<
   planningSettings?: ProductTypePlanningSettingsPrimitives;
   shoppingMetadata?: PersistedShoppingMetadata;
   archivedAt?: string;
+  expiresAtEpochSeconds?: number;
   createdAt: string;
   updatedAt: string;
 };
@@ -61,7 +63,7 @@ export class DynamoDbProductTypeRepository implements ProductTypeRepository {
 
   constructor(
     private readonly dynamoDb: DynamoDbDocumentClientService,
-    configService: ConfigService,
+    private readonly configService: ConfigService,
   ) {
     this.tableName = configService.getOrThrow<string>(
       'DYNAMODB_PRODUCT_TYPES_TABLE',
@@ -261,6 +263,11 @@ export class DynamoDbProductTypeRepository implements ProductTypeRepository {
   }
 
   private toItem(primitives: ProductTypePrimitives): ProductTypeItem {
+    const retentionExpiresAt = getArchivedRecordRetentionExpiresAt(
+      primitives.archivedAt,
+      this.configService,
+    );
+
     return {
       entityType: 'PRODUCT_TYPE',
       id: primitives.id,
@@ -279,6 +286,9 @@ export class DynamoDbProductTypeRepository implements ProductTypeRepository {
       planningSettings: primitives.planningSettings,
       shoppingMetadata: serializeShoppingMetadata(primitives.shoppingMetadata),
       archivedAt: primitives.archivedAt?.toISOString(),
+      expiresAtEpochSeconds: retentionExpiresAt
+        ? Math.floor(retentionExpiresAt.getTime() / 1000)
+        : undefined,
       archivedReason: primitives.archivedReason,
       createdAt: primitives.createdAt.toISOString(),
       updatedAt: primitives.updatedAt.toISOString(),

@@ -2,6 +2,9 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export class ShoppingShareResponseDto {
   @ApiProperty({ required: false })
+  id?: string;
+
+  @ApiProperty({ required: false })
   token?: string;
 
   @ApiProperty()

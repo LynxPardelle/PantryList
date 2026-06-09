@@ -81,6 +81,7 @@ describe('ProductType planning settings and archive state', () => {
       substituteBrand: 'Marca propia',
       householdStaple: true,
       buyOnlyOnPromo: true,
+      replenishWhenLow: true,
       shoppingNotes: 'Comprar bolsa grande si esta en promo',
       estimatedUnitPrice: 36.5,
     });

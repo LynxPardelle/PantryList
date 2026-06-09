@@ -50,6 +50,7 @@ import {
   ProductType,
   ProductTypeSelectionMode,
   ProductUnit,
+  ShoppingShare,
   ShoppingPlanItem,
   ShoppingPlanUrgency,
   ShoppingRouteGroup,
@@ -119,6 +120,97 @@ interface ScreenWakeLock {
   release: () => Promise<void>;
 }
 
+interface StapleTemplate {
+  label: string;
+  baseName: string;
+  category: ProductCategory;
+  unit: ProductUnit;
+  storageLocation: string;
+  shoppingLocation: string;
+  householdStaple: boolean;
+  buyOnlyOnPromo: boolean;
+  replenishWhenLow: boolean;
+  enableDurability: boolean;
+  depletionConsumeAmount: number;
+  depletionEveryAmount: number;
+  depletionEveryPeriod: DepletionPeriod;
+}
+
+const STAPLE_TEMPLATES: StapleTemplate[] = [
+  {
+    label: 'Despensa diaria',
+    baseName: 'Arroz',
+    category: 'food',
+    unit: 'kg',
+    storageLocation: 'Despensa',
+    shoppingLocation: 'Mercado',
+    householdStaple: true,
+    buyOnlyOnPromo: false,
+    replenishWhenLow: true,
+    enableDurability: true,
+    depletionConsumeAmount: 1,
+    depletionEveryAmount: 1,
+    depletionEveryPeriod: 'month',
+  },
+  {
+    label: 'Limpieza',
+    baseName: 'Detergente liquido',
+    category: 'cleaning',
+    unit: 'lt',
+    storageLocation: 'Limpieza',
+    shoppingLocation: 'Limpieza',
+    householdStaple: true,
+    buyOnlyOnPromo: true,
+    replenishWhenLow: true,
+    enableDurability: true,
+    depletionConsumeAmount: 1,
+    depletionEveryAmount: 1,
+    depletionEveryPeriod: 'month',
+  },
+  {
+    label: 'Botiquin',
+    baseName: 'Paracetamol',
+    category: 'hygiene',
+    unit: 'piezas',
+    storageLocation: 'Botiquin',
+    shoppingLocation: 'Farmacia',
+    householdStaple: true,
+    buyOnlyOnPromo: false,
+    replenishWhenLow: false,
+    enableDurability: false,
+    depletionConsumeAmount: 1,
+    depletionEveryAmount: 1,
+    depletionEveryPeriod: 'month',
+  },
+  {
+    label: 'Mascotas',
+    baseName: 'Croquetas',
+    category: 'other',
+    unit: 'kg',
+    storageLocation: 'Mascotas',
+    shoppingLocation: 'Mayoreo',
+    householdStaple: true,
+    buyOnlyOnPromo: true,
+    replenishWhenLow: true,
+    enableDurability: true,
+    depletionConsumeAmount: 2,
+    depletionEveryAmount: 1,
+    depletionEveryPeriod: 'month',
+  },
+];
+const SHOPPING_LOCATION_ORDER = [
+  'Supermercado',
+  'Mercado',
+  'Tiendita',
+  'Abarrotes',
+  'Mayoreo',
+  'Farmacia',
+  'Limpieza',
+  'Bodega',
+  'Otro',
+  'Sin tienda definida',
+];
+
 @Component({
   selector: 'app-pantry-page',
   templateUrl: './pantry-page.component.html',
@@ -166,6 +258,7 @@ export class PantryPageComponent implements OnInit {
   readonly unitOptions = PRODUCT_UNITS;
   readonly storageLocationOptions = STORAGE_LOCATION_OPTIONS;
   readonly shoppingLocationOptions = SHOPPING_LOCATION_OPTIONS;
+  readonly stapleTemplates = STAPLE_TEMPLATES;
   readonly depletionPeriodOptions = DEPLETION_PERIODS;
 
   readonly categoryLabels: Record<ProductCategory, string> = {
@@ -216,6 +309,7 @@ export class PantryPageComponent implements OnInit {
     substituteBrand: ['', [Validators.maxLength(80)]],
     householdStaple: [false],
     buyOnlyOnPromo: [false],
+    replenishWhenLow: [true],
     shoppingNotes: ['', [Validators.maxLength(160)]],
     estimatedUnitPrice: [
       null as number | null,
@@ -263,6 +357,7 @@ export class PantryPageComponent implements OnInit {
     substituteBrand: ['', [Validators.maxLength(80)]],
     householdStaple: [false],
     buyOnlyOnPromo: [false],
+    replenishWhenLow: [true],
     shoppingNotes: ['', [Validators.maxLength(160)]],
     estimatedUnitPrice: [
       null as number | null,
@@ -333,10 +428,14 @@ export class PantryPageComponent implements OnInit {
   shoppingExportStatus: string | null = null;
   shoppingExportText: string | null = null;
   shoppingShareStatus: string | null = null;
+  shoppingShareId: string | null = null;
   shoppingShareLink: string | null = null;
   shoppingShareToken: string | null = null;
   shoppingShareExpiresAt: Date | null = null;
   shoppingShareBusy = false;
+  activeShoppingShares: ShoppingShare[] = [];
+  activeShoppingSharesLoading = false;
+  activeShoppingSharesError: string | null = null;
   shoppingBudget: number | null = null;
   shoppingModeActive = false;
   shoppingTripDraft: Record<string, ShoppingTripDraftItem> = {};
@@ -358,6 +457,7 @@ export class PantryPageComponent implements OnInit {
       this.loadOverview();
       this.watchNetworkState();
       this.loadLocalShoppingSupport();
+      this.loadActiveShoppingShares();
       this.destroyRef.onDestroy(() => {
         void this.releaseShoppingWakeLock();
       });
@@ -403,6 +503,29 @@ export class PantryPageComponent implements OnInit {
 
   setSelectionMode(selectionMode: ProductTypeSelectionMode): void {
     this.lotForm.controls.selectionMode.setValue(selectionMode);
+  }
+
+  applyStapleTemplate(template: StapleTemplate): void {
+    this.setSelectionMode('new');
+    this.lotForm.patchValue(
+      {
+        newBaseName: template.baseName,
+        category: template.category,
+        unit: template.unit,
+        storageLocation: template.storageLocation,
+        shoppingLocation: template.shoppingLocation,
+        householdStaple: template.householdStaple,
+        buyOnlyOnPromo: template.buyOnlyOnPromo,
+        replenishWhenLow: template.replenishWhenLow,
+        enableDurability: template.enableDurability,
+        depletionConsumeAmount: template.depletionConsumeAmount,
+        depletionEveryAmount: template.depletionEveryAmount,
+        depletionEveryPeriod: template.depletionEveryPeriod,
+        depletionAnchorDate: toDateInputValue(new Date()),
+      },
+      { emitEvent: false },
+    );
+    this.registerError = null;
   }
 
   selectExistingProductType(productType: ProductType): void {
@@ -533,6 +656,7 @@ export class PantryPageComponent implements OnInit {
       substituteBrand: metadata.substituteBrand ?? '',
       householdStaple: metadata.householdStaple,
       buyOnlyOnPromo: metadata.buyOnlyOnPromo,
+      replenishWhenLow: metadata.replenishWhenLow,
       shoppingNotes: metadata.shoppingNotes ?? '',
       estimatedUnitPrice: metadata.estimatedUnitPrice ?? null,
     });
@@ -1145,6 +1269,7 @@ export class PantryPageComponent implements OnInit {
 
     if (!isPlatformBrowser(this.platformId)) {
       this.shoppingShareStatus = 'Enlace disponible solo en navegador.';
+      this.shoppingShareId = null;
       this.shoppingShareLink = null;
       this.shoppingShareToken = null;
       this.shoppingShareExpiresAt = null;
@@ -1153,6 +1278,7 @@ export class PantryPageComponent implements OnInit {
 
     this.shoppingShareBusy = true;
     this.shoppingShareStatus = 'Creando enlace temporal...';
+    this.shoppingShareId = null;
     this.shoppingShareLink = null;
     this.shoppingShareToken = null;
     this.shoppingShareExpiresAt = null;
@@ -1172,9 +1298,18 @@ export class PantryPageComponent implements OnInit {
             return;
           }
 
+          this.shoppingShareId = share.id ?? null;
           this.shoppingShareToken = share.token;
           this.shoppingShareExpiresAt = share.expiresAt;
           this.shoppingShareLink = `${window.location.origin}/shared-shopping-list?token=${encodeURIComponent(share.token)}`;
+          this.activeShoppingShares = share.id
+            ? [
+                share,
+                ...this.activeShoppingShares.filter(
+                  (activeShare) => activeShare.id !== share.id
+                ),
+              ]
+            : this.activeShoppingShares;
           this.shoppingShareStatus =
             'Enlace temporal creado. Puedes revocarlo cuando termines.';
         },
@@ -1203,14 +1338,89 @@ export class PantryPageComponent implements OnInit {
       .subscribe({
         next: () => {
           this.shoppingShareLink = null;
+          this.shoppingShareId = null;
           this.shoppingShareToken = null;
           this.shoppingShareExpiresAt = null;
+          this.shoppingShareStatus = 'Enlace temporal revocado.';
+          this.loadActiveShoppingShares();
+        },
+        error: (error) => {
+          this.shoppingShareStatus = this.getErrorMessage(error);
+        },
+      });
+  }
+
+  revokeActiveShoppingShare(share: ShoppingShare): void {
+    if (!share.id || this.shoppingShareBusy) {
+      return;
+    }
+
+    this.shoppingShareBusy = true;
+    this.shoppingShareStatus = 'Revocando enlace temporal...';
+    this.pantryService
+      .revokeShoppingShareById(share.id)
+      .pipe(
+        timeout(this.lotRegistrationTimeoutMs),
+        finalize(() => {
+          this.shoppingShareBusy = false;
+          this.changeDetector.markForCheck();
+        })
+      )
+      .subscribe({
+        next: () => {
+          this.activeShoppingShares = this.activeShoppingShares.filter(
+            (activeShare) => activeShare.id !== share.id
+          );
+          if (share.id === this.shoppingShareId) {
+            this.shoppingShareLink = null;
+            this.shoppingShareId = null;
+            this.shoppingShareToken = null;
+            this.shoppingShareExpiresAt = null;
+          }
           this.shoppingShareStatus = 'Enlace temporal revocado.';
         },
         error: (error) => {
           this.shoppingShareStatus = this.getErrorMessage(error);
         },
       });
+  }
+
+  loadActiveShoppingShares(): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    this.activeShoppingSharesLoading = true;
+    this.activeShoppingSharesError = null;
+    this.pantryService
+      .listActiveShoppingShares()
+      .pipe(
+        timeout(this.lotRegistrationTimeoutMs),
+        finalize(() => {
+          this.activeShoppingSharesLoading = false;
+          this.changeDetector.markForCheck();
+        })
+      )
+      .subscribe({
+        next: (shares) => {
+          this.activeShoppingShares = shares;
+        },
+        error: (error) => {
+          this.activeShoppingSharesError = this.getErrorMessage(error);
+        },
+      });
+  }
+
+  formatCentralDate(date: Date): string {
+    return new Intl.DateTimeFormat('es-MX', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: 'America/Mexico_City',
+    }).format(date);
   }
 
   getWhatsAppShoppingUrl(exportText: string): string {
@@ -2009,6 +2219,7 @@ export class PantryPageComponent implements OnInit {
       substituteBrand: '',
       householdStaple: false,
       buyOnlyOnPromo: false,
+      replenishWhenLow: true,
       shoppingNotes: '',
       estimatedUnitPrice: null,
       variantName: '',
@@ -2051,6 +2262,7 @@ export class PantryPageComponent implements OnInit {
     substituteBrand?: string;
     householdStaple?: boolean;
     buyOnlyOnPromo?: boolean;
+    replenishWhenLow?: boolean;
     shoppingNotes?: string;
     estimatedUnitPrice?: number | string | null;
   }): ProductTypeShoppingMetadataRequest {
@@ -2064,6 +2276,7 @@ export class PantryPageComponent implements OnInit {
       substituteBrand: this.toOptionalText(rawValue.substituteBrand),
       householdStaple: rawValue.householdStaple ?? false,
       buyOnlyOnPromo: rawValue.buyOnlyOnPromo ?? false,
+      replenishWhenLow: rawValue.replenishWhenLow ?? true,
       shoppingNotes: this.toOptionalText(rawValue.shoppingNotes),
     };
 
@@ -2274,6 +2487,7 @@ export class PantryPageComponent implements OnInit {
       ...metadata,
       householdStaple: metadata?.householdStaple ?? false,
       buyOnlyOnPromo: metadata?.buyOnlyOnPromo ?? false,
+      replenishWhenLow: metadata?.replenishWhenLow ?? true,
     };
   }
 
@@ -2294,11 +2508,28 @@ export class PantryPageComponent implements OnInit {
         location,
         items: groupedItems,
       }))
-      .sort((left, right) =>
-        left.location.localeCompare(right.location, 'es', {
+      .sort((left, right) => {
+        const rankDifference =
+          this.getShoppingLocationRank(left.location) -
+          this.getShoppingLocationRank(right.location);
+
+        if (rankDifference !== 0) {
+          return rankDifference;
+        }
+
+        return left.location.localeCompare(right.location, 'es', {
           sensitivity: 'base',
-        })
-      );
+        });
+      });
+  }
+
+  private getShoppingLocationRank(location: string): number {
+    const normalized = location.trim().toLocaleLowerCase('es');
+    const index = SHOPPING_LOCATION_ORDER.findIndex(
+      (candidate) => candidate.trim().toLocaleLowerCase('es') === normalized,
+    );
+
+    return index === -1 ? SHOPPING_LOCATION_ORDER.length : index;
   }
 
   private hasShoppingPriceEstimate(items: ShoppingPlanItem[]): boolean {

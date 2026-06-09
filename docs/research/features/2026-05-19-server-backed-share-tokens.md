@@ -2,7 +2,7 @@
 
 Date: 2026-05-19
 
-Status: Implemented and locally verified; pending production rollout.
+Status: Implemented. Later follow-ups completed active share management, household basics, TTL cleanup metadata, account deletion, and CI security scans.
 
 ## Implemented
 
@@ -29,12 +29,9 @@ Status: Implemented and locally verified; pending production rollout.
 
 ## Not Included Yet
 
-- Full household workspace roles.
-- Invitations.
-- Multiuser read/write policy.
-- Active share management list.
-- Shared-list change notifications.
-- Automatic expired-share cleanup in DynamoDB.
+- Household ownership transfer.
+- Real-time multiuser collaboration.
+- Multi-list collaboration beyond the current owner-backed pantry workspace.
 
 ## Verification
 
@@ -64,22 +61,18 @@ Status: Implemented and locally verified; pending production rollout.
 
 ### Collaboration
 
-- Full shared household workspace with invite, member role, ownership transfer, and removal flow.
-- Household read/write policy for pantry items, lots, shopping plan, and profile preferences.
-- Change notifications for shared shopping lists.
-- Active share management list with revoke buttons for older links not visible on the current page.
+- Household ownership transfer.
+- Real-time multiuser collaboration.
+- Multi-list collaboration beyond the current owner-backed pantry workspace.
 
 ### Trust And Data Lifecycle
 
-- Account deletion that includes Cognito identity handling, not only PantryList inventory deletion.
-- Retention policy for archived/deleted records.
-- Automatic expired-share cleanup in production persistence.
-- CI security scanning lane: CodeQL, secrets, runtime audit, and image scan.
+- Full session/device list beyond Cognito global sign-out.
+- Metrics and alerting for share creation/revocation failures.
+- Optional Docker image digest pinning.
 
 ### Product
 
-- Store-route category ordering for supermercado, mercado, tiendita, mayoreo, farmacia, limpieza, and custom routes.
 - Multiple shopping lists by store, occasion, or trip.
-- Common staple templates by household type.
 - Voice input for quick capture.
 - Receipt scan as a later AI/premium feature with explicit privacy review.

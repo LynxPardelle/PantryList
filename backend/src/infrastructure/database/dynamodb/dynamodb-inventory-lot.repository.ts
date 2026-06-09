@@ -10,6 +10,7 @@ import {
   MAX_ARCHIVED_INVENTORY_LOTS_PER_USER,
   MAX_INVENTORY_LOTS_PER_PRODUCT_TYPE,
 } from '../../../application/constants/query-limits';
+import { getArchivedRecordRetentionExpiresAt } from '../../../application/policies/retention-policy';
 import { InventoryLotRepository } from '../../../domain/repositories/inventory-lot.repository';
 import { InventoryLotId } from '../../../domain/value-objects/inventory-lot-id.vo';
 import { ProductTypeId } from '../../../domain/value-objects/product-type-id.vo';
@@ -24,6 +25,7 @@ type InventoryLotItem = Omit<
   expiresAt?: string;
   purchaseDate?: string;
   archivedAt?: string;
+  expiresAtEpochSeconds?: number;
   createdAt: string;
   updatedAt: string;
 };
@@ -34,7 +36,7 @@ export class DynamoDbInventoryLotRepository implements InventoryLotRepository {
 
   constructor(
     private readonly dynamoDb: DynamoDbDocumentClientService,
-    configService: ConfigService,
+    private readonly configService: ConfigService,
   ) {
     this.tableName = configService.getOrThrow<string>(
       'DYNAMODB_INVENTORY_LOTS_TABLE',
@@ -225,6 +227,11 @@ export class DynamoDbInventoryLotRepository implements InventoryLotRepository {
   }
 
   private toItem(primitives: InventoryLotPrimitives): InventoryLotItem {
+    const retentionExpiresAt = getArchivedRecordRetentionExpiresAt(
+      primitives.archivedAt,
+      this.configService,
+    );
+
     return {
       entityType: 'INVENTORY_LOT',
       id: primitives.id,
@@ -236,6 +243,9 @@ export class DynamoDbInventoryLotRepository implements InventoryLotRepository {
       expiresAt: primitives.expiresAt?.toISOString(),
       purchaseDate: primitives.purchaseDate?.toISOString(),
       archivedAt: primitives.archivedAt?.toISOString(),
+      expiresAtEpochSeconds: retentionExpiresAt
+        ? Math.floor(retentionExpiresAt.getTime() / 1000)
+        : undefined,
       archivedReason: primitives.archivedReason,
       createdAt: primitives.createdAt.toISOString(),
       updatedAt: primitives.updatedAt.toISOString(),

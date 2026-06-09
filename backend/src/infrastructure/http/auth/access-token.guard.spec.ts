@@ -29,7 +29,13 @@ describe('AccessTokenGuard', () => {
     }) as unknown as jest.Mocked<AuthCookieService>;
 
   const makeExecutionContext = (
-    request: FastifyRequest & { authUser?: { userId: string } },
+    request: FastifyRequest & {
+      authUser?: {
+        userId: string;
+        authSubjectId: string;
+        authenticatedAt?: Date;
+      };
+    },
   ): ExecutionContext =>
     ({
       switchToHttp: () => ({
@@ -37,7 +43,7 @@ describe('AccessTokenGuard', () => {
       }),
     }) as unknown as ExecutionContext;
 
-  const makeActiveUser = (id = 'cognito-sub-123') =>
+  const makeActiveUser = (id = 'test-subject') =>
     User.fromPrimitives({
       id,
       email: 'chef@example.com',
@@ -69,11 +75,16 @@ describe('AccessTokenGuard', () => {
     const userDao = makeUserDao();
     const authCookieService = makeAuthCookieService();
     const request = { method: 'POST' } as FastifyRequest & {
-      authUser?: { userId: string };
+      authUser?: {
+        userId: string;
+        authSubjectId: string;
+        authenticatedAt?: Date;
+      };
     };
     authCookieService.getAccessTokenFromRequest.mockReturnValue('access-token');
     tokenVerifier.verifyAccessToken.mockResolvedValue({
-      sub: 'cognito-sub-123',
+      sub: 'test-subject',
+      authTime: 1812499200,
     });
     userDao.findByAuthSubject.mockResolvedValue(makeActiveUser('app-user-123'));
     const guard = new AccessTokenGuard(
@@ -92,7 +103,11 @@ describe('AccessTokenGuard', () => {
     expect(authCookieService.ensureXsrfForRequest.mock.calls).toEqual([
       [request],
     ]);
-    expect(request.authUser).toEqual({ userId: 'app-user-123' });
+    expect(request.authUser).toEqual({
+      userId: 'app-user-123',
+      authSubjectId: 'test-subject',
+      authenticatedAt: new Date(1812499200 * 1000),
+    });
   });
 
   it('converts Cognito verification failures into unauthorized responses', async () => {

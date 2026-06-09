@@ -21,6 +21,7 @@ describe('DynamoDbProductTypeRepository', () => {
     } as unknown as DynamoDbDocumentClientService;
     const configService = {
       getOrThrow: jest.fn().mockReturnValue('product-types'),
+      get: jest.fn(),
     } as unknown as ConfigService;
     const repository = new DynamoDbProductTypeRepository(
       dynamoDb,
@@ -82,6 +83,7 @@ describe('DynamoDbProductTypeRepository', () => {
     } as unknown as DynamoDbDocumentClientService;
     const configService = {
       getOrThrow: jest.fn().mockReturnValue('product-types'),
+      get: jest.fn(),
     } as unknown as ConfigService;
     const repository = new DynamoDbProductTypeRepository(
       dynamoDb,

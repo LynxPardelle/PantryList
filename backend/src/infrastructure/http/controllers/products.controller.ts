@@ -14,6 +14,7 @@ import { CreateProductUseCase } from '../../../application/use-cases/create-prod
 import { GetProductByIdUseCase } from '../../../application/use-cases/get-product-by-id.use-case';
 import { UpdateProductQuantityUseCase } from '../../../application/use-cases/update-product-quantity.use-case';
 import { GetProductsByUserUseCase } from '../../../application/use-cases/get-products-by-user.use-case';
+import { ResolveHouseholdPantryAccessUseCase } from '../../../application/use-cases/household.use-cases';
 import { AuthCookieService } from '../auth/auth-cookie.service';
 import { AccessTokenGuard } from '../auth/access-token.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -33,6 +34,7 @@ export class ProductsController {
     private readonly getProductByIdUseCase: GetProductByIdUseCase,
     private readonly updateProductQuantityUseCase: UpdateProductQuantityUseCase,
     private readonly getProductsByUserUseCase: GetProductsByUserUseCase,
+    private readonly resolveHouseholdPantryAccessUseCase: ResolveHouseholdPantryAccessUseCase,
     private readonly authCookieService: AuthCookieService,
   ) {}
 
@@ -44,9 +46,12 @@ export class ProductsController {
     @Req() request: FastifyRequest,
   ): Promise<ProductResponseDto> {
     this.authCookieService.ensureXsrfForRequest(request);
+    const access = await this.resolveHouseholdPantryAccessUseCase.executeWrite(
+      currentUser.userId,
+    );
 
     const command: CreateProductCommand = {
-      userId: currentUser.userId,
+      userId: access.pantryOwnerUserId,
       title: createProductDto.title,
       currentQuantity: createProductDto.currentQuantity,
       unit: createProductDto.unit,
@@ -63,8 +68,11 @@ export class ProductsController {
   async findUserProducts(
     @CurrentUser() currentUser: AuthenticatedUser,
   ): Promise<ProductResponseDto[]> {
-    const products = await this.getProductsByUserUseCase.execute(
+    const access = await this.resolveHouseholdPantryAccessUseCase.executeRead(
       currentUser.userId,
+    );
+    const products = await this.getProductsByUserUseCase.execute(
+      access.pantryOwnerUserId,
     );
     return products.map((product) => ProductMapper.toResponse(product));
   }
@@ -75,9 +83,12 @@ export class ProductsController {
     @Param('id') id: string,
     @CurrentUser() currentUser: AuthenticatedUser,
   ): Promise<ProductResponseDto> {
+    const access = await this.resolveHouseholdPantryAccessUseCase.executeRead(
+      currentUser.userId,
+    );
     const product = await this.getProductByIdUseCase.execute(
       id,
-      currentUser.userId,
+      access.pantryOwnerUserId,
     );
     return ProductMapper.toResponse(product);
   }
@@ -91,10 +102,13 @@ export class ProductsController {
     @Req() request: FastifyRequest,
   ): Promise<ProductResponseDto> {
     this.authCookieService.ensureXsrfForRequest(request);
+    const access = await this.resolveHouseholdPantryAccessUseCase.executeWrite(
+      currentUser.userId,
+    );
 
     const product = await this.updateProductQuantityUseCase.execute(
       id,
-      currentUser.userId,
+      access.pantryOwnerUserId,
       updateQuantityDto.quantity,
     );
     return ProductMapper.toResponse(product);

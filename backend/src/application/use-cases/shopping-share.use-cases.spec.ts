@@ -2,7 +2,9 @@ import { ShoppingShare } from '../../domain/entities/shopping-share.entity';
 import { ShoppingShareRepository } from '../../domain/repositories/shopping-share.repository';
 import {
   CreateShoppingShareUseCase,
+  ListActiveShoppingSharesUseCase,
   ResolveShoppingShareUseCase,
+  RevokeShoppingShareByIdUseCase,
   RevokeShoppingShareUseCase,
 } from './shopping-share.use-cases';
 import {
@@ -17,7 +19,9 @@ describe('shopping share use cases', () => {
   beforeEach(() => {
     repository = {
       save: jest.fn(async (share) => share),
+      findById: jest.fn(),
       findByTokenHash: jest.fn(),
+      listActiveByOwnerUserId: jest.fn(),
       deleteByOwnerUserId: jest.fn(),
     };
   });
@@ -98,6 +102,23 @@ describe('shopping share use cases', () => {
     expect(repository.save).toHaveBeenCalledWith(revoked);
   });
 
+  it('lists active shares for the current user only', async () => {
+    repository.listActiveByOwnerUserId.mockResolvedValue([
+      makeShare({ id: 'share-active-1' }),
+    ]);
+    const useCase = new ListActiveShoppingSharesUseCase(repository);
+
+    const shares = await useCase.execute('user-1');
+
+    expect(repository.listActiveByOwnerUserId).toHaveBeenCalledWith(
+      'user-1',
+      expect.any(Date),
+    );
+    expect(shares.map((share) => share.toPrimitives().id)).toEqual([
+      'share-active-1',
+    ]);
+  });
+
   it('rejects revocation attempts from a different owner', async () => {
     const token = 'server-backed-token';
     repository.findByTokenHash.mockResolvedValue(
@@ -112,6 +133,20 @@ describe('shopping share use cases', () => {
       }),
     ).rejects.toThrow(/not owned/i);
   });
+
+  it('revokes a share by id for the current owner', async () => {
+    repository.findById.mockResolvedValue(makeShare({ id: 'share-active-1' }));
+    const useCase = new RevokeShoppingShareByIdUseCase(repository);
+
+    const revoked = await useCase.execute({
+      ownerUserId: 'user-1',
+      shareId: 'share-active-1',
+    });
+
+    expect(repository.findById).toHaveBeenCalledWith('share-active-1');
+    expect(revoked.toPrimitives().revokedAt).toBeInstanceOf(Date);
+    expect(repository.save).toHaveBeenCalledWith(revoked);
+  });
 });
 
 function makeShare(
@@ -120,7 +155,7 @@ function makeShare(
   return ShoppingShare.fromPrimitives({
     id: 'share-1',
     ownerUserId: 'user-1',
-    tokenHash: 'hash',
+    tokenHash: hashShoppingShareToken('server-backed-token'),
     text: 'Lista',
     createdAt: new Date('2026-05-19T00:00:00.000Z'),
     expiresAt: new Date('2099-05-26T00:00:00.000Z'),

@@ -62,6 +62,7 @@ export class CognitoTokenVerifierService implements CognitoTokenVerifier {
       preferredUsername: this.optionalString(payload.preferred_username),
       name: this.optionalString(payload.name),
       nonce: this.optionalString(payload.nonce),
+      authTime: this.optionalNumber(payload.auth_time),
     };
   }
 
@@ -75,5 +76,19 @@ export class CognitoTokenVerifierService implements CognitoTokenVerifier {
 
   private optionalBoolean(value: unknown): boolean | undefined {
     return typeof value === 'boolean' ? value : undefined;
+  }
+
+  private optionalNumber(value: unknown): number | undefined {
+    if (typeof value === 'number') {
+      return value;
+    }
+
+    if (typeof value === 'string') {
+      const parsed = Number(value);
+
+      return Number.isFinite(parsed) ? parsed : undefined;
+    }
+
+    return undefined;
   }
 }

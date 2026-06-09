@@ -19,6 +19,7 @@ import {
   PantryStapleItem,
   PantryValueInsights,
   ProductType,
+  ShoppingShare,
   ShoppingPlanItem,
 } from '../../shared/models/pantry.model';
 import {
@@ -51,6 +52,8 @@ describe('PantryPageComponent', () => {
       'getArchivedPantryItems',
       'closeShoppingPurchase',
       'createShoppingShare',
+      'listActiveShoppingShares',
+      'revokeShoppingShareById',
       'revokeShoppingShare',
     ]);
     pantryService.searchProductTypes.and.returnValue(of([]));
@@ -73,8 +76,19 @@ describe('PantryPageComponent', () => {
       of({ productTypes: [], inventoryLots: [] }),
     );
     pantryService.closeShoppingPurchase.and.returnValue(of([]));
+    pantryService.listActiveShoppingShares.and.returnValue(
+      of([
+        {
+          id: 'share-active-1',
+          createdAt: new Date('2026-05-19T00:00:00.000Z'),
+          expiresAt: new Date('2026-05-26T18:00:00.000Z'),
+          revokedAt: null,
+        },
+      ]),
+    );
     pantryService.createShoppingShare.and.returnValue(
       of({
+        id: 'share-active-2',
         token: 'opaque-token',
         createdAt: new Date('2026-05-19T00:00:00.000Z'),
         expiresAt: new Date('2026-05-26T00:00:00.000Z'),
@@ -85,6 +99,14 @@ describe('PantryPageComponent', () => {
       of({
         createdAt: new Date('2026-05-19T00:00:00.000Z'),
         expiresAt: new Date('2026-05-26T00:00:00.000Z'),
+        revokedAt: new Date('2026-05-20T00:00:00.000Z'),
+      }),
+    );
+    pantryService.revokeShoppingShareById.and.returnValue(
+      of({
+        id: 'share-active-1',
+        createdAt: new Date('2026-05-19T00:00:00.000Z'),
+        expiresAt: new Date('2026-05-26T18:00:00.000Z'),
         revokedAt: new Date('2026-05-20T00:00:00.000Z'),
       }),
     );
@@ -248,6 +270,7 @@ describe('PantryPageComponent', () => {
       substituteBrand: 'Marca propia',
       householdStaple: true,
       buyOnlyOnPromo: true,
+      replenishWhenLow: false,
       shoppingNotes: 'Comprar bolsa grande si esta en promo',
       estimatedUnitPrice: 36.5,
     } as any);
@@ -264,6 +287,7 @@ describe('PantryPageComponent', () => {
             substituteBrand: 'Marca propia',
             householdStaple: true,
             buyOnlyOnPromo: true,
+            replenishWhenLow: false,
             shoppingNotes: 'Comprar bolsa grande si esta en promo',
             estimatedUnitPrice: 36.5,
           },
@@ -672,6 +696,7 @@ describe('PantryPageComponent', () => {
           shoppingLocation: 'Mercado',
           householdStaple: true,
           buyOnlyOnPromo: false,
+          replenishWhenLow: true,
         },
       }),
     ]);
@@ -690,6 +715,52 @@ describe('PantryPageComponent', () => {
     );
 
     expect(component.shoppingShareLink).not.toContain('Arroz');
+  });
+
+  it('applies staple templates without submitting automatically', () => {
+    component.applyStapleTemplate(component.stapleTemplates[2]);
+
+    expect(component.lotForm.getRawValue()).toEqual(
+      jasmine.objectContaining({
+        selectionMode: 'new',
+        newBaseName: 'Paracetamol',
+        category: 'hygiene',
+        unit: 'piezas',
+        storageLocation: 'Botiquin',
+        shoppingLocation: 'Farmacia',
+        householdStaple: true,
+        buyOnlyOnPromo: false,
+        replenishWhenLow: false,
+        enableDurability: false,
+      }),
+    );
+    expect(pantryService.registerLot).not.toHaveBeenCalled();
+  });
+
+  it('loads active shopping shares and formats expiry in Central time', () => {
+    expect(pantryService.listActiveShoppingShares).toHaveBeenCalled();
+    expect(component.activeShoppingShares[0].id).toBe('share-active-1');
+    expect(
+      component.formatCentralDate(component.activeShoppingShares[0].expiresAt),
+    ).toContain('26 may');
+  });
+
+  it('revokes an active shopping share from persisted history', () => {
+    const share: ShoppingShare = {
+      id: 'share-active-1',
+      createdAt: new Date('2026-05-19T00:00:00.000Z'),
+      expiresAt: new Date('2026-05-26T18:00:00.000Z'),
+      revokedAt: null,
+    };
+    component.activeShoppingShares = [share];
+
+    component.revokeActiveShoppingShare(share);
+
+    expect(pantryService.revokeShoppingShareById).toHaveBeenCalledWith(
+      'share-active-1',
+    );
+    expect(component.activeShoppingShares).toEqual([]);
+    expect(component.shoppingShareStatus).toBe('Enlace temporal revocado.');
   });
 
   it('revokes a server-backed temporary shopping list link', () => {
@@ -998,6 +1069,7 @@ function makeShoppingPlanItem(
     shoppingMetadata: {
       householdStaple: false,
       buyOnlyOnPromo: false,
+      replenishWhenLow: true,
       estimatedUnitPrice: 42.5,
     },
     urgency: 'critical',

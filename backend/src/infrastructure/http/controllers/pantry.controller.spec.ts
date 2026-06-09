@@ -1,11 +1,18 @@
 import { FastifyRequest } from 'fastify';
 import { AuthCookieService } from '../auth/auth-cookie.service';
+import { AuthenticatedUser } from '../auth/authenticated-user.interface';
 import { CloseShoppingPurchaseUseCase } from '../../../application/use-cases/close-shopping-purchase.use-case';
 import { GetArchivedPantryItemsUseCase } from '../../../application/use-cases/get-archived-pantry-items.use-case';
 import { GetPantryOverviewUseCase } from '../../../application/use-cases/get-pantry-overview.use-case';
 import { GetUserProfileUseCase } from '../../../application/use-cases/get-user-profile.use-case';
 import {
+  RecordHouseholdActivityUseCase,
+  ResolveHouseholdPantryAccessUseCase,
+} from '../../../application/use-cases/household.use-cases';
+import {
   CreateShoppingShareUseCase,
+  ListActiveShoppingSharesUseCase,
+  RevokeShoppingShareByIdUseCase,
   RevokeShoppingShareUseCase,
 } from '../../../application/use-cases/shopping-share.use-cases';
 import { ShoppingShare } from '../../../domain/entities/shopping-share.entity';
@@ -20,7 +27,11 @@ describe('PantryController', () => {
   let getUserProfileUseCase: jest.Mocked<GetUserProfileUseCase>;
   let closeShoppingPurchaseUseCase: jest.Mocked<CloseShoppingPurchaseUseCase>;
   let createShoppingShareUseCase: jest.Mocked<CreateShoppingShareUseCase>;
+  let listActiveShoppingSharesUseCase: jest.Mocked<ListActiveShoppingSharesUseCase>;
+  let revokeShoppingShareByIdUseCase: jest.Mocked<RevokeShoppingShareByIdUseCase>;
   let revokeShoppingShareUseCase: jest.Mocked<RevokeShoppingShareUseCase>;
+  let resolveHouseholdPantryAccessUseCase: jest.Mocked<ResolveHouseholdPantryAccessUseCase>;
+  let recordHouseholdActivityUseCase: jest.Mocked<RecordHouseholdActivityUseCase>;
   let authCookieService: jest.Mocked<AuthCookieService>;
 
   beforeEach(() => {
@@ -42,6 +53,20 @@ describe('PantryController', () => {
         token: 'opaque-token',
       }),
     } as unknown as jest.Mocked<CreateShoppingShareUseCase>;
+    listActiveShoppingSharesUseCase = {
+      execute: jest
+        .fn()
+        .mockResolvedValue([makeShoppingShare({ id: 'share-active-1' })]),
+    } as unknown as jest.Mocked<ListActiveShoppingSharesUseCase>;
+    revokeShoppingShareByIdUseCase = {
+      execute: jest.fn().mockResolvedValue(
+        makeShoppingShare({
+          id: 'share-active-1',
+          revokedAt: new Date('2026-05-20T00:00:00.000Z'),
+          updatedAt: new Date('2026-05-20T00:00:00.000Z'),
+        }),
+      ),
+    } as unknown as jest.Mocked<RevokeShoppingShareByIdUseCase>;
     revokeShoppingShareUseCase = {
       execute: jest.fn().mockResolvedValue(
         makeShoppingShare({
@@ -50,6 +75,14 @@ describe('PantryController', () => {
         }),
       ),
     } as unknown as jest.Mocked<RevokeShoppingShareUseCase>;
+    resolveHouseholdPantryAccessUseCase = {
+      executeRead: jest.fn().mockResolvedValue(makeHouseholdAccess()),
+      executeWrite: jest.fn().mockResolvedValue(makeHouseholdAccess()),
+      executeOwner: jest.fn().mockResolvedValue(makeHouseholdAccess()),
+    } as unknown as jest.Mocked<ResolveHouseholdPantryAccessUseCase>;
+    recordHouseholdActivityUseCase = {
+      execute: jest.fn(),
+    } as unknown as jest.Mocked<RecordHouseholdActivityUseCase>;
     authCookieService = {
       ensureXsrfForRequest: jest.fn(),
     } as unknown as jest.Mocked<AuthCookieService>;
@@ -60,13 +93,17 @@ describe('PantryController', () => {
       getUserProfileUseCase,
       closeShoppingPurchaseUseCase,
       createShoppingShareUseCase,
+      listActiveShoppingSharesUseCase,
+      revokeShoppingShareByIdUseCase,
       revokeShoppingShareUseCase,
+      resolveHouseholdPantryAccessUseCase,
+      recordHouseholdActivityUseCase,
       authCookieService,
     );
   });
 
   it('exports profile, overview, and archived pantry data', async () => {
-    const exported = await controller.exportData({ userId: 'user-1' }, {
+    const exported = await controller.exportData(makeCurrentUser('user-1'), {
       method: 'GET',
       headers: {
         'x-request-id': 'req-export-1',
@@ -86,7 +123,7 @@ describe('PantryController', () => {
   });
 
   it('exports query limit metadata for the current data set boundaries', async () => {
-    const exported = await controller.exportData({ userId: 'user-1' }, {
+    const exported = await controller.exportData(makeCurrentUser('user-1'), {
       method: 'GET',
       headers: {},
     } as unknown as FastifyRequest);
@@ -110,13 +147,13 @@ describe('PantryController', () => {
       )
       .mockImplementation();
 
-    await controller.overview({ userId: 'user-1' }, {
+    await controller.overview(makeCurrentUser('user-1'), {
       method: 'GET',
       headers: {
         'x-request-id': 'req-overview-1',
       },
     } as unknown as FastifyRequest);
-    await controller.exportData({ userId: 'user-1' }, {
+    await controller.exportData(makeCurrentUser('user-1'), {
       method: 'GET',
       headers: {
         'x-request-id': 'req-export-2',
@@ -156,7 +193,7 @@ describe('PantryController', () => {
       .mockImplementation();
 
     const response = await controller.checkout(
-      { userId: 'user-1' },
+      makeCurrentUser('user-1'),
       {
         items: [
           {
@@ -203,7 +240,7 @@ describe('PantryController', () => {
     } as unknown as FastifyRequest;
 
     const response = await controller.createShoppingShare(
-      { userId: 'user-1' },
+      makeCurrentUser('user-1'),
       { text: 'Lista de compras\n- Arroz' },
       request,
     );
@@ -215,8 +252,69 @@ describe('PantryController', () => {
       ownerUserId: 'user-1',
       text: 'Lista de compras\n- Arroz',
     });
+    expect(recordHouseholdActivityUseCase.execute).toHaveBeenCalledWith({
+      householdId: 'household-1',
+      type: 'shopping_share_created',
+      actorUserId: 'user-1',
+    });
     expect(response.token).toBe('opaque-token');
     expect(response.expiresAt).toEqual(new Date('2026-05-26T00:00:00.000Z'));
+  });
+
+  it('lists active temporary shopping shares for the current user without raw tokens', async () => {
+    const response = await controller.listActiveShoppingShares(
+      makeCurrentUser('user-1'),
+      {
+        method: 'GET',
+        headers: {
+          'x-request-id': 'req-share-list-1',
+        },
+      } as unknown as FastifyRequest,
+    );
+
+    expect(listActiveShoppingSharesUseCase.execute).toHaveBeenCalledWith(
+      'user-1',
+    );
+    expect(response).toEqual([
+      {
+        id: 'share-active-1',
+        createdAt: new Date('2026-05-19T00:00:00.000Z'),
+        expiresAt: new Date('2026-05-26T00:00:00.000Z'),
+        revokedAt: undefined,
+      },
+    ]);
+    expect(response[0].token).toBeUndefined();
+  });
+
+  it('revokes a temporary shopping share by id for persisted history controls', async () => {
+    const request = {
+      method: 'DELETE',
+      headers: {
+        'x-request-id': 'req-share-id-1',
+      },
+    } as unknown as FastifyRequest;
+
+    const response = await controller.revokeShoppingShareById(
+      makeCurrentUser('user-1'),
+      'share-active-1',
+      request,
+    );
+
+    expect(authCookieService.ensureXsrfForRequest).toHaveBeenCalledWith(
+      request,
+    );
+    expect(revokeShoppingShareByIdUseCase.execute).toHaveBeenCalledWith({
+      ownerUserId: 'user-1',
+      shareId: 'share-active-1',
+    });
+    expect(recordHouseholdActivityUseCase.execute).toHaveBeenCalledWith({
+      householdId: 'household-1',
+      type: 'shopping_share_revoked',
+      actorUserId: 'user-1',
+    });
+    expect(response.id).toBe('share-active-1');
+    expect(response.token).toBeUndefined();
+    expect(response.revokedAt).toEqual(new Date('2026-05-20T00:00:00.000Z'));
   });
 
   it('revokes a temporary shopping share for the current user', async () => {
@@ -228,7 +326,7 @@ describe('PantryController', () => {
     } as unknown as FastifyRequest;
 
     const response = await controller.revokeShoppingShare(
-      { userId: 'user-1' },
+      makeCurrentUser('user-1'),
       'opaque-token',
       request,
     );
@@ -240,8 +338,80 @@ describe('PantryController', () => {
       ownerUserId: 'user-1',
       token: 'opaque-token',
     });
+    expect(recordHouseholdActivityUseCase.execute).toHaveBeenCalledWith({
+      householdId: 'household-1',
+      type: 'shopping_share_revoked',
+      actorUserId: 'user-1',
+    });
     expect(response.token).toBeUndefined();
     expect(response.revokedAt).toEqual(new Date('2026-05-20T00:00:00.000Z'));
+  });
+
+  it('reads pantry data from the household owner scope for a member', async () => {
+    resolveHouseholdPantryAccessUseCase.executeRead.mockResolvedValueOnce(
+      makeHouseholdAccess({
+        requesterUserId: 'member-user',
+        pantryOwnerUserId: 'owner-user',
+        role: 'viewer',
+      }),
+    );
+
+    await controller.overview(makeCurrentUser('member-user'), {
+      method: 'GET',
+      headers: {
+        'x-request-id': 'req-member-overview-1',
+      },
+    } as unknown as FastifyRequest);
+
+    expect(
+      resolveHouseholdPantryAccessUseCase.executeRead,
+    ).toHaveBeenCalledWith('member-user');
+    expect(getPantryOverviewUseCase.execute).toHaveBeenCalledWith('owner-user');
+  });
+
+  it('writes checkout data to the household owner scope for an editor', async () => {
+    resolveHouseholdPantryAccessUseCase.executeWrite.mockResolvedValueOnce(
+      makeHouseholdAccess({
+        requesterUserId: 'member-user',
+        pantryOwnerUserId: 'owner-user',
+        role: 'editor',
+      }),
+    );
+
+    await controller.checkout(
+      makeCurrentUser('member-user'),
+      {
+        items: [
+          {
+            productTypeId: 'type-1',
+            quantity: 1,
+            unit: QuantityUnit.PIECE,
+          },
+        ],
+      },
+      {
+        method: 'POST',
+        headers: {},
+      } as unknown as FastifyRequest,
+    );
+
+    expect(
+      resolveHouseholdPantryAccessUseCase.executeWrite,
+    ).toHaveBeenCalledWith('member-user');
+    expect(closeShoppingPurchaseUseCase.execute).toHaveBeenCalledWith({
+      userId: 'owner-user',
+      items: [
+        {
+          productTypeId: 'type-1',
+          variantName: undefined,
+          quantity: 1,
+          unit: QuantityUnit.PIECE,
+          paidUnitPrice: undefined,
+          shoppingLocation: undefined,
+          expiresAt: undefined,
+        },
+      ],
+    });
   });
 });
 
@@ -254,7 +424,21 @@ function makeProfile() {
     connectedIdentityCount: 2,
     createdAt: new Date('2026-05-01T00:00:00.000Z'),
     updatedAt: new Date('2026-05-02T00:00:00.000Z'),
+    retentionPolicy: {
+      archivedRecordRetentionDays: 365,
+      archivedRecordAutoDeleteEnabled: false,
+      temporaryShoppingShareRetentionDays: 7,
+      permanentlyDeletedRecords: 'removed_immediately' as const,
+      accountDeletion: 'local_and_cognito_delete_requested' as const,
+    },
     preferences: makePreferences(),
+  };
+}
+
+function makeCurrentUser(userId: string): AuthenticatedUser {
+  return {
+    userId,
+    authSubjectId: `${userId}-subject`,
   };
 }
 
@@ -362,5 +546,22 @@ function makePreferences() {
     depletionWarningThresholdRatio: 1,
     shoppingPlanLeadDays: 3,
     showGuidanceTips: true,
+  };
+}
+
+function makeHouseholdAccess(
+  overrides: Partial<{
+    requesterUserId: string;
+    householdId: string;
+    pantryOwnerUserId: string;
+    role: 'owner' | 'editor' | 'viewer';
+  }> = {},
+) {
+  return {
+    requesterUserId: 'user-1',
+    householdId: 'household-1',
+    pantryOwnerUserId: 'user-1',
+    role: 'owner' as const,
+    ...overrides,
   };
 }

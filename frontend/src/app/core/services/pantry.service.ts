@@ -309,6 +309,18 @@ export class PantryService {
       .pipe(map((share) => this.normalizeShoppingShare(share)));
   }
 
+  listActiveShoppingShares(): Observable<ShoppingShare[]> {
+    return this.http
+      .get<ApiShoppingShare[]>(this.pantryShoppingSharesUrl, {
+        withCredentials: true,
+      })
+      .pipe(
+        map((shares) =>
+          shares.map((share) => this.normalizeShoppingShare(share)),
+        ),
+      );
+  }
+
   resolveShoppingShare(token: string): Observable<PublicShoppingShare> {
     return this.http
       .get<ApiPublicShoppingShare>(
@@ -321,6 +333,17 @@ export class PantryService {
     return this.http
       .delete<ApiShoppingShare>(
         `${this.pantryShoppingSharesUrl}/${encodeURIComponent(token)}`,
+        {
+          withCredentials: true,
+        },
+      )
+      .pipe(map((share) => this.normalizeShoppingShare(share)));
+  }
+
+  revokeShoppingShareById(shareId: string): Observable<ShoppingShare> {
+    return this.http
+      .delete<ApiShoppingShare>(
+        `${this.pantryShoppingSharesUrl}/by-id/${encodeURIComponent(shareId)}`,
         {
           withCredentials: true,
         },
@@ -358,6 +381,7 @@ export class PantryService {
 
   private normalizeShoppingShare(share: ApiShoppingShare): ShoppingShare {
     return {
+      id: share.id,
       token: share.token,
       createdAt: new Date(share.createdAt),
       expiresAt: new Date(share.expiresAt),
@@ -542,6 +566,7 @@ export class PantryService {
       ...metadata,
       householdStaple: metadata.householdStaple ?? false,
       buyOnlyOnPromo: metadata.buyOnlyOnPromo ?? false,
+      replenishWhenLow: metadata.replenishWhenLow ?? true,
     };
 
     if (metadata.priceHistory) {

@@ -219,6 +219,21 @@
             </div>
           }
         } @else {
+          <div class="suggestion-list field-full" aria-label="Plantillas de básicos">
+            @for (template of stapleTemplates; track template.label) {
+              <button
+                type="button"
+                class="suggestion-item"
+                (click)="applyStapleTemplate(template)"
+              >
+                <strong>{{ template.label }}</strong>
+                <span>
+                  {{ template.baseName }} · {{ template.shoppingLocation }}
+                </span>
+              </button>
+            }
+          </div>
+
           <label class="field field-full">
             <span>Nuevo tipo base</span>
             <input type="text" formControlName="newBaseName" placeholder="Jamon de pierna de pavo" />
@@ -285,6 +300,11 @@
           <label class="check-field">
             <input type="checkbox" formControlName="householdStaple" />
             <span>Es b&aacute;sico del hogar</span>
+          </label>
+
+          <label class="check-field">
+            <input type="checkbox" formControlName="replenishWhenLow" />
+            <span>Reponer cuando baje</span>
           </label>
 
           <label class="field field-full">
@@ -719,7 +739,7 @@
                 </button>
                 @if (shoppingShareExpiresAt) {
                   <p class="helper-copy">
-                    Disponible hasta {{ shoppingShareExpiresAt | date:'dd MMM y, HH:mm':'UTC' }} UTC.
+                    Disponible hasta {{ formatCentralDate(shoppingShareExpiresAt) }} hora Central.
                   </p>
                 }
                 <p class="helper-copy">
@@ -728,6 +748,59 @@
                 </p>
               </div>
             }
+
+            <section class="shopping-share-history" aria-labelledby="shopping-share-history-title">
+              <div class="panel-header panel-header-actions">
+                <div>
+                  <p class="panel-kicker">Privacidad</p>
+                  <h3 id="shopping-share-history-title">Enlaces activos</h3>
+                </div>
+                <button
+                  type="button"
+                  class="ghost-button"
+                  (click)="loadActiveShoppingShares()"
+                  [disabled]="activeShoppingSharesLoading"
+                >
+                  {{ activeShoppingSharesLoading ? 'Actualizando...' : 'Actualizar' }}
+                </button>
+              </div>
+
+              @if (activeShoppingSharesError) {
+                <p class="field-error" role="alert">{{ activeShoppingSharesError }}</p>
+              }
+
+              @if (activeShoppingShares.length > 0) {
+                <div class="lot-table">
+                  @for (share of activeShoppingShares; track share.id ?? share.createdAt.toISOString()) {
+                    <article class="lot-row">
+                      <div>
+                        <strong>
+                          Enlace temporal
+                          @if (share.id === shoppingShareId) {
+                            <span class="status-pill">Actual</span>
+                          }
+                        </strong>
+                        <small>
+                          Creado {{ formatCentralDate(share.createdAt) }} · vence {{ formatCentralDate(share.expiresAt) }} hora Central
+                        </small>
+                      </div>
+                      <button
+                        type="button"
+                        class="danger-button"
+                        [disabled]="shoppingShareBusy || !share.id"
+                        (click)="revokeActiveShoppingShare(share)"
+                      >
+                        Revocar
+                      </button>
+                    </article>
+                  }
+                </div>
+              } @else if (!activeShoppingSharesError && !activeShoppingSharesLoading) {
+                <p class="helper-copy">
+                  No hay enlaces activos. Los enlaces creados aqu&iacute; se pueden revocar sin guardar el token.
+                </p>
+              }
+            </section>
 
             @if (shoppingCheckoutStatus) {
               <p class="helper-copy" aria-live="polite">{{ shoppingCheckoutStatus }}</p>
@@ -1315,6 +1388,9 @@
                           @if (group.shoppingMetadata?.householdStaple) {
                             <p>B&aacute;sico del hogar.</p>
                           }
+                          @if (group.shoppingMetadata?.replenishWhenLow === false) {
+                            <p>No recomprar al agotarse.</p>
+                          }
                           @if (group.shoppingMetadata?.shoppingNotes) {
                             <p>{{ group.shoppingMetadata?.shoppingNotes }}</p>
                           }
@@ -1383,6 +1459,11 @@
                           <label class="check-field">
                             <input type="checkbox" formControlName="householdStaple" />
                             <span>Es b&aacute;sico del hogar</span>
+                          </label>
+
+                          <label class="check-field">
+                            <input type="checkbox" formControlName="replenishWhenLow" />
+                            <span>Reponer cuando baje</span>
                           </label>
 
                           <label class="field field-full">

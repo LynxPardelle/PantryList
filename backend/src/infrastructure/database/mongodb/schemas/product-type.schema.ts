@@ -102,6 +102,9 @@ export class ProductTypeShoppingMetadataDocument {
 
   @Prop({ required: true, default: false })
   buyOnlyOnPromo: boolean;
+
+  @Prop({ required: true, default: true })
+  replenishWhenLow: boolean;
 }
 
 export const ProductTypeShoppingMetadataSchema = SchemaFactory.createForClass(
@@ -147,6 +150,9 @@ export class ProductTypeDocument {
   @Prop({ required: false, trim: true })
   archivedReason?: string;
 
+  @Prop({ required: false })
+  retentionExpiresAt?: Date;
+
   @Prop({ required: true })
   createdAt: Date;
 
@@ -158,3 +164,7 @@ export const ProductTypeSchema =
   SchemaFactory.createForClass(ProductTypeDocument);
 
 ProductTypeSchema.index({ userId: 1, normalizedBaseName: 1 });
+ProductTypeSchema.index(
+  { retentionExpiresAt: 1 },
+  { expireAfterSeconds: 0, sparse: true },
+);

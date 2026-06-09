@@ -16,6 +16,7 @@ import { ArchiveProductTypeUseCase } from '../../../application/use-cases/archiv
 import { CreateProductTypeUseCase } from '../../../application/use-cases/create-product-type.use-case';
 import { DeleteProductTypeUseCase } from '../../../application/use-cases/delete-product-type.use-case';
 import { GetProductTypeByIdUseCase } from '../../../application/use-cases/get-product-type-by-id.use-case';
+import { ResolveHouseholdPantryAccessUseCase } from '../../../application/use-cases/household.use-cases';
 import { RestoreProductTypeUseCase } from '../../../application/use-cases/restore-product-type.use-case';
 import { SearchProductTypesUseCase } from '../../../application/use-cases/search-product-types.use-case';
 import { UpdateProductTypeDepletionRuleUseCase } from '../../../application/use-cases/update-product-type-depletion-rule.use-case';
@@ -50,6 +51,7 @@ export class ProductTypesController {
     private readonly archiveProductTypeUseCase: ArchiveProductTypeUseCase,
     private readonly restoreProductTypeUseCase: RestoreProductTypeUseCase,
     private readonly deleteProductTypeUseCase: DeleteProductTypeUseCase,
+    private readonly resolveHouseholdPantryAccessUseCase: ResolveHouseholdPantryAccessUseCase,
     private readonly authCookieService: AuthCookieService,
   ) {}
 
@@ -61,9 +63,12 @@ export class ProductTypesController {
     @Req() request: FastifyRequest,
   ): Promise<ProductTypeResponseDto> {
     this.authCookieService.ensureXsrfForRequest(request);
+    const access = await this.resolveHouseholdPantryAccessUseCase.executeWrite(
+      currentUser.userId,
+    );
 
     const productType = await this.createProductTypeUseCase.execute({
-      userId: currentUser.userId,
+      userId: access.pantryOwnerUserId,
       baseName: createProductTypeDto.baseName,
       category: createProductTypeDto.category,
       defaultUnit: createProductTypeDto.defaultUnit,
@@ -80,8 +85,11 @@ export class ProductTypesController {
     @CurrentUser() currentUser: AuthenticatedUser,
     @Query('search') search?: string,
   ): Promise<ProductTypeResponseDto[]> {
-    const productTypes = await this.searchProductTypesUseCase.execute(
+    const access = await this.resolveHouseholdPantryAccessUseCase.executeRead(
       currentUser.userId,
+    );
+    const productTypes = await this.searchProductTypesUseCase.execute(
+      access.pantryOwnerUserId,
       search,
     );
 
@@ -96,9 +104,12 @@ export class ProductTypesController {
     @Param('id') id: string,
     @CurrentUser() currentUser: AuthenticatedUser,
   ): Promise<ProductTypeResponseDto> {
+    const access = await this.resolveHouseholdPantryAccessUseCase.executeRead(
+      currentUser.userId,
+    );
     const productType = await this.getProductTypeByIdUseCase.execute(
       id,
-      currentUser.userId,
+      access.pantryOwnerUserId,
     );
     return ProductTypeMapper.toResponse(productType);
   }
@@ -112,11 +123,14 @@ export class ProductTypesController {
     @Req() request: FastifyRequest,
   ): Promise<ProductTypeResponseDto> {
     this.authCookieService.ensureXsrfForRequest(request);
+    const access = await this.resolveHouseholdPantryAccessUseCase.executeWrite(
+      currentUser.userId,
+    );
 
     const productType =
       await this.updateProductTypeDepletionRuleUseCase.execute({
         productTypeId: id,
-        userId: currentUser.userId,
+        userId: access.pantryOwnerUserId,
         defaultDepletionRule: dto.defaultDepletionRule,
       });
 
@@ -132,11 +146,14 @@ export class ProductTypesController {
     @Req() request: FastifyRequest,
   ): Promise<ProductTypeResponseDto> {
     this.authCookieService.ensureXsrfForRequest(request);
+    const access = await this.resolveHouseholdPantryAccessUseCase.executeWrite(
+      currentUser.userId,
+    );
 
     const productType =
       await this.updateProductTypeShoppingMetadataUseCase.execute({
         productTypeId: id,
-        userId: currentUser.userId,
+        userId: access.pantryOwnerUserId,
         shoppingMetadata: dto,
       });
 
@@ -152,11 +169,14 @@ export class ProductTypesController {
     @Req() request: FastifyRequest,
   ): Promise<ProductTypeResponseDto> {
     this.authCookieService.ensureXsrfForRequest(request);
+    const access = await this.resolveHouseholdPantryAccessUseCase.executeWrite(
+      currentUser.userId,
+    );
 
     const productType =
       await this.updateProductTypePlanningSettingsUseCase.execute({
         productTypeId: id,
-        userId: currentUser.userId,
+        userId: access.pantryOwnerUserId,
         planningSettings: dto,
       });
 
@@ -172,10 +192,13 @@ export class ProductTypesController {
     @Req() request: FastifyRequest,
   ): Promise<ProductTypeResponseDto> {
     this.authCookieService.ensureXsrfForRequest(request);
+    const access = await this.resolveHouseholdPantryAccessUseCase.executeWrite(
+      currentUser.userId,
+    );
 
     const productType = await this.archiveProductTypeUseCase.execute({
       productTypeId: id,
-      userId: currentUser.userId,
+      userId: access.pantryOwnerUserId,
       reason: dto.reason,
     });
 
@@ -190,10 +213,13 @@ export class ProductTypesController {
     @Req() request: FastifyRequest,
   ): Promise<ProductTypeResponseDto> {
     this.authCookieService.ensureXsrfForRequest(request);
+    const access = await this.resolveHouseholdPantryAccessUseCase.executeWrite(
+      currentUser.userId,
+    );
 
     const productType = await this.restoreProductTypeUseCase.execute({
       productTypeId: id,
-      userId: currentUser.userId,
+      userId: access.pantryOwnerUserId,
     });
 
     return ProductTypeMapper.toResponse(productType);
@@ -208,10 +234,13 @@ export class ProductTypesController {
     @Req() request: FastifyRequest,
   ): Promise<void> {
     this.authCookieService.ensureXsrfForRequest(request);
+    const access = await this.resolveHouseholdPantryAccessUseCase.executeWrite(
+      currentUser.userId,
+    );
 
     return this.deleteProductTypeUseCase.execute({
       productTypeId: id,
-      userId: currentUser.userId,
+      userId: access.pantryOwnerUserId,
       confirmationText: dto.confirmationText,
     });
   }

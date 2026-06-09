@@ -56,4 +56,9 @@ export class ProductTypeShoppingMetadataDto {
   @ValidateIf((_, value) => value !== undefined)
   @IsBoolean()
   buyOnlyOnPromo?: boolean;
+
+  @ApiPropertyOptional({ default: true })
+  @ValidateIf((_, value) => value !== undefined)
+  @IsBoolean()
+  replenishWhenLow?: boolean;
 }

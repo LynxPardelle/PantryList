@@ -65,6 +65,8 @@ export const SHOPPING_LOCATION_OPTIONS = [
   'Abarrotes',
   'Mayoreo',
   'Farmacia',
+  'Limpieza',
+  'Bodega',
   'Otro',
 ];
 export const PRODUCT_CATEGORIES: ProductCategory[] = [
@@ -110,6 +112,7 @@ export interface ProductTypeShoppingMetadata {
   priceHistory?: ProductTypePriceHistoryEntry[];
   householdStaple: boolean;
   buyOnlyOnPromo: boolean;
+  replenishWhenLow: boolean;
 }
 
 export interface ProductTypePriceHistoryEntry {
@@ -357,6 +360,7 @@ export interface CreateShoppingShareRequest {
 }
 
 export interface ApiShoppingShare {
+  id?: string;
   token?: string;
   createdAt: string;
   expiresAt: string;
@@ -364,6 +368,7 @@ export interface ApiShoppingShare {
 }
 
 export interface ShoppingShare {
+  id?: string;
   token?: string;
   createdAt: Date;
   expiresAt: Date;

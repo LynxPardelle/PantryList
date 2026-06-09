@@ -305,9 +305,9 @@ Risks:
 Feature ideas:
 
 - Store/location types: supermercado, mercado, tiendita, abarrotes, mayoreo, farmacia, limpieza.
-- Reorder shopping categories by local route or aisle.
+- Reorder shopping categories by local route or aisle. Initial fixed LatAm store-route ordering is implemented; per-user drag/drop route customization remains later.
 - Multiple shopping lists by store or occasion.
-- Common staple templates by household type.
+- Common staple templates by household type. Starter pantry templates are implemented; richer household-type packs remain later.
 
 Why it fits:
 
@@ -436,6 +436,7 @@ Risks:
 
 10. **Store-route category ordering**
    - Reorder categories to match a user's usual supermarket, mercado, or tiendita route.
+   - Status: initial fixed LatAm route ordering is implemented; custom per-household ordering remains later.
 
 ### P2: Later Differentiators
 

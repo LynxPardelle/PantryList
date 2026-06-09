@@ -29,6 +29,7 @@ describe('DynamoDbInventoryLotRepository', () => {
     } as unknown as DynamoDbDocumentClientService;
     const configService = {
       getOrThrow: jest.fn().mockReturnValue('inventory-lots'),
+      get: jest.fn(),
     } as unknown as ConfigService;
     const repository = new DynamoDbInventoryLotRepository(
       dynamoDb,

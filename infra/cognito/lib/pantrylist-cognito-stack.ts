@@ -35,6 +35,7 @@ export class PantryListCognitoStack extends cdk.Stack {
       localFrontendBaseUrl,
       productionFrontendBaseUrl,
     );
+    const mfaConfiguration = this.readMfaConfiguration();
     const supportedIdentityProviders = ['COGNITO'];
     const identityProviderDependencies: cdk.CfnResource[] = [];
 
@@ -42,6 +43,9 @@ export class PantryListCognitoStack extends cdk.Stack {
       userPoolName: `${projectName}-${stage}-users`,
       usernameAttributes: ['email'],
       autoVerifiedAttributes: ['email'],
+      mfaConfiguration,
+      enabledMfas:
+        mfaConfiguration === 'OFF' ? undefined : ['SOFTWARE_TOKEN_MFA'],
       deletionProtection: this.readBooleanContext('deletionProtection', false)
         ? 'ACTIVE'
         : 'INACTIVE',
@@ -355,5 +359,19 @@ export class PantryListCognitoStack extends cdk.Stack {
     }
 
     return cdk.RemovalPolicy.RETAIN;
+  }
+
+  private readMfaConfiguration(): 'OFF' | 'OPTIONAL' | 'ON' {
+    const value = this.readContext('mfaConfiguration', 'OFF')
+      .trim()
+      .toUpperCase();
+
+    if (value === 'OFF' || value === 'OPTIONAL' || value === 'ON') {
+      return value;
+    }
+
+    throw new Error(
+      `Unsupported mfaConfiguration "${value}". Use OFF, OPTIONAL, or ON.`,
+    );
   }
 }

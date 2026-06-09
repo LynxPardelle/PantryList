@@ -98,6 +98,7 @@ describe('CreateProductTypeUseCase', () => {
       substituteBrand: 'Marca propia',
       householdStaple: true,
       buyOnlyOnPromo: true,
+      replenishWhenLow: true,
       shoppingNotes: 'Comprar bolsa grande si esta en promo',
       estimatedUnitPrice: 36.5,
       priceHistory: [

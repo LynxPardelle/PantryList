@@ -355,6 +355,19 @@ describe('buildPantryOverview depletion forecasts', () => {
 
     expect((overview as any).shoppingRouteGroups).toEqual([
       expect.objectContaining({
+        shoppingLocation: 'Mercado',
+        itemCount: 1,
+        urgentItemCount: 1,
+        promoOnlyCount: 1,
+        missingPriceCount: 1,
+        estimatedTotal: 0,
+        items: [
+          expect.objectContaining({
+            productTypeId: 'type-rice-route',
+          }),
+        ],
+      }),
+      expect.objectContaining({
         shoppingLocation: 'Tiendita',
         itemCount: 1,
         urgentItemCount: 1,
@@ -366,19 +379,6 @@ describe('buildPantryOverview depletion forecasts', () => {
           expect.objectContaining({
             productTypeId: 'type-soap-route',
             urgency: 'depleted',
-          }),
-        ],
-      }),
-      expect.objectContaining({
-        shoppingLocation: 'Mercado',
-        itemCount: 1,
-        urgentItemCount: 1,
-        promoOnlyCount: 1,
-        missingPriceCount: 1,
-        estimatedTotal: 0,
-        items: [
-          expect.objectContaining({
-            productTypeId: 'type-rice-route',
           }),
         ],
       }),
@@ -817,6 +817,49 @@ describe('buildPantryOverview depletion forecasts', () => {
     expect(overview.shoppingPlanItems).toEqual([]);
   });
 
+  it('keeps non-replenished product types visible without marking them missing', () => {
+    const seasonalMedicine = makeProductType({
+      id: 'type-seasonal-medicine',
+      baseName: 'Jarabe temporal',
+      category: ProductCategory.HYGIENE,
+      defaultDepletionRule: {
+        enabled: true,
+        consumeAmount: 1,
+        unit: QuantityUnit.PIECE,
+        everyAmount: 1,
+        everyPeriod: 'month',
+        anchorDate,
+      },
+      shoppingMetadata: {
+        storageLocation: 'Botiquin',
+        shoppingLocation: 'Farmacia',
+        householdStaple: true,
+        buyOnlyOnPromo: false,
+        replenishWhenLow: false,
+      },
+    });
+
+    const overview = buildPantryOverview(
+      userId,
+      [seasonalMedicine],
+      [],
+      referenceDate,
+    );
+
+    expect(overview.items).toEqual([
+      expect.objectContaining({
+        productTypeId: 'type-seasonal-medicine',
+        totalQuantity: 0,
+        estimatedCurrentQuantity: 0,
+      }),
+    ]);
+    expect(overview.depletingItems).toEqual([]);
+    expect(overview.shoppingPlanItems).toEqual([]);
+    expect(overview.stapleItems).toEqual([]);
+    expect(overview.valueInsights.stapleAttentionCount).toBe(0);
+    expect(overview.valueInsights.estimatedStapleRestockTotal).toBe(0);
+  });
+
   it('excludes archived product types and archived lots from active overview', () => {
     const archivedType = makeProductType({
       id: 'type-archived',
@@ -1031,6 +1074,7 @@ describe('buildPantryOverview depletion forecasts', () => {
       estimatedUnitPrice?: number;
       householdStaple: boolean;
       buyOnlyOnPromo: boolean;
+      replenishWhenLow?: boolean;
     };
     defaultDepletionRule?: {
       enabled: boolean;

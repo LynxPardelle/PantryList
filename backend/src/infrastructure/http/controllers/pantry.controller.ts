@@ -20,7 +20,13 @@ import { GetArchivedPantryItemsUseCase } from '../../../application/use-cases/ge
 import { GetPantryOverviewUseCase } from '../../../application/use-cases/get-pantry-overview.use-case';
 import { GetUserProfileUseCase } from '../../../application/use-cases/get-user-profile.use-case';
 import {
+  RecordHouseholdActivityUseCase,
+  ResolveHouseholdPantryAccessUseCase,
+} from '../../../application/use-cases/household.use-cases';
+import {
   CreateShoppingShareUseCase,
+  ListActiveShoppingSharesUseCase,
+  RevokeShoppingShareByIdUseCase,
   RevokeShoppingShareUseCase,
 } from '../../../application/use-cases/shopping-share.use-cases';
 import { ShoppingShareNotFoundError } from '../../../application/use-cases/shopping-share.errors';
@@ -68,7 +74,11 @@ export class PantryController {
     private readonly getUserProfileUseCase: GetUserProfileUseCase,
     private readonly closeShoppingPurchaseUseCase: CloseShoppingPurchaseUseCase,
     private readonly createShoppingShareUseCase: CreateShoppingShareUseCase,
+    private readonly listActiveShoppingSharesUseCase: ListActiveShoppingSharesUseCase,
+    private readonly revokeShoppingShareByIdUseCase: RevokeShoppingShareByIdUseCase,
     private readonly revokeShoppingShareUseCase: RevokeShoppingShareUseCase,
+    private readonly resolveHouseholdPantryAccessUseCase: ResolveHouseholdPantryAccessUseCase,
+    private readonly recordHouseholdActivityUseCase: RecordHouseholdActivityUseCase,
     private readonly authCookieService: AuthCookieService,
   ) {}
 
@@ -82,12 +92,15 @@ export class PantryController {
     this.logger.log(
       `pantry_overview_requested requestId=${requestId} userId=${currentUser.userId}`,
     );
-    const overview = await this.getPantryOverviewUseCase.execute(
+    const access = await this.resolveHouseholdPantryAccessUseCase.executeRead(
       currentUser.userId,
+    );
+    const overview = await this.getPantryOverviewUseCase.execute(
+      access.pantryOwnerUserId,
     );
     const response = PantryOverviewMapper.toResponse(overview);
     this.logger.log(
-      `pantry_overview_completed requestId=${requestId} userId=${currentUser.userId} itemCount=${response.items.length}`,
+      `pantry_overview_completed requestId=${requestId} userId=${currentUser.userId} pantryOwnerUserId=${access.pantryOwnerUserId} householdId=${access.householdId} itemCount=${response.items.length}`,
     );
     return response;
   }
@@ -97,8 +110,11 @@ export class PantryController {
   async archived(
     @CurrentUser() currentUser: AuthenticatedUser,
   ): Promise<ArchivedPantryItemsResponseDto> {
-    const archivedItems = await this.getArchivedPantryItemsUseCase.execute(
+    const access = await this.resolveHouseholdPantryAccessUseCase.executeRead(
       currentUser.userId,
+    );
+    const archivedItems = await this.getArchivedPantryItemsUseCase.execute(
+      access.pantryOwnerUserId,
     );
 
     return this.toArchivedResponse(archivedItems);
@@ -115,10 +131,13 @@ export class PantryController {
     this.logger.log(
       `pantry_export_requested requestId=${requestId} userId=${currentUser.userId}`,
     );
+    const access = await this.resolveHouseholdPantryAccessUseCase.executeRead(
+      currentUser.userId,
+    );
     const [profile, overview, archivedItems] = await Promise.all([
       this.getUserProfileUseCase.execute(currentUser.userId),
-      this.getPantryOverviewUseCase.execute(currentUser.userId),
-      this.getArchivedPantryItemsUseCase.execute(currentUser.userId),
+      this.getPantryOverviewUseCase.execute(access.pantryOwnerUserId),
+      this.getArchivedPantryItemsUseCase.execute(access.pantryOwnerUserId),
     ]);
 
     const response: PantryExportResponseDto = {
@@ -130,7 +149,7 @@ export class PantryController {
       limits: this.getPantryDataLimits(),
     };
     this.logger.log(
-      `pantry_export_completed requestId=${requestId} userId=${currentUser.userId}`,
+      `pantry_export_completed requestId=${requestId} userId=${currentUser.userId} pantryOwnerUserId=${access.pantryOwnerUserId} householdId=${access.householdId}`,
     );
     return response;
   }
@@ -147,9 +166,12 @@ export class PantryController {
     this.logger.log(
       `pantry_checkout_requested requestId=${requestId} userId=${currentUser.userId} itemCount=${dto.items.length}`,
     );
+    const access = await this.resolveHouseholdPantryAccessUseCase.executeWrite(
+      currentUser.userId,
+    );
 
     const inventoryLots = await this.closeShoppingPurchaseUseCase.execute({
-      userId: currentUser.userId,
+      userId: access.pantryOwnerUserId,
       items: dto.items.map((item) => ({
         productTypeId: item.productTypeId,
         variantName: item.variantName,
@@ -162,7 +184,7 @@ export class PantryController {
     });
 
     this.logger.log(
-      `pantry_checkout_completed requestId=${requestId} userId=${currentUser.userId} createdLotCount=${inventoryLots.length}`,
+      `pantry_checkout_completed requestId=${requestId} userId=${currentUser.userId} pantryOwnerUserId=${access.pantryOwnerUserId} householdId=${access.householdId} createdLotCount=${inventoryLots.length}`,
     );
 
     return inventoryLots.map((lot) => InventoryLotMapper.toResponse(lot));
@@ -180,17 +202,84 @@ export class PantryController {
     this.logger.log(
       `shopping_share_create_requested requestId=${requestId} userId=${currentUser.userId} textLength=${dto.text.length}`,
     );
+    const access = await this.resolveHouseholdPantryAccessUseCase.executeWrite(
+      currentUser.userId,
+    );
 
     const result = await this.createShoppingShareUseCase.execute({
-      ownerUserId: currentUser.userId,
+      ownerUserId: access.pantryOwnerUserId,
       text: dto.text,
+    });
+    await this.recordHouseholdActivityUseCase.execute({
+      householdId: access.householdId,
+      type: 'shopping_share_created',
+      actorUserId: currentUser.userId,
     });
     const response = this.toShoppingShareResponse(result.share, result.token);
     this.logger.log(
-      `shopping_share_create_completed requestId=${requestId} userId=${currentUser.userId}`,
+      `shopping_share_create_completed requestId=${requestId} userId=${currentUser.userId} pantryOwnerUserId=${access.pantryOwnerUserId} householdId=${access.householdId}`,
     );
 
     return response;
+  }
+
+  @Get('shopping-shares')
+  @ApiOperation({ summary: 'Listar enlaces temporales activos' })
+  async listActiveShoppingShares(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Req() request: FastifyRequest,
+  ): Promise<ShoppingShareResponseDto[]> {
+    const requestId = getRequestId(request) ?? 'none';
+    this.logger.log(
+      `shopping_share_list_requested requestId=${requestId} userId=${currentUser.userId}`,
+    );
+    const access = await this.resolveHouseholdPantryAccessUseCase.executeRead(
+      currentUser.userId,
+    );
+    const shares = await this.listActiveShoppingSharesUseCase.execute(
+      access.pantryOwnerUserId,
+    );
+    this.logger.log(
+      `shopping_share_list_completed requestId=${requestId} userId=${currentUser.userId} pantryOwnerUserId=${access.pantryOwnerUserId} householdId=${access.householdId} activeCount=${shares.length}`,
+    );
+
+    return shares.map((share) => this.toShoppingShareResponse(share));
+  }
+
+  @Delete('shopping-shares/by-id/:shareId')
+  @ApiOperation({ summary: 'Revocar enlace temporal por id interno' })
+  async revokeShoppingShareById(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('shareId') shareId: string,
+    @Req() request: FastifyRequest,
+  ): Promise<ShoppingShareResponseDto> {
+    this.authCookieService.ensureXsrfForRequest(request);
+    const requestId = getRequestId(request) ?? 'none';
+    this.logger.log(
+      `shopping_share_revoke_by_id_requested requestId=${requestId} userId=${currentUser.userId} shareId=${shareId}`,
+    );
+    const access = await this.resolveHouseholdPantryAccessUseCase.executeWrite(
+      currentUser.userId,
+    );
+
+    try {
+      const share = await this.revokeShoppingShareByIdUseCase.execute({
+        ownerUserId: access.pantryOwnerUserId,
+        shareId,
+      });
+      await this.recordHouseholdActivityUseCase.execute({
+        householdId: access.householdId,
+        type: 'shopping_share_revoked',
+        actorUserId: currentUser.userId,
+      });
+      this.logger.log(
+        `shopping_share_revoke_by_id_completed requestId=${requestId} userId=${currentUser.userId} pantryOwnerUserId=${access.pantryOwnerUserId} householdId=${access.householdId} shareId=${shareId}`,
+      );
+
+      return this.toShoppingShareResponse(share);
+    } catch (error) {
+      throw mapShoppingShareMutationError(error);
+    }
   }
 
   @Delete('shopping-shares/:token')
@@ -205,14 +294,22 @@ export class PantryController {
     this.logger.log(
       `shopping_share_revoke_requested requestId=${requestId} userId=${currentUser.userId}`,
     );
+    const access = await this.resolveHouseholdPantryAccessUseCase.executeWrite(
+      currentUser.userId,
+    );
 
     try {
       const share = await this.revokeShoppingShareUseCase.execute({
-        ownerUserId: currentUser.userId,
+        ownerUserId: access.pantryOwnerUserId,
         token,
       });
+      await this.recordHouseholdActivityUseCase.execute({
+        householdId: access.householdId,
+        type: 'shopping_share_revoked',
+        actorUserId: currentUser.userId,
+      });
       this.logger.log(
-        `shopping_share_revoke_completed requestId=${requestId} userId=${currentUser.userId}`,
+        `shopping_share_revoke_completed requestId=${requestId} userId=${currentUser.userId} pantryOwnerUserId=${access.pantryOwnerUserId} householdId=${access.householdId}`,
       );
 
       return this.toShoppingShareResponse(share);
@@ -249,6 +346,7 @@ export class PantryController {
   private toShoppingShareResponse(
     share: {
       toPrimitives: () => {
+        id: string;
         createdAt: Date;
         expiresAt: Date;
         revokedAt?: Date;
@@ -259,6 +357,7 @@ export class PantryController {
     const primitives = share.toPrimitives();
 
     return {
+      id: primitives.id,
       token,
       createdAt: primitives.createdAt,
       expiresAt: primitives.expiresAt,

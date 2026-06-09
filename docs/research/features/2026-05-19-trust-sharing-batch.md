@@ -12,6 +12,14 @@ Status: Implemented batch evidence and remaining backlog source.
 - Added profile privacy/data-lifecycle copy, including Cognito identity separation and current data limits.
 - Added export metadata for active/archive/search/checkout query limits.
 - Added request-id logs for pantry overview and export reads.
+- Follow-up implemented on 2026-06-08 CT: active temporary-share management now lists active links, revokes by internal share id without exposing raw tokens in the UI state, shows created/expires timestamps in Central time, logs safe share operations with request ids, and writes DynamoDB TTL metadata through `expiresAtEpochSeconds`.
+- Follow-up implemented on 2026-06-08 CT: initial household workspace foundation now creates a default household, stores owner/editor/viewer memberships, creates email-scoped invite tokens, accepts/revokes invites, removes non-owner members, and exposes a profile UI panel.
+- Follow-up implemented on 2026-06-08 CT: household pantry authorization now applies owner-backed read/write policy to product types, inventory lots, legacy products, pantry overview, archived data, export, checkout, shopping-share controls, and pantry deletion. Household owners/editors can mutate shared pantry data, viewers can read pantry data, and destructive full pantry deletion is owner-only.
+- Follow-up implemented on 2026-06-08 CT: household activity notifications now show recent household and temporary shopping-share mutations in the profile collaboration panel.
+- Follow-up implemented on 2026-06-08 CT: account deletion now includes Cognito identity deletion, local pantry data deletion, local user deletion, session cookie clearing, and owner-household guardrails.
+- Follow-up implemented on 2026-06-08 CT: DynamoDB household and shopping-share lookup paths now write generic GSI keys and use indexed query access patterns with temporary legacy fallbacks for pre-index records.
+- Follow-up implemented on 2026-06-09 CT: security lifecycle controls now expose retention policy in profile, support optional archived-record TTL metadata with auto-delete off by default, require privacy review docs for sensitive feature diffs in CI, add Cognito global sign-out from profile, add optional step-up checks for destructive profile actions, and support optional software-token MFA through CDK context.
+- Follow-up implemented on 2026-06-09 CT: LatAm shopping route groups now sort by fixed store route, the pantry form offers starter staple templates, and product-type shopping metadata includes a "replenish when low" flag so one-off products do not become missing/restock candidates after they run out.
 
 ## Security Notes
 
@@ -38,10 +46,7 @@ Status: Implemented batch evidence and remaining backlog source.
 
 ### Competitor And LatAm Product Backlog
 
-- Full shared household workspace with roles, invites, revocation, and change notifications.
-- Store-route category ordering for supermercado, mercado, tiendita, mayoreo, farmacia, limpieza, and custom routes.
 - Multiple shopping lists by store, occasion, or trip.
-- Common staple templates by household type.
 - Voice input for quick capture.
 - Optional barcode scan with manual confirmation.
 - Receipt scan as a later AI/premium feature with explicit privacy review.
@@ -70,21 +75,18 @@ Status: Implemented batch evidence and remaining backlog source.
 
 ### Technical And Security Backlog
 
-- Account deletion that includes Cognito identity handling, not only PantryList inventory deletion.
-- Retention policy for archived/deleted records.
-- PR/release gate that requires the privacy checklist for AI, receipt, sharing, and payment changes.
-- CodeQL, secret scanning, runtime `npm audit`, and container scanning in CI.
-- Non-mutating lint in CI.
-- Docker image scanning and optional digest pinning.
-- GitHub Actions Node runtime migration before Node 20 action support is removed.
-- Production CloudFront origin guardrails: explicit HTTPS-only origin policy and origin exposure validation.
+- Optional Docker image digest pinning.
+- Full session/device list beyond Cognito global sign-out.
+- Metrics and alerting beyond current request-id logs and CI scans.
+- Cursor pagination for high-volume pantry data beyond current explicit query limits and export metadata.
+- Future backend architecture migration from the Nest monolith to AWS serverless microservices with Lambda, Step Functions where needed, supporting AWS services, and isolated dev/test/production environments.
 
 ## Recommended Next Batch
 
-1. Full household workspace foundation: invite, role model, membership table, and read/write policy.
-2. Change notifications for shared shopping lists.
-3. Active share management list for links created in previous sessions.
-4. CI security scanning lane: CodeQL, secrets, runtime audit, and image scan.
-5. Account deletion that includes Cognito identity handling.
+1. Metrics and alerting beyond request-id logs.
+2. Cursor pagination for high-volume pantry lists and archives.
+3. Optional Docker image digest pinning plus base-image update cadence.
+4. Multiple shopping lists by store, occasion, or trip.
+5. Voice input for quick capture.
 
-This is the best next package because server-backed sharing is now in place, so the next trust boundary is real household collaboration.
+This is the best next package because the core trust controls and first LatAm shopping ergonomics are now in place, so the next gain should reduce production blind spots and protect list performance as data volume grows.

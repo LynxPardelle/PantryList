@@ -70,6 +70,21 @@ export class ResolveShoppingShareUseCase {
 }
 
 @Injectable()
+export class ListActiveShoppingSharesUseCase {
+  constructor(
+    @Inject(SHOPPING_SHARE_REPOSITORY)
+    private readonly shoppingShareRepository: ShoppingShareRepository,
+  ) {}
+
+  async execute(ownerUserId: string): Promise<ShoppingShare[]> {
+    return this.shoppingShareRepository.listActiveByOwnerUserId(
+      ownerUserId,
+      new Date(),
+    );
+  }
+}
+
+@Injectable()
 export class RevokeShoppingShareUseCase {
   constructor(
     @Inject(SHOPPING_SHARE_REPOSITORY)
@@ -83,6 +98,29 @@ export class RevokeShoppingShareUseCase {
     const share = await this.shoppingShareRepository.findByTokenHash(
       hashShoppingShareToken(params.token),
     );
+
+    if (!share) {
+      throw new ShoppingShareNotFoundError();
+    }
+
+    share.revoke(params.ownerUserId);
+
+    return this.shoppingShareRepository.save(share);
+  }
+}
+
+@Injectable()
+export class RevokeShoppingShareByIdUseCase {
+  constructor(
+    @Inject(SHOPPING_SHARE_REPOSITORY)
+    private readonly shoppingShareRepository: ShoppingShareRepository,
+  ) {}
+
+  async execute(params: {
+    ownerUserId: string;
+    shareId: string;
+  }): Promise<ShoppingShare> {
+    const share = await this.shoppingShareRepository.findById(params.shareId);
 
     if (!share) {
       throw new ShoppingShareNotFoundError();

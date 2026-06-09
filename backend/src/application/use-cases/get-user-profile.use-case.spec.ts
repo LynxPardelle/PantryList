@@ -1,3 +1,4 @@
+import { ConfigService } from '@nestjs/config';
 import { User } from '../../domain/entities/user.entity';
 import { UserAccountStatus } from '../../domain/enums';
 import { UserPreferences } from '../../domain/value-objects/user-preferences.vo';
@@ -28,10 +29,22 @@ describe('GetUserProfileUseCase', () => {
         }),
       ),
     } as unknown as jest.Mocked<UserPreferencesDao>;
+    const configService = {
+      get: jest.fn((key: string) => {
+        const values: Record<string, string> = {
+          ARCHIVED_RECORD_RETENTION_DAYS: '180',
+          ARCHIVED_RECORD_AUTO_DELETE_ENABLED: 'false',
+          TEMPORARY_SHOPPING_SHARE_RETENTION_DAYS: '7',
+        };
+
+        return values[key];
+      }),
+    } as unknown as ConfigService;
 
     const profile = await new GetUserProfileUseCase(
       userDao,
       preferencesDao,
+      configService,
     ).execute('user-1');
 
     expect(profile).toMatchObject({
@@ -44,6 +57,11 @@ describe('GetUserProfileUseCase', () => {
         showExpiredEntryAlert: false,
         depletionWarningThresholdRatio: 1.5,
         shoppingPlanLeadDays: 5,
+      },
+      retentionPolicy: {
+        archivedRecordRetentionDays: 180,
+        archivedRecordAutoDeleteEnabled: false,
+        temporaryShoppingShareRetentionDays: 7,
       },
     });
   });

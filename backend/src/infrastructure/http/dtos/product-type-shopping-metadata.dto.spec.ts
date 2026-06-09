@@ -16,6 +16,7 @@ describe('ProductTypeShoppingMetadataDto', () => {
         estimatedUnitPrice: null,
         householdStaple: null,
         buyOnlyOnPromo: null,
+        replenishWhenLow: null,
       },
       { enableImplicitConversion: true },
     );
@@ -30,6 +31,7 @@ describe('ProductTypeShoppingMetadataDto', () => {
       'estimatedUnitPrice',
       'householdStaple',
       'preferredBrand',
+      'replenishWhenLow',
       'shoppingLocation',
       'shoppingNotes',
       'storageLocation',

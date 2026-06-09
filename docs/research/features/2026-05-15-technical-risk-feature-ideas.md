@@ -141,6 +141,10 @@ Feature idea:
 - Add "Cerrar sesion en todos los dispositivos".
 - Add a session/device list if the product later supports multiple active devices.
 
+Status note:
+
+- Cognito global sign-out is implemented through the profile page and `DELETE /profile/sessions`, with exact confirmation text and local session cookie clearing. A true session/device list remains pending because the current Cognito flow does not expose a simple active-device inventory.
+
 ### 7. Optional MFA / Step-Up Authentication
 
 Priority: P1
@@ -159,6 +163,12 @@ Feature idea:
 
 - Support optional MFA.
 - Consider step-up prompts before destructive actions, data export, account deletion, and billing changes.
+
+Status note:
+
+- Optional software-token MFA is available through CDK context `mfaConfiguration=OPTIONAL` or `ON`.
+- Step-up checks are implemented for destructive profile actions when `AUTH_STEP_UP_ENABLED=true` and the Cognito access token includes a fresh `auth_time`.
+- The default remains non-blocking until MFA/step-up rollout is explicitly enabled and manually verified in production.
 
 ## P1 / P2 Robustness Features
 
@@ -200,6 +210,11 @@ Feature idea:
 - Track auth failures, API latency, DynamoDB failures, SSR proxy failures, and uncaught exceptions.
 - Add alerting for 5xx spikes and auth callback failures.
 
+Status note:
+
+- Request IDs and safe operation logs are partially implemented for key pantry, household, sharing, and checkout flows.
+- Metrics, alerting, and external error reporting remain pending.
+
 ### 10. Pagination And Query Limits
 
 Priority: P1
@@ -220,6 +235,11 @@ Feature idea:
 - Add cursor-based pagination to inventory, product types, archived items, and legacy product endpoints.
 - Add server-side max limits.
 - Remove or isolate legacy scan paths once migration is complete.
+
+Status note:
+
+- Current export/profile metadata exposes explicit query limits, and repository paths use bounded constants for several reads.
+- True cursor pagination for high-volume pantry, archived, and legacy data remains pending.
 
 ### 11. Security CI Pipeline
 
@@ -242,6 +262,10 @@ Feature idea:
 - Add Docker image scanning with Trivy or Grype.
 - Set explicit GitHub Actions `permissions`.
 
+Status note:
+
+- Implemented in CI by the technical trust batch: CodeQL, gitleaks secret scan, runtime dependency audits, Trivy image scans, and explicit workflow permissions.
+
 ### 12. Non-Mutating Lint In CI
 
 Priority: P2
@@ -259,6 +283,10 @@ Feature idea:
 
 - Split scripts into `lint` and `lint:fix`.
 - Use non-mutating lint in CI.
+
+Status note:
+
+- Backend CI now uses `npm run lint:check`, while `npm run lint` remains the local fixing command.
 
 ### 13. Container Image Scanning And Pinning
 
@@ -279,6 +307,10 @@ Feature idea:
 - Add image scanning in CI.
 - Consider digest pinning for production builds.
 - Add a base-image update cadence.
+
+Status note:
+
+- Trivy image scanning is implemented in CI for backend and frontend images. Digest pinning and base-image cadence remain pending.
 
 ### 14. GitHub Actions Node Runtime Migration
 
@@ -302,6 +334,10 @@ Feature idea:
 - Consider setting `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` in CI to test the migration before GitHub changes the default.
 - Keep `production-smoke` green after the action runtime migration.
 
+Status note:
+
+- CI now uses Node 24-compatible major versions for the visible GitHub Actions and sets `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true`.
+
 ### 15. Privacy Controls And Data Lifecycle
 
 Priority: P1
@@ -324,6 +360,11 @@ Feature idea:
 - Add retention policy for archived/deleted records.
 - Add privacy review checklist for AI, receipt, sharing, and payment features.
 
+Status note:
+
+- Account data export, inventory deletion, Cognito-aware account deletion, retention policy metadata, optional archived-record TTL fields, and privacy checklist gate are implemented.
+- Archived auto-delete remains off by default and should not be enabled until the product decision and backfill/migration behavior are reviewed.
+
 ### 15. Production Guardrails For CloudFront Origin
 
 Priority: P1
@@ -345,6 +386,33 @@ Feature idea:
 - Enforce origin verification header where applicable.
 - Document operational validation for direct origin access.
 
+Status note:
+
+- Production CloudFront origin verification header, scoped SSM parameter access, and HTTPS-only synth validation are implemented. Keep direct-origin validation in the deploy/audit checklist after CloudFront or Dokploy changes.
+
+### 16. Serverless Microservice Backend Migration
+
+Priority: P2
+
+Why it matters:
+
+- The current backend is a Nest monolith, which is practical for product iteration but can become harder to scale, deploy independently, and isolate by domain as the app adds households, payments, AI/OCR, notifications, and background workflows.
+- Future AWS-native growth should support clear service boundaries, async workflows, and environment isolation.
+
+Evidence:
+
+- The current repository has a single backend application under `backend/` and AWS infrastructure under `infra/cognito/`.
+- Production currently relies on the existing app deployment path plus AWS-managed Cognito, CloudFront, and DynamoDB resources.
+
+Feature idea:
+
+- Create a deliberate migration plan from the Nest monolith to AWS serverless microservices.
+- Use AWS Lambda for route/domain services, Step Functions for orchestrated workflows, and supporting AWS services as needed, such as API Gateway, EventBridge/SQS, DynamoDB, CloudWatch, IAM, and CDK.
+- Support three isolated environments from the start: dev, test, and production.
+- Preserve external API contracts during migration through a strangler-style rollout where feasible.
+- Keep the monolith or a stable compatibility path available during rollout until production traffic is verified on the new services.
+- Define rollback, observability, cost controls, secrets management, and data migration strategy before implementing route splits.
+
 ## Positive Findings To Preserve
 
 - Global Nest validation uses whitelist and forbid-non-whitelisted behavior.
@@ -357,14 +425,13 @@ Feature idea:
 - DynamoDB tables use point-in-time recovery and AWS-managed encryption in the production stack.
 - Local secret scan returned `count: 0`.
 
-## Recommended First Implementation Batch
+## Recommended Next Technical Batch
 
-1. Upgrade vulnerable dependencies, especially Angular SSR.
-2. Add SCA, secret scan, and container scan to CI.
-3. Add rate limiting to backend and SSR proxy.
-4. Add SSR/CloudFront security headers.
-5. Add domain error normalization.
-6. Add observability baseline.
+1. Metrics and alerting beyond current request-id logs.
+2. Cursor pagination for high-volume pantry, archived, and legacy reads.
+3. Optional Docker image digest pinning plus base-image update cadence.
+4. Direct-origin validation checklist after CloudFront or Dokploy changes.
+5. Serverless microservice migration discovery for the Nest-to-AWS transition.
 
 ## Notes
 

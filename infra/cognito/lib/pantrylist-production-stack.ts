@@ -50,6 +50,7 @@ export class PantryListProductionStack extends cdk.Stack {
     const originVerifyHeaderParameterName = this.readOptionalContext(
       "originVerifyHeaderParameterName"
     );
+    const cognitoUserPoolId = this.readOptionalContext("cognitoUserPoolId");
     const originVerifyHeaderValue = this.readOriginVerifyHeaderValue();
     this.assertOriginVerificationHeaderConfig(
       originVerifyHeaderName,
@@ -95,6 +96,18 @@ export class PantryListProductionStack extends cdk.Stack {
         new iam.PolicyStatement({
           actions: ["ssm:GetParameter"],
           resources: [this.ssmParameterArn(originVerifyHeaderParameterName)],
+        })
+      );
+    }
+    if (cognitoUserPoolId) {
+      ec2Role.addToPrincipalPolicy(
+        new iam.PolicyStatement({
+          actions: [
+            "cognito-idp:ListUsers",
+            "cognito-idp:AdminDeleteUser",
+            "cognito-idp:AdminUserGlobalSignOut",
+          ],
+          resources: [this.cognitoUserPoolArn(cognitoUserPoolId)],
         })
       );
     }
@@ -183,6 +196,11 @@ export class PantryListProductionStack extends cdk.Stack {
         value: originVerifyHeaderParameterName,
       });
     }
+    if (cognitoUserPoolId) {
+      new cdk.CfnOutput(this, "AccountDeletionCognitoUserPoolId", {
+        value: cognitoUserPoolId,
+      });
+    }
     new cdk.CfnOutput(this, "Ipv6Enabled", {
       value: enableIpv6.toString(),
     });
@@ -209,6 +227,29 @@ export class PantryListProductionStack extends cdk.Stack {
     const inventoryLots = this.createEntityTable(
       `${projectName}-${stage}-inventory-lots`
     );
+
+    users.addGlobalSecondaryIndex({
+      indexName: "gsi1",
+      partitionKey: {
+        name: "gsi1pk",
+        type: dynamodb.AttributeType.STRING,
+      },
+      sortKey: {
+        name: "gsi1sk",
+        type: dynamodb.AttributeType.STRING,
+      },
+    });
+    users.addGlobalSecondaryIndex({
+      indexName: "gsi2",
+      partitionKey: {
+        name: "gsi2pk",
+        type: dynamodb.AttributeType.STRING,
+      },
+      sortKey: {
+        name: "gsi2sk",
+        type: dynamodb.AttributeType.STRING,
+      },
+    });
 
     products.addGlobalSecondaryIndex({
       indexName: "UserUpdatedAtIndex",
@@ -283,6 +324,7 @@ export class PantryListProductionStack extends cdk.Stack {
       },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       encryption: dynamodb.TableEncryption.AWS_MANAGED,
+      timeToLiveAttribute: "expiresAtEpochSeconds",
       pointInTimeRecoverySpecification: {
         pointInTimeRecoveryEnabled: true,
       },
@@ -372,6 +414,14 @@ export class PantryListProductionStack extends cdk.Stack {
       service: "ssm",
       resource: "parameter",
       resourceName: parameterName.replace(/^\/+/, ""),
+    });
+  }
+
+  private cognitoUserPoolArn(userPoolId: string): string {
+    return this.formatArn({
+      service: "cognito-idp",
+      resource: "userpool",
+      resourceName: userPoolId,
     });
   }
 

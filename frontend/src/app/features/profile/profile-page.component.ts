@@ -9,12 +9,18 @@ import {
 import { CommonModule, DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterModule } from '@angular/router';
+import { ActivatedRoute, RouterModule } from '@angular/router';
 import { finalize } from 'rxjs/operators';
 import { AuthFacade } from '../../core/services/auth.facade';
 import { PantryService } from '../../core/services/pantry.service';
 import { ProfileService } from '../../core/services/profile.service';
-import { UserProfile } from '../../shared/models/profile.model';
+import {
+  HouseholdActivity,
+  HouseholdInvite,
+  HouseholdRole,
+  HouseholdWorkspace,
+  UserProfile,
+} from '../../shared/models/profile.model';
 
 @Component({
   selector: 'app-profile-page',
@@ -29,6 +35,7 @@ export class ProfilePageComponent implements OnInit {
   private readonly profileService = inject(ProfileService);
   private readonly pantryService = inject(PantryService);
   private readonly authFacade = inject(AuthFacade);
+  private readonly route = inject(ActivatedRoute);
   private readonly document = inject(DOCUMENT);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly changeDetector = inject(ChangeDetectorRef);
@@ -45,6 +52,20 @@ export class ProfilePageComponent implements OnInit {
   deletingPantryData = false;
   deleteError: string | null = null;
   deleteMessage: string | null = null;
+  deletingAccount = false;
+  deleteAccountError: string | null = null;
+  signingOutAllSessions = false;
+  signOutAllSessionsError: string | null = null;
+  householdWorkspace: HouseholdWorkspace | null = null;
+  householdLoading = false;
+  householdError: string | null = null;
+  householdMessage: string | null = null;
+  householdInviteCreating = false;
+  householdAccepting = false;
+  householdInviteToken: string | null = null;
+  householdInviteLink: string | null = null;
+  householdRevokingInviteId: string | null = null;
+  householdRemovingMemberUserId: string | null = null;
 
   readonly preferencesForm = this.formBuilder.nonNullable.group({
     expirationWarningDays: [
@@ -67,6 +88,23 @@ export class ProfilePageComponent implements OnInit {
     confirmationText: ['', Validators.required],
   });
 
+  readonly deleteAccountForm = this.formBuilder.nonNullable.group({
+    confirmationText: ['', Validators.required],
+  });
+
+  readonly signOutAllSessionsForm = this.formBuilder.nonNullable.group({
+    confirmationText: ['', Validators.required],
+  });
+
+  readonly householdInviteForm = this.formBuilder.nonNullable.group({
+    email: ['', [Validators.required, Validators.email]],
+    role: ['editor' as Exclude<HouseholdRole, 'owner'>, Validators.required],
+  });
+
+  readonly householdAcceptForm = this.formBuilder.nonNullable.group({
+    token: ['', [Validators.required, Validators.minLength(16)]],
+  });
+
   get canDeletePantryData(): boolean {
     return (
       !this.loading &&
@@ -76,9 +114,38 @@ export class ProfilePageComponent implements OnInit {
     );
   }
 
+  get canManageHousehold(): boolean {
+    return this.householdWorkspace?.currentMember.role === 'owner';
+  }
+
+  get canDeleteAccount(): boolean {
+    return (
+      !this.loading &&
+      !this.deletingAccount &&
+      this.deleteAccountForm.controls.confirmationText.value.trim() ===
+        'ELIMINAR CUENTA'
+    );
+  }
+
+  get canSignOutAllSessions(): boolean {
+    return (
+      !this.loading &&
+      !this.signingOutAllSessions &&
+      this.signOutAllSessionsForm.controls.confirmationText.value.trim() ===
+        'CERRAR SESIONES'
+    );
+  }
+
   ngOnInit(): void {
     if (isPlatformBrowser(this.platformId)) {
       this.loadProfile();
+      this.loadHouseholdWorkspace();
+      const inviteToken = this.route.snapshot.queryParamMap.get(
+        'householdInvite',
+      );
+      if (inviteToken) {
+        this.householdAcceptForm.patchValue({ token: inviteToken });
+      }
     }
   }
 
@@ -223,6 +290,304 @@ export class ProfilePageComponent implements OnInit {
       });
   }
 
+  deleteAccount(): void {
+    const confirmationText =
+      this.deleteAccountForm.controls.confirmationText.value.trim();
+
+    if (confirmationText !== 'ELIMINAR CUENTA') {
+      this.deleteAccountError = 'Escribe ELIMINAR CUENTA para borrar la cuenta.';
+      return;
+    }
+
+    this.deletingAccount = true;
+    this.deleteAccountError = null;
+
+    this.profileService
+      .deleteAccount({ confirmationText })
+      .pipe(
+        finalize(() => {
+          this.deletingAccount = false;
+          this.changeDetector.markForCheck();
+        }),
+      )
+      .subscribe({
+        next: () => {
+          this.document.defaultView?.location.assign(
+            '/login?accountDeleted=true',
+          );
+        },
+        error: (error) => {
+          this.deleteAccountError = this.getErrorMessage(error);
+          this.changeDetector.markForCheck();
+        },
+      });
+  }
+
+  signOutAllSessions(): void {
+    const confirmationText =
+      this.signOutAllSessionsForm.controls.confirmationText.value.trim();
+
+    if (confirmationText !== 'CERRAR SESIONES') {
+      this.signOutAllSessionsError =
+        'Escribe CERRAR SESIONES para cerrar todos los dispositivos.';
+      return;
+    }
+
+    this.signingOutAllSessions = true;
+    this.signOutAllSessionsError = null;
+
+    this.profileService
+      .signOutAllSessions({ confirmationText })
+      .pipe(
+        finalize(() => {
+          this.signingOutAllSessions = false;
+          this.changeDetector.markForCheck();
+        }),
+      )
+      .subscribe({
+        next: () => {
+          this.document.defaultView?.location.assign(
+            '/login?sessionsRevoked=true',
+          );
+        },
+        error: (error) => {
+          this.signOutAllSessionsError = this.getErrorMessage(error);
+          this.changeDetector.markForCheck();
+        },
+      });
+  }
+
+  retentionPolicyLabel(profile: UserProfile): string {
+    const mode = profile.retentionPolicy.archivedRecordAutoDeleteEnabled
+      ? `Archivados se eliminan automaticamente despues de ${profile.retentionPolicy.archivedRecordRetentionDays} dias.`
+      : `Archivados se conservan hasta restaurarlos o borrarlos manualmente. Politica configurada: ${profile.retentionPolicy.archivedRecordRetentionDays} dias si se activa auto-eliminacion.`;
+
+    return `${mode} Enlaces temporales expiran en ${profile.retentionPolicy.temporaryShoppingShareRetentionDays} dias.`;
+  }
+
+  stepUpLabel(profile: UserProfile): string {
+    const stepUp = profile.security.stepUp;
+
+    if (!stepUp.enabled) {
+      return 'Step-up esta preparado pero no exige login reciente en este ambiente.';
+    }
+
+    if (stepUp.fresh && stepUp.freshUntil) {
+      return `Acciones sensibles habilitadas hasta ${this.formatCentralDate(stepUp.freshUntil)} hora Central.`;
+    }
+
+    return 'Acciones sensibles requieren volver a iniciar sesion.';
+  }
+
+  loadHouseholdWorkspace(): void {
+    this.householdLoading = true;
+    this.householdError = null;
+
+    this.profileService
+      .getHouseholdWorkspace()
+      .pipe(
+        finalize(() => {
+          this.householdLoading = false;
+          this.changeDetector.markForCheck();
+        }),
+      )
+      .subscribe({
+        next: (workspace) => {
+          this.householdWorkspace = workspace;
+          this.changeDetector.markForCheck();
+        },
+        error: (error) => {
+          this.householdError = this.getErrorMessage(error);
+          this.changeDetector.markForCheck();
+        },
+      });
+  }
+
+  createHouseholdInvite(): void {
+    if (this.householdInviteForm.invalid) {
+      this.householdInviteForm.markAllAsTouched();
+      this.householdError = 'Revisa el correo y rol de la invitacion.';
+      this.householdMessage = null;
+      return;
+    }
+
+    this.householdInviteCreating = true;
+    this.householdError = null;
+    this.householdMessage = null;
+    this.householdInviteToken = null;
+    this.householdInviteLink = null;
+
+    this.profileService
+      .createHouseholdInvite(this.householdInviteForm.getRawValue())
+      .pipe(
+        finalize(() => {
+          this.householdInviteCreating = false;
+          this.changeDetector.markForCheck();
+        }),
+      )
+      .subscribe({
+        next: (result) => {
+          this.householdInviteToken = result.token;
+          this.householdInviteLink = this.buildHouseholdInviteLink(
+            result.token,
+          );
+          if (this.householdWorkspace) {
+            this.householdWorkspace = {
+              ...this.householdWorkspace,
+              invites: [
+                result.invite,
+                ...this.householdWorkspace.invites.filter(
+                  (invite) => invite.id !== result.invite.id,
+                ),
+              ],
+            };
+          }
+          this.householdInviteForm.reset({
+            email: '',
+            role: 'editor',
+          });
+          this.householdMessage =
+            'Invitacion creada. Comparte el enlace solo con esa persona.';
+          this.changeDetector.markForCheck();
+        },
+        error: (error) => {
+          this.householdError = this.getErrorMessage(error);
+          this.changeDetector.markForCheck();
+        },
+      });
+  }
+
+  acceptHouseholdInvite(): void {
+    if (this.householdAcceptForm.invalid) {
+      this.householdAcceptForm.markAllAsTouched();
+      this.householdError = 'Pega un token de invitacion valido.';
+      this.householdMessage = null;
+      return;
+    }
+
+    this.householdAccepting = true;
+    this.householdError = null;
+    this.householdMessage = null;
+
+    this.profileService
+      .acceptHouseholdInvite(this.householdAcceptForm.controls.token.value)
+      .pipe(
+        finalize(() => {
+          this.householdAccepting = false;
+          this.changeDetector.markForCheck();
+        }),
+      )
+      .subscribe({
+        next: (workspace) => {
+          this.householdWorkspace = workspace;
+          this.householdAcceptForm.reset({ token: '' });
+          this.householdMessage = 'Invitacion aceptada.';
+          this.changeDetector.markForCheck();
+        },
+        error: (error) => {
+          this.householdError = this.getErrorMessage(error);
+          this.changeDetector.markForCheck();
+        },
+      });
+  }
+
+  revokeHouseholdInvite(invite: HouseholdInvite): void {
+    this.householdRevokingInviteId = invite.id;
+    this.householdError = null;
+    this.householdMessage = null;
+
+    this.profileService
+      .revokeHouseholdInvite(invite.id)
+      .pipe(
+        finalize(() => {
+          this.householdRevokingInviteId = null;
+          this.changeDetector.markForCheck();
+        }),
+      )
+      .subscribe({
+        next: () => {
+          if (this.householdWorkspace) {
+            this.householdWorkspace = {
+              ...this.householdWorkspace,
+              invites: this.householdWorkspace.invites.filter(
+                (activeInvite) => activeInvite.id !== invite.id,
+              ),
+            };
+          }
+          this.householdMessage = 'Invitacion revocada.';
+          this.changeDetector.markForCheck();
+        },
+        error: (error) => {
+          this.householdError = this.getErrorMessage(error);
+          this.changeDetector.markForCheck();
+        },
+      });
+  }
+
+  removeHouseholdMember(memberUserId: string): void {
+    this.householdRemovingMemberUserId = memberUserId;
+    this.householdError = null;
+    this.householdMessage = null;
+
+    this.profileService
+      .removeHouseholdMember(memberUserId)
+      .pipe(
+        finalize(() => {
+          this.householdRemovingMemberUserId = null;
+          this.changeDetector.markForCheck();
+        }),
+      )
+      .subscribe({
+        next: (workspace) => {
+          this.householdWorkspace = workspace;
+          this.householdMessage = 'Miembro quitado del hogar.';
+          this.changeDetector.markForCheck();
+        },
+        error: (error) => {
+          this.householdError = this.getErrorMessage(error);
+          this.changeDetector.markForCheck();
+        },
+      });
+  }
+
+  roleLabel(role: HouseholdRole): string {
+    const labels: Record<HouseholdRole, string> = {
+      owner: 'Propietario',
+      editor: 'Editor',
+      viewer: 'Solo lectura',
+    };
+
+    return labels[role];
+  }
+
+  activityLabel(activity: HouseholdActivity): string {
+    const role = activity.role ? ` (${this.roleLabel(activity.role)})` : '';
+    const target = activity.targetLabel ? `: ${activity.targetLabel}` : '';
+    const labels: Record<HouseholdActivity['type'], string> = {
+      household_created: 'Hogar creado',
+      invite_created: `Invitacion creada${role}`,
+      invite_accepted: `Invitacion aceptada${target}${role}`,
+      invite_revoked: `Invitacion revocada${role}`,
+      member_removed: `Miembro quitado${target}${role}`,
+      shopping_share_created: 'Lista temporal compartida',
+      shopping_share_revoked: 'Lista temporal revocada',
+    };
+
+    return labels[activity.type];
+  }
+
+  formatCentralDate(date: Date): string {
+    return new Intl.DateTimeFormat('es-MX', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: 'America/Mexico_City',
+    }).format(date);
+  }
+
   private getErrorMessage(error: unknown): string {
     if (error instanceof HttpErrorResponse) {
       const apiMessage =
@@ -252,5 +617,15 @@ export class ProfilePageComponent implements OnInit {
 
   private toSafeDateStamp(value: string): string {
     return value.replace(/[:.]/g, '-');
+  }
+
+  private buildHouseholdInviteLink(token: string): string | null {
+    const origin = this.document.defaultView?.location.origin;
+
+    if (!origin) {
+      return null;
+    }
+
+    return `${origin}/profile?householdInvite=${encodeURIComponent(token)}`;
   }
 }

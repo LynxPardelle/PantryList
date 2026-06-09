@@ -19,6 +19,7 @@ import { ConsumeInventoryLotUseCase } from '../../../application/use-cases/consu
 import { CreateInventoryLotUseCase } from '../../../application/use-cases/create-inventory-lot.use-case';
 import { DeleteInventoryLotUseCase } from '../../../application/use-cases/delete-inventory-lot.use-case';
 import { GetExpiringLotsUseCase } from '../../../application/use-cases/get-expiring-lots.use-case';
+import { ResolveHouseholdPantryAccessUseCase } from '../../../application/use-cases/household.use-cases';
 import { ListInventoryLotsUseCase } from '../../../application/use-cases/list-inventory-lots.use-case';
 import { RestoreInventoryLotUseCase } from '../../../application/use-cases/restore-inventory-lot.use-case';
 import { AccessTokenGuard } from '../auth/access-token.guard';
@@ -46,6 +47,7 @@ export class InventoryLotsController {
     private readonly archiveInventoryLotUseCase: ArchiveInventoryLotUseCase,
     private readonly restoreInventoryLotUseCase: RestoreInventoryLotUseCase,
     private readonly deleteInventoryLotUseCase: DeleteInventoryLotUseCase,
+    private readonly resolveHouseholdPantryAccessUseCase: ResolveHouseholdPantryAccessUseCase,
     private readonly authCookieService: AuthCookieService,
   ) {}
 
@@ -57,9 +59,12 @@ export class InventoryLotsController {
     @Req() request: FastifyRequest,
   ): Promise<InventoryLotResponseDto> {
     this.authCookieService.ensureXsrfForRequest(request);
+    const access = await this.resolveHouseholdPantryAccessUseCase.executeWrite(
+      currentUser.userId,
+    );
 
     const inventoryLot = await this.createInventoryLotUseCase.execute({
-      userId: currentUser.userId,
+      userId: access.pantryOwnerUserId,
       productTypeId: createInventoryLotDto.productTypeId,
       variantName: createInventoryLotDto.variantName,
       quantity: createInventoryLotDto.quantity,
@@ -80,8 +85,11 @@ export class InventoryLotsController {
   async list(
     @CurrentUser() currentUser: AuthenticatedUser,
   ): Promise<InventoryLotResponseDto[]> {
-    const lots = await this.listInventoryLotsUseCase.execute(
+    const access = await this.resolveHouseholdPantryAccessUseCase.executeRead(
       currentUser.userId,
+    );
+    const lots = await this.listInventoryLotsUseCase.execute(
+      access.pantryOwnerUserId,
     );
     return lots.map((lot) => InventoryLotMapper.toResponse(lot));
   }
@@ -98,8 +106,11 @@ export class InventoryLotsController {
       throw new BadRequestException('days must be greater than zero');
     }
 
-    const groups = await this.getExpiringLotsUseCase.execute(
+    const access = await this.resolveHouseholdPantryAccessUseCase.executeRead(
       currentUser.userId,
+    );
+    const groups = await this.getExpiringLotsUseCase.execute(
+      access.pantryOwnerUserId,
       days,
     );
 
@@ -117,10 +128,13 @@ export class InventoryLotsController {
     @Req() request: FastifyRequest,
   ): Promise<InventoryLotResponseDto | null> {
     this.authCookieService.ensureXsrfForRequest(request);
+    const access = await this.resolveHouseholdPantryAccessUseCase.executeWrite(
+      currentUser.userId,
+    );
 
     const inventoryLot = await this.consumeInventoryLotUseCase.execute(
       id,
-      currentUser.userId,
+      access.pantryOwnerUserId,
       consumeInventoryLotDto.quantity,
     );
 
@@ -136,10 +150,13 @@ export class InventoryLotsController {
     @Req() request: FastifyRequest,
   ): Promise<InventoryLotResponseDto> {
     this.authCookieService.ensureXsrfForRequest(request);
+    const access = await this.resolveHouseholdPantryAccessUseCase.executeWrite(
+      currentUser.userId,
+    );
 
     const inventoryLot = await this.archiveInventoryLotUseCase.execute({
       lotId: id,
-      userId: currentUser.userId,
+      userId: access.pantryOwnerUserId,
       reason: dto.reason,
     });
 
@@ -154,10 +171,13 @@ export class InventoryLotsController {
     @Req() request: FastifyRequest,
   ): Promise<InventoryLotResponseDto> {
     this.authCookieService.ensureXsrfForRequest(request);
+    const access = await this.resolveHouseholdPantryAccessUseCase.executeWrite(
+      currentUser.userId,
+    );
 
     const inventoryLot = await this.restoreInventoryLotUseCase.execute({
       lotId: id,
-      userId: currentUser.userId,
+      userId: access.pantryOwnerUserId,
     });
 
     return InventoryLotMapper.toResponse(inventoryLot);
@@ -172,10 +192,13 @@ export class InventoryLotsController {
     @Req() request: FastifyRequest,
   ): Promise<void> {
     this.authCookieService.ensureXsrfForRequest(request);
+    const access = await this.resolveHouseholdPantryAccessUseCase.executeWrite(
+      currentUser.userId,
+    );
 
     return this.deleteInventoryLotUseCase.execute({
       lotId: id,
-      userId: currentUser.userId,
+      userId: access.pantryOwnerUserId,
       confirmationText: dto.confirmationText,
     });
   }

@@ -40,4 +40,3 @@ export const ShoppingShareSchema = SchemaFactory.createForClass(
 );
 
 ShoppingShareSchema.index({ ownerUserId: 1, createdAt: -1 });
-ShoppingShareSchema.index({ expiresAt: 1 });

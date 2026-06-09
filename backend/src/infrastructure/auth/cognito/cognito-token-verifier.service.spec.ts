@@ -32,6 +32,7 @@ describe('CognitoTokenVerifierService', () => {
       sub: 'cognito-sub',
       email: 'chef@example.com',
       preferred_username: 'chef',
+      auth_time: 1812499200,
     });
     createVerifier.mockReturnValue({ verify } as never);
     const service = new CognitoTokenVerifierService(makeConfigService());
@@ -47,9 +48,11 @@ describe('CognitoTokenVerifierService', () => {
     expect(claims).toEqual({
       sub: 'cognito-sub',
       email: 'chef@example.com',
+      emailVerified: undefined,
       preferredUsername: 'chef',
       name: undefined,
       nonce: undefined,
+      authTime: 1812499200,
     });
   });
 

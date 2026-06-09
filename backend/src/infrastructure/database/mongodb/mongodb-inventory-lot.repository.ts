@@ -1,5 +1,6 @@
 import { InjectModel } from '@nestjs/mongoose';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Model } from 'mongoose';
 import {
   InventoryLot,
@@ -10,6 +11,7 @@ import {
   MAX_ARCHIVED_INVENTORY_LOTS_PER_USER,
   MAX_INVENTORY_LOTS_PER_PRODUCT_TYPE,
 } from '../../../application/constants/query-limits';
+import { getArchivedRecordRetentionExpiresAt } from '../../../application/policies/retention-policy';
 import { InventoryLotRepository } from '../../../domain/repositories/inventory-lot.repository';
 import { InventoryLotId } from '../../../domain/value-objects/inventory-lot-id.vo';
 import { ProductTypeId } from '../../../domain/value-objects/product-type-id.vo';
@@ -29,6 +31,7 @@ export class MongoInventoryLotRepository implements InventoryLotRepository {
   constructor(
     @InjectModel(InventoryLotDocument.name)
     private readonly inventoryLotModel: Model<InventoryLotDocument>,
+    private readonly configService: ConfigService = defaultConfigService(),
   ) {}
 
   async save(lot: InventoryLot): Promise<InventoryLot> {
@@ -43,11 +46,20 @@ export class MongoInventoryLotRepository implements InventoryLotRepository {
       unsetFields.archivedReason = 1;
     }
 
+    const retentionExpiresAt = getArchivedRecordRetentionExpiresAt(
+      primitives.archivedAt,
+      this.configService,
+    );
+    if (!retentionExpiresAt) {
+      unsetFields.retentionExpiresAt = 1;
+    }
+
     const archiveSet = {
       ...(primitives.archivedAt ? { archivedAt: primitives.archivedAt } : {}),
       ...(primitives.archivedReason
         ? { archivedReason: primitives.archivedReason }
         : {}),
+      ...(retentionExpiresAt ? { retentionExpiresAt } : {}),
     };
     const setPrimitives = { ...primitives };
     delete setPrimitives.archivedAt;
@@ -171,4 +183,14 @@ export class MongoInventoryLotRepository implements InventoryLotRepository {
       updatedAt: new Date(lot.updatedAt),
     });
   }
+}
+
+function defaultConfigService(): ConfigService {
+  return {
+    get: emptyConfigValue,
+  } as unknown as ConfigService;
+}
+
+function emptyConfigValue(): undefined {
+  return undefined;
 }

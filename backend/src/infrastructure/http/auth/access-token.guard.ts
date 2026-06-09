@@ -49,6 +49,10 @@ export class AccessTokenGuard implements CanActivate {
     this.authCookieService.ensureXsrfForRequest(request);
     request.authUser = {
       userId: user.id.toString(),
+      authSubjectId: claims.sub,
+      authenticatedAt: claims.authTime
+        ? new Date(claims.authTime * 1000)
+        : undefined,
     };
 
     return true;

@@ -116,6 +116,9 @@ export class ProductTypeShoppingMetadataResponseDto {
 
   @ApiProperty()
   buyOnlyOnPromo: boolean;
+
+  @ApiProperty()
+  replenishWhenLow: boolean;
 }
 
 export class PantryStapleItemResponseDto {

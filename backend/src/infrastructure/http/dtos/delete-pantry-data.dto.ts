@@ -17,3 +17,27 @@ export class DeletePantryDataResponseDto {
   @ApiProperty()
   deletedShoppingShareCount: number;
 }
+
+export class DeleteAccountDto {
+  @ApiProperty({ example: 'ELIMINAR CUENTA' })
+  @IsString()
+  confirmationText: string;
+}
+
+export class DeleteAccountResponseDto extends DeletePantryDataResponseDto {
+  @ApiProperty()
+  deletedCognitoIdentityCount: number;
+}
+
+export class SignOutAllSessionsDto {
+  @ApiProperty({ example: 'CERRAR SESIONES' })
+  confirmationText: string;
+}
+
+export class SignOutAllSessionsResponseDto {
+  @ApiProperty()
+  revokedCognitoSessionCount: number;
+
+  @ApiProperty()
+  localSessionCleared: boolean;
+}

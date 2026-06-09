@@ -1,5 +1,6 @@
 import { InjectModel } from '@nestjs/mongoose';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Model } from 'mongoose';
 import {
   DepletionRulePrimitives,
@@ -12,6 +13,7 @@ import {
   MAX_ARCHIVED_PRODUCT_TYPES_PER_USER,
   MAX_PRODUCT_TYPE_SEARCH_RESULTS,
 } from '../../../application/constants/query-limits';
+import { getArchivedRecordRetentionExpiresAt } from '../../../application/policies/retention-policy';
 import { ProductTypeRepository } from '../../../domain/repositories/product-type.repository';
 import { ProductTypeId } from '../../../domain/value-objects/product-type-id.vo';
 import { UserId } from '../../../domain/value-objects/user-id.vo';
@@ -35,6 +37,7 @@ export class MongoProductTypeRepository implements ProductTypeRepository {
   constructor(
     @InjectModel(ProductTypeDocument.name)
     private readonly productTypeModel: Model<ProductTypeDocument>,
+    private readonly configService: ConfigService = defaultConfigService(),
   ) {}
 
   async save(productType: ProductType): Promise<ProductType> {
@@ -50,11 +53,20 @@ export class MongoProductTypeRepository implements ProductTypeRepository {
       unsetFields.archivedReason = 1;
     }
 
+    const retentionExpiresAt = getArchivedRecordRetentionExpiresAt(
+      primitives.archivedAt,
+      this.configService,
+    );
+    if (!retentionExpiresAt) {
+      unsetFields.retentionExpiresAt = 1;
+    }
+
     const archiveSet = {
       ...(primitives.archivedAt ? { archivedAt: primitives.archivedAt } : {}),
       ...(primitives.archivedReason
         ? { archivedReason: primitives.archivedReason }
         : {}),
+      ...(retentionExpiresAt ? { retentionExpiresAt } : {}),
     };
 
     const savedProductType = await this.productTypeModel
@@ -241,4 +253,14 @@ function toDepletionPeriod(
   }
 
   throw new Error(`Unsupported persisted depletion interval period: ${value}`);
+}
+
+function defaultConfigService(): ConfigService {
+  return {
+    get: emptyConfigValue,
+  } as unknown as ConfigService;
+}
+
+function emptyConfigValue(): undefined {
+  return undefined;
 }

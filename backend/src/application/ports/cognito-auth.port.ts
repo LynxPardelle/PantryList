@@ -41,6 +41,7 @@ export interface CognitoVerifiedClaims {
   preferredUsername?: string;
   name?: string;
   nonce?: string;
+  authTime?: number;
 }
 
 export interface CognitoAuthUrlBuilder {
@@ -57,4 +58,9 @@ export interface CognitoTokenClient {
 export interface CognitoTokenVerifier {
   verifyAccessToken(token: string): Promise<CognitoVerifiedClaims>;
   verifyIdToken(token: string): Promise<CognitoVerifiedClaims>;
+}
+
+export interface CognitoUserAdmin {
+  deleteUsersBySubjectIds(subjectIds: string[]): Promise<number>;
+  signOutUsersBySubjectIds(subjectIds: string[]): Promise<number>;
 }

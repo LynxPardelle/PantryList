@@ -37,6 +37,18 @@ const STORE_ROUTE_CATEGORY_ORDER: ProductCategory[] = [
   ProductCategory.HYGIENE,
   ProductCategory.OTHER,
 ];
+const STORE_ROUTE_LOCATION_ORDER = [
+  'Supermercado',
+  'Mercado',
+  'Tiendita',
+  'Abarrotes',
+  'Mayoreo',
+  'Farmacia',
+  'Limpieza',
+  'Bodega',
+  'Otro',
+  DEFAULT_SHOPPING_LOCATION,
+];
 
 export function buildPantryOverview(
   userId: string,
@@ -200,6 +212,7 @@ export function buildPantryOverview(
       (item) =>
         item.hasDepletionRule &&
         item.effectivePlanningSettings.planningEnabled &&
+        item.shoppingMetadata.replenishWhenLow &&
         item.depletionRule &&
         item.estimatedCurrentQuantity !== undefined &&
         item.estimatedCurrentQuantity <=
@@ -226,6 +239,7 @@ export function buildPantryOverview(
       (item) =>
         item.hasDepletionRule &&
         item.effectivePlanningSettings.planningEnabled &&
+        item.shoppingMetadata.replenishWhenLow &&
         item.depletionRule &&
         item.estimatedCurrentQuantity !== undefined &&
         item.estimatedConsumedQuantity !== undefined &&
@@ -278,7 +292,11 @@ export function buildPantryOverview(
   const shoppingRouteGroups = buildShoppingRouteGroups(shoppingPlanItems);
   const priceReferenceItems = buildPriceReferenceItems(activeProductTypes);
   const stapleItems = items
-    .filter((item) => item.shoppingMetadata.householdStaple)
+    .filter(
+      (item) =>
+        item.shoppingMetadata.householdStaple &&
+        item.shoppingMetadata.replenishWhenLow,
+    )
     .map<PantryStapleItem>((item) => {
       const suggestedPurchaseQuantity = item.depletionRule?.consumeAmount ?? 1;
       const status = getStapleStatus(item);
@@ -644,6 +662,14 @@ function compareShoppingRouteGroup(
   left: ShoppingRouteGroup,
   right: ShoppingRouteGroup,
 ): number {
+  const locationRankDifference =
+    getShoppingLocationRank(left.shoppingLocation) -
+    getShoppingLocationRank(right.shoppingLocation);
+
+  if (locationRankDifference !== 0) {
+    return locationRankDifference;
+  }
+
   const dateDifference =
     left.nextRecommendedPurchaseAt.getTime() -
     right.nextRecommendedPurchaseAt.getTime();
@@ -731,6 +757,19 @@ function compareStapleItem(
 function getCategoryRank(category: ProductCategory): number {
   const index = STORE_ROUTE_CATEGORY_ORDER.indexOf(category);
   return index === -1 ? STORE_ROUTE_CATEGORY_ORDER.length : index;
+}
+
+function getShoppingLocationRank(location: string): number {
+  const normalizedLocation = normalizeRouteLocation(location);
+  const index = STORE_ROUTE_LOCATION_ORDER.findIndex(
+    (candidate) => normalizeRouteLocation(candidate) === normalizedLocation,
+  );
+
+  return index === -1 ? STORE_ROUTE_LOCATION_ORDER.length : index;
+}
+
+function normalizeRouteLocation(location: string): string {
+  return location.trim().toLocaleLowerCase('es');
 }
 
 function getStapleStatusRank(status: PantryStapleStatus): number {

@@ -17,6 +17,45 @@ export class UserPreferencesResponseDto {
   showGuidanceTips: boolean;
 }
 
+export class RetentionPolicyResponseDto {
+  @ApiProperty()
+  archivedRecordRetentionDays: number;
+
+  @ApiProperty()
+  archivedRecordAutoDeleteEnabled: boolean;
+
+  @ApiProperty()
+  temporaryShoppingShareRetentionDays: number;
+
+  @ApiProperty()
+  permanentlyDeletedRecords: string;
+
+  @ApiProperty()
+  accountDeletion: string;
+}
+
+export class StepUpSecurityResponseDto {
+  @ApiProperty()
+  enabled: boolean;
+
+  @ApiProperty()
+  maxAgeSeconds: number;
+
+  @ApiProperty()
+  fresh: boolean;
+
+  @ApiProperty({ required: false })
+  authenticatedAt?: Date;
+
+  @ApiProperty({ required: false })
+  freshUntil?: Date;
+}
+
+export class ProfileSecurityResponseDto {
+  @ApiProperty({ type: StepUpSecurityResponseDto })
+  stepUp: StepUpSecurityResponseDto;
+}
+
 export class UserProfileResponseDto {
   @ApiProperty()
   id: string;
@@ -41,4 +80,10 @@ export class UserProfileResponseDto {
 
   @ApiProperty({ type: UserPreferencesResponseDto })
   preferences: UserPreferencesResponseDto;
+
+  @ApiProperty({ type: RetentionPolicyResponseDto })
+  retentionPolicy: RetentionPolicyResponseDto;
+
+  @ApiProperty({ type: ProfileSecurityResponseDto })
+  security: ProfileSecurityResponseDto;
 }

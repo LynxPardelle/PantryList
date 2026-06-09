@@ -1,6 +1,8 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { UserDao, UserPreferencesDao } from '../ports/daos';
 import { USER_DAO, USER_PREFERENCES_DAO } from '../tokens';
+import { buildRetentionPolicy } from '../policies/retention-policy';
 import { UserProfile } from '../read-models/user-profile.read-model';
 import { UserId } from '../../domain/value-objects/user-id.vo';
 
@@ -11,6 +13,7 @@ export class GetUserProfileUseCase {
     private readonly userDao: UserDao,
     @Inject(USER_PREFERENCES_DAO)
     private readonly preferencesDao: UserPreferencesDao,
+    private readonly configService: ConfigService,
   ) {}
 
   async execute(userId: string): Promise<UserProfile> {
@@ -33,6 +36,7 @@ export class GetUserProfileUseCase {
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
       preferences: preferences.toPrimitives(),
+      retentionPolicy: buildRetentionPolicy(this.configService),
     };
   }
 }

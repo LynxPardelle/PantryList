@@ -48,6 +48,7 @@ export interface ProductTypeShoppingMetadataPrimitives {
   priceHistory?: ProductTypePriceHistoryEntryPrimitives[];
   householdStaple: boolean;
   buyOnlyOnPromo: boolean;
+  replenishWhenLow: boolean;
 }
 
 export interface ProductTypePriceHistoryEntryPrimitives {
@@ -381,6 +382,7 @@ function normalizeShoppingMetadata(
 ): ProductTypeShoppingMetadataPrimitives {
   const buyOnlyOnPromo = metadata?.buyOnlyOnPromo ?? false;
   const householdStaple = metadata?.householdStaple ?? false;
+  const replenishWhenLow = metadata?.replenishWhenLow ?? true;
 
   if (typeof buyOnlyOnPromo !== 'boolean') {
     throw new Error('Buy-only-on-promo must be a boolean');
@@ -390,9 +392,14 @@ function normalizeShoppingMetadata(
     throw new Error('Household staple must be a boolean');
   }
 
+  if (typeof replenishWhenLow !== 'boolean') {
+    throw new Error('Replenish-when-low must be a boolean');
+  }
+
   const normalized: ProductTypeShoppingMetadataPrimitives = {
     householdStaple,
     buyOnlyOnPromo,
+    replenishWhenLow,
   };
 
   normalized.storageLocation = normalizeLimitedOptionalText(

@@ -34,6 +34,7 @@ describe('PantryService', () => {
         substituteBrand: 'Marca propia',
         householdStaple: true,
         buyOnlyOnPromo: true,
+        replenishWhenLow: true,
         shoppingNotes: 'Comprar solo si hay promo',
         estimatedUnitPrice: 42.5,
       });
@@ -572,6 +573,20 @@ describe('PantryService', () => {
         connectedIdentityCount: 1,
         createdAt: '2026-05-01T00:00:00.000Z',
         updatedAt: '2026-05-02T00:00:00.000Z',
+        retentionPolicy: {
+          archivedRecordRetentionDays: 365,
+          archivedRecordAutoDeleteEnabled: false,
+          temporaryShoppingShareRetentionDays: 7,
+          permanentlyDeletedRecords: 'removed_immediately',
+          accountDeletion: 'local_and_cognito_delete_requested',
+        },
+        security: {
+          stepUp: {
+            enabled: false,
+            maxAgeSeconds: 900,
+            fresh: true,
+          },
+        },
         preferences: {
           expirationWarningDays: 7,
           showExpiredEntryAlert: true,
@@ -652,6 +667,49 @@ describe('PantryService', () => {
     expect(revokeRequest.request.method).toBe('DELETE');
     expect(revokeRequest.request.withCredentials).toBeTrue();
     revokeRequest.flush({
+      createdAt: '2026-05-19T00:00:00.000Z',
+      expiresAt: '2026-05-26T00:00:00.000Z',
+      revokedAt: '2026-05-20T00:00:00.000Z',
+    });
+  });
+
+  it('lists active shopping shares and revokes one by id', () => {
+    service.listActiveShoppingShares().subscribe((shares) => {
+      expect(shares).toEqual([
+        jasmine.objectContaining({
+          id: 'share-active-1',
+          createdAt: new Date('2026-05-19T00:00:00.000Z'),
+          expiresAt: new Date('2026-05-26T00:00:00.000Z'),
+          revokedAt: null,
+        }),
+      ]);
+    });
+
+    const listRequest = httpMock.expectOne(
+      `${environment.apiUrl}/pantry/shopping-shares`,
+    );
+    expect(listRequest.request.method).toBe('GET');
+    expect(listRequest.request.withCredentials).toBeTrue();
+    listRequest.flush([
+      {
+        id: 'share-active-1',
+        createdAt: '2026-05-19T00:00:00.000Z',
+        expiresAt: '2026-05-26T00:00:00.000Z',
+      },
+    ]);
+
+    service.revokeShoppingShareById('share-active-1').subscribe((share) => {
+      expect(share.id).toBe('share-active-1');
+      expect(share.revokedAt).toEqual(new Date('2026-05-20T00:00:00.000Z'));
+    });
+
+    const revokeRequest = httpMock.expectOne(
+      `${environment.apiUrl}/pantry/shopping-shares/by-id/share-active-1`,
+    );
+    expect(revokeRequest.request.method).toBe('DELETE');
+    expect(revokeRequest.request.withCredentials).toBeTrue();
+    revokeRequest.flush({
+      id: 'share-active-1',
       createdAt: '2026-05-19T00:00:00.000Z',
       expiresAt: '2026-05-26T00:00:00.000Z',
       revokedAt: '2026-05-20T00:00:00.000Z',

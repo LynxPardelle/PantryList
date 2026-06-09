@@ -1,8 +1,10 @@
+import { ForbiddenException } from '@nestjs/common';
 import { FastifyRequest } from 'fastify';
 import { ArchiveProductTypeUseCase } from '../../../application/use-cases/archive-product-type.use-case';
 import { CreateProductTypeUseCase } from '../../../application/use-cases/create-product-type.use-case';
 import { DeleteProductTypeUseCase } from '../../../application/use-cases/delete-product-type.use-case';
 import { GetProductTypeByIdUseCase } from '../../../application/use-cases/get-product-type-by-id.use-case';
+import { ResolveHouseholdPantryAccessUseCase } from '../../../application/use-cases/household.use-cases';
 import { RestoreProductTypeUseCase } from '../../../application/use-cases/restore-product-type.use-case';
 import { SearchProductTypesUseCase } from '../../../application/use-cases/search-product-types.use-case';
 import { UpdateProductTypeDepletionRuleUseCase } from '../../../application/use-cases/update-product-type-depletion-rule.use-case';
@@ -11,6 +13,7 @@ import { UpdateProductTypeShoppingMetadataUseCase } from '../../../application/u
 import { ProductType } from '../../../domain/entities/product-type.entity';
 import { ProductCategory, QuantityUnit } from '../../../domain/enums';
 import { AuthCookieService } from '../auth/auth-cookie.service';
+import { AuthenticatedUser } from '../auth/authenticated-user.interface';
 import { ProductTypesController } from './product-types.controller';
 
 describe('ProductTypesController archive and planning endpoints', () => {
@@ -24,7 +27,7 @@ describe('ProductTypesController archive and planning endpoints', () => {
 
     await controller.updatePlanningSettings(
       'type-1',
-      { userId: 'user-1' },
+      makeCurrentUser('user-1'),
       {
         planningEnabled: false,
         shoppingPlanLeadDaysOverride: 10,
@@ -57,7 +60,7 @@ describe('ProductTypesController archive and planning endpoints', () => {
 
     await controller.updateShoppingMetadata(
       'type-1',
-      { userId: 'user-1' },
+      makeCurrentUser('user-1'),
       {
         storageLocation: 'Despensa',
         shoppingLocation: 'Mercado',
@@ -93,7 +96,7 @@ describe('ProductTypesController archive and planning endpoints', () => {
 
     await controller.delete(
       'type-1',
-      { userId: 'user-1' },
+      makeCurrentUser('user-1'),
       {
         confirmationText: 'Detergente',
       },
@@ -109,6 +112,36 @@ describe('ProductTypesController archive and planning endpoints', () => {
       confirmationText: 'Detergente',
     });
   });
+
+  it('blocks viewer writes before mutating product types', async () => {
+    const {
+      controller,
+      resolveHouseholdPantryAccessUseCase,
+      updateProductTypePlanningSettingsUseCase,
+    } = makeController();
+    const request = { method: 'PATCH' } as FastifyRequest;
+    resolveHouseholdPantryAccessUseCase.executeWrite.mockRejectedValueOnce(
+      new ForbiddenException('Household viewers cannot change pantry data'),
+    );
+
+    await expect(
+      controller.updatePlanningSettings(
+        'type-1',
+        makeCurrentUser('viewer-user'),
+        {
+          planningEnabled: false,
+        },
+        request,
+      ),
+    ).rejects.toThrow(ForbiddenException);
+
+    expect(
+      resolveHouseholdPantryAccessUseCase.executeWrite,
+    ).toHaveBeenCalledWith('viewer-user');
+    expect(
+      updateProductTypePlanningSettingsUseCase.execute,
+    ).not.toHaveBeenCalled();
+  });
 });
 
 function makeController(): {
@@ -117,6 +150,7 @@ function makeController(): {
   updateProductTypePlanningSettingsUseCase: jest.Mocked<UpdateProductTypePlanningSettingsUseCase>;
   updateProductTypeShoppingMetadataUseCase: jest.Mocked<UpdateProductTypeShoppingMetadataUseCase>;
   deleteProductTypeUseCase: jest.Mocked<DeleteProductTypeUseCase>;
+  resolveHouseholdPantryAccessUseCase: jest.Mocked<ResolveHouseholdPantryAccessUseCase>;
 } {
   const productType = ProductType.fromPrimitives({
     id: 'type-1',
@@ -149,6 +183,11 @@ function makeController(): {
   const deleteProductTypeUseCase = {
     execute: jest.fn(),
   } as unknown as jest.Mocked<DeleteProductTypeUseCase>;
+  const resolveHouseholdPantryAccessUseCase = {
+    executeRead: jest.fn().mockResolvedValue(makeHouseholdAccess()),
+    executeWrite: jest.fn().mockResolvedValue(makeHouseholdAccess()),
+    executeOwner: jest.fn().mockResolvedValue(makeHouseholdAccess()),
+  } as unknown as jest.Mocked<ResolveHouseholdPantryAccessUseCase>;
   const authCookieService = {
     ensureXsrfForRequest: jest.fn(),
   } as unknown as jest.Mocked<AuthCookieService>;
@@ -164,11 +203,37 @@ function makeController(): {
       archiveProductTypeUseCase,
       restoreProductTypeUseCase,
       deleteProductTypeUseCase,
+      resolveHouseholdPantryAccessUseCase,
       authCookieService,
     ),
     authCookieService,
     updateProductTypePlanningSettingsUseCase,
     updateProductTypeShoppingMetadataUseCase,
     deleteProductTypeUseCase,
+    resolveHouseholdPantryAccessUseCase,
+  };
+}
+
+function makeCurrentUser(userId: string): AuthenticatedUser {
+  return {
+    userId,
+    authSubjectId: `${userId}-subject`,
+  };
+}
+
+function makeHouseholdAccess(
+  overrides: Partial<{
+    requesterUserId: string;
+    householdId: string;
+    pantryOwnerUserId: string;
+    role: 'owner' | 'editor' | 'viewer';
+  }> = {},
+) {
+  return {
+    requesterUserId: 'user-1',
+    householdId: 'household-1',
+    pantryOwnerUserId: 'user-1',
+    role: 'owner' as const,
+    ...overrides,
   };
 }
