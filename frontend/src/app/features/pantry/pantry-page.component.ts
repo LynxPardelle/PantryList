@@ -98,6 +98,7 @@ interface QuickCaptureItem {
   unit: string;
   shoppingLocation?: string;
   estimatedUnitPrice?: number;
+  barcode?: string;
 }
 
 interface QuickCaptureDraft {
@@ -163,6 +164,18 @@ interface SpeechRecognitionEventLike {
       transcript: string;
     };
   }>;
+}
+
+interface BarcodeDetectionResultLike {
+  rawValue: string;
+}
+
+interface BarcodeDetectorLike {
+  detect: (source: CanvasImageSource) => Promise<BarcodeDetectionResultLike[]>;
+}
+
+interface BarcodeDetectorConstructorLike {
+  new (options?: { formats?: string[] }): BarcodeDetectorLike;
 }
 
 interface StapleTemplate {
@@ -554,6 +567,11 @@ export class PantryPageComponent implements OnInit {
   privacyExportBusy = false;
   quickCaptureDrafts: QuickCaptureDraft[] = [];
   quickCaptureStatus: string | null = null;
+  quickCapturePhotoName: string | null = null;
+  quickCapturePhotoPreviewUrl: string | null = null;
+  quickCapturePhotoStatus: string | null = null;
+  quickCaptureDetectedBarcode: string | null = null;
+  barcodeCaptureSupported = false;
   savedShoppingLists: SavedShoppingList[] = [];
   savedShoppingListStatus: string | null = null;
   wasteOverview: WasteOverview | null = null;
@@ -578,8 +596,10 @@ export class PantryPageComponent implements OnInit {
       this.loadLocalShoppingSupport();
       this.loadSavedShoppingLists();
       this.setupVoiceCapture();
+      this.setupBarcodeCapture();
       this.loadActiveShoppingShares();
       this.destroyRef.onDestroy(() => {
+        this.revokeQuickCapturePhotoPreview();
         void this.releaseShoppingWakeLock();
       });
     }
@@ -2608,6 +2628,236 @@ export class PantryPageComponent implements OnInit {
       .filter((item): item is QuickCaptureItem => item !== null);
   }
 
+  parseQuickCaptureCsv(rawCsv: string): QuickCaptureItem[] {
+    const normalizedCsv = rawCsv.replace(/^\uFEFF/, '');
+    const rows = this.parseCsvRows(
+      normalizedCsv,
+      this.detectCsvDelimiter(normalizedCsv)
+    ).filter((row) => row.some((cell) => cell.trim()));
+
+    if (rows.length === 0) {
+      return [];
+    }
+
+    const normalizedHeader = rows[0].map((cell) =>
+      this.normalizeCsvHeader(cell)
+    );
+    const hasHeader = normalizedHeader.some((cell) =>
+      [
+        'producto',
+        'product',
+        'nombre',
+        'name',
+        'cantidad',
+        'quantity',
+        'precio',
+        'price',
+        'barcode',
+        'codigo',
+      ].includes(cell)
+    );
+    const dataRows = hasHeader ? rows.slice(1) : rows;
+
+    return dataRows
+      .map((row) =>
+        hasHeader
+          ? this.parseQuickCaptureCsvHeaderRow(row, normalizedHeader)
+          : this.parseQuickCaptureCsvIndexRow(row)
+      )
+      .filter((item): item is QuickCaptureItem => item !== null);
+  }
+
+  getQuickCapturePreviewItems(rawText: string): QuickCaptureItem[] {
+    return this.parseQuickCaptureText(rawText).slice(0, 8);
+  }
+
+  handleQuickCaptureCsvImport(event: Event): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      this.quickCaptureStatus = 'Import disponible solo en navegador.';
+      return;
+    }
+
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+
+    if (!file) {
+      return;
+    }
+
+    if (file.size > 512_000) {
+      this.quickCaptureStatus = 'CSV demasiado grande para import local.';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const items = this.parseQuickCaptureCsv(String(reader.result ?? ''));
+
+      if (items.length === 0) {
+        this.quickCaptureStatus = 'CSV sin productos reconocibles.';
+        this.changeDetector.markForCheck();
+        return;
+      }
+
+      this.quickCaptureForm.patchValue({
+        rawText: this.buildQuickCaptureText(items),
+      });
+      this.quickCaptureStatus = `CSV importado: ${items.length} producto(s). Revisa antes de guardar.`;
+      this.changeDetector.markForCheck();
+    };
+    reader.onerror = () => {
+      this.quickCaptureStatus = 'No se pudo leer el CSV.';
+      this.changeDetector.markForCheck();
+    };
+    reader.readAsText(file);
+  }
+
+  downloadPantryCsv(pantryGroups: PantryOverviewItem[]): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      this.quickCaptureStatus = 'Export CSV disponible solo en navegador.';
+      return;
+    }
+
+    if (pantryGroups.length === 0) {
+      this.quickCaptureStatus = 'No hay despensa activa para exportar.';
+      return;
+    }
+
+    this.downloadTextFile(
+      this.buildPantryCsvExport(pantryGroups),
+      `pantrylist-despensa-${toDateInputValue(new Date())}.csv`,
+      'text/csv;charset=utf-8'
+    );
+    this.quickCaptureStatus = 'CSV exportado para Excel.';
+  }
+
+  buildPantryCsvExport(pantryGroups: PantryOverviewItem[]): string {
+    const rows = [
+      [
+        'Producto',
+        'Variante',
+        'Categoria',
+        'Cantidad',
+        'Unidad',
+        'Ubicacion',
+        'Tienda',
+        'Marca preferida',
+        'Precio estimado',
+        'Compra',
+        'Caducidad',
+      ],
+    ];
+
+    for (const group of pantryGroups) {
+      const metadata = this.resolveShoppingMetadata(group.shoppingMetadata);
+      const lots =
+        group.lots.length > 0
+          ? group.lots
+          : [
+              {
+                lotId: group.productTypeId,
+                variantName: '',
+                quantity: group.totalQuantity,
+                unit: group.defaultUnit,
+                expiresAt: null,
+                purchaseDate: null,
+                expirationStatus: 'none' as ExpirationStatus,
+                updatedAt: new Date(),
+              },
+            ];
+
+      for (const lot of lots) {
+        rows.push([
+          group.baseName,
+          lot.variantName ?? '',
+          this.categoryLabels[group.category],
+          `${lot.quantity}`,
+          lot.unit,
+          metadata.storageLocation ?? '',
+          metadata.shoppingLocation ?? '',
+          metadata.preferredBrand ?? '',
+          metadata.estimatedUnitPrice === undefined
+            ? ''
+            : `${metadata.estimatedUnitPrice}`,
+          lot.purchaseDate ? toDateInputValue(lot.purchaseDate) : '',
+          lot.expiresAt ? toDateInputValue(lot.expiresAt) : '',
+        ]);
+      }
+    }
+
+    return rows
+      .map((row) => row.map((cell) => this.escapeCsvCell(cell)).join(','))
+      .join('\r\n');
+  }
+
+  async handleQuickCapturePhotoChange(event: Event): Promise<void> {
+    if (!isPlatformBrowser(this.platformId)) {
+      this.quickCapturePhotoStatus = 'Foto disponible solo en navegador.';
+      return;
+    }
+
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      this.quickCapturePhotoStatus = 'Selecciona una imagen.';
+      return;
+    }
+
+    if (file.size > 2_000_000) {
+      this.quickCapturePhotoStatus = 'Imagen demasiado grande para vista local.';
+      return;
+    }
+
+    this.revokeQuickCapturePhotoPreview();
+    this.quickCapturePhotoPreviewUrl = URL.createObjectURL(file);
+    this.quickCapturePhotoName = file.name;
+    this.quickCaptureDetectedBarcode = null;
+
+    if (!this.barcodeCaptureSupported) {
+      this.quickCapturePhotoStatus =
+        'Foto local lista. Escaneo de código no disponible en este navegador.';
+      return;
+    }
+
+    try {
+      this.quickCaptureDetectedBarcode = await this.detectBarcodeFromImage(
+        this.quickCapturePhotoPreviewUrl
+      );
+      this.quickCapturePhotoStatus = this.quickCaptureDetectedBarcode
+        ? `Código detectado: ${this.quickCaptureDetectedBarcode}`
+        : 'Foto local lista. No se detectó código.';
+    } catch {
+      this.quickCapturePhotoStatus =
+        'Foto local lista. No se pudo escanear código.';
+    } finally {
+      this.changeDetector.markForCheck();
+    }
+  }
+
+  confirmQuickCaptureBarcode(rawBarcode: string | null | undefined): void {
+    const barcode = rawBarcode?.trim();
+
+    if (!barcode) {
+      this.quickCapturePhotoStatus = 'Escribe o detecta un código primero.';
+      return;
+    }
+
+    const currentText = this.quickCaptureForm.controls.rawText.value.trim();
+    const barcodeLine = `Producto ${barcode.slice(-6)} | 1 piezas | | | ${barcode}`;
+    this.quickCaptureForm.patchValue({
+      rawText: currentText ? `${currentText}\n${barcodeLine}` : barcodeLine,
+    });
+    this.quickCapturePhotoStatus =
+      'Código agregado al borrador. Revisa el nombre antes de guardar.';
+  }
+
   toggleQuickCaptureVoice(): void {
     if (!this.voiceCaptureSupported || !this.speechRecognition) {
       this.voiceCaptureStatus = 'Dictado no disponible en este navegador.';
@@ -2670,6 +2920,7 @@ export class PantryPageComponent implements OnInit {
         quantity: item.quantity,
         shoppingLocation: item.shoppingLocation ?? '',
         estimatedUnitPrice: item.estimatedUnitPrice ?? null,
+        shoppingNotes: item.barcode ? `Código: ${item.barcode}` : '',
         purchaseDate: toDateInputValue(new Date()),
       },
       { emitEvent: false }
@@ -2713,7 +2964,7 @@ export class PantryPageComponent implements OnInit {
   }
 
   private parseQuickCaptureLine(line: string): QuickCaptureItem | null {
-    const [namePart, quantityPart, locationPart, pricePart] = line
+    const [namePart, quantityPart, locationPart, pricePart, barcodePart] = line
       .split('|')
       .map((part) => part.trim());
     const name = namePart?.trim();
@@ -2730,8 +2981,9 @@ export class PantryPageComponent implements OnInit {
       : 1;
     const unit = quantityMatch?.[2]?.trim() || 'piezas';
     const estimatedUnitPrice = this.toOptionalNumber(pricePart);
+    const barcode = this.toOptionalText(barcodePart);
 
-    return {
+    const item: QuickCaptureItem = {
       name,
       quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : 1,
       unit,
@@ -2741,6 +2993,207 @@ export class PantryPageComponent implements OnInit {
           ? undefined
           : Number(estimatedUnitPrice.toFixed(2)),
     };
+
+    if (barcode) {
+      item.barcode = barcode;
+    }
+
+    return item;
+  }
+
+  private parseQuickCaptureCsvHeaderRow(
+    row: string[],
+    header: string[]
+  ): QuickCaptureItem | null {
+    const getCell = (...names: string[]) => {
+      const index = header.findIndex((cell) => names.includes(cell));
+      return index === -1 ? '' : row[index]?.trim() ?? '';
+    };
+    const name = getCell('producto', 'product', 'nombre', 'name', 'item');
+
+    if (!name) {
+      return null;
+    }
+
+    const quantityText = getCell('cantidad', 'quantity');
+    const unitText = getCell('unidad', 'unit');
+    const quantityAndUnit = this.parseQuantityAndUnit(
+      unitText ? `${quantityText} ${unitText}` : quantityText
+    );
+    const estimatedUnitPrice = this.toOptionalNumber(
+      getCell('precio', 'price', 'precioestimado', 'estimatedunitprice')
+    );
+    const item: QuickCaptureItem = {
+      name,
+      quantity: quantityAndUnit.quantity,
+      unit: quantityAndUnit.unit,
+      shoppingLocation: this.toOptionalText(
+        getCell('tienda', 'store', 'shoppinglocation')
+      ),
+      estimatedUnitPrice:
+        estimatedUnitPrice === undefined
+          ? undefined
+          : Number(estimatedUnitPrice.toFixed(2)),
+    };
+    const barcode = this.toOptionalText(
+      getCell('codigo', 'código', 'barcode', 'codigodebarras')
+    );
+
+    if (barcode) {
+      item.barcode = barcode;
+    }
+
+    return item;
+  }
+
+  private parseQuickCaptureCsvIndexRow(row: string[]): QuickCaptureItem | null {
+    const name = row[0]?.trim();
+
+    if (!name) {
+      return null;
+    }
+
+    const quantityAndUnit = this.parseQuantityAndUnit(
+      row[2]?.trim() ? `${row[1] ?? ''} ${row[2]}` : row[1] ?? ''
+    );
+    const estimatedUnitPrice = this.toOptionalNumber(row[4]?.trim());
+    const item: QuickCaptureItem = {
+      name,
+      quantity: quantityAndUnit.quantity,
+      unit: quantityAndUnit.unit,
+      shoppingLocation: this.toOptionalText(row[3]?.trim()),
+      estimatedUnitPrice:
+        estimatedUnitPrice === undefined
+          ? undefined
+          : Number(estimatedUnitPrice.toFixed(2)),
+    };
+    const barcode = this.toOptionalText(row[5]?.trim());
+
+    if (barcode) {
+      item.barcode = barcode;
+    }
+
+    return item;
+  }
+
+  private parseQuantityAndUnit(rawValue: string): {
+    quantity: number;
+    unit: string;
+  } {
+    const quantityMatch = rawValue
+      .trim()
+      .match(/^(\d+(?:[\.,]\d+)?)\s*(.*)$/);
+    const quantity = quantityMatch
+      ? Number(quantityMatch[1].replace(',', '.'))
+      : 1;
+
+    return {
+      quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : 1,
+      unit: quantityMatch?.[2]?.trim() || 'piezas',
+    };
+  }
+
+  private parseCsvRows(rawCsv: string, delimiter: ',' | ';'): string[][] {
+    const rows: string[][] = [];
+    let row: string[] = [];
+    let cell = '';
+    let insideQuotes = false;
+
+    for (let index = 0; index < rawCsv.length; index += 1) {
+      const char = rawCsv[index];
+      const nextChar = rawCsv[index + 1];
+
+      if (char === '"' && insideQuotes && nextChar === '"') {
+        cell += '"';
+        index += 1;
+        continue;
+      }
+
+      if (char === '"') {
+        insideQuotes = !insideQuotes;
+        continue;
+      }
+
+      if (char === delimiter && !insideQuotes) {
+        row.push(cell);
+        cell = '';
+        continue;
+      }
+
+      if ((char === '\n' || char === '\r') && !insideQuotes) {
+        if (char === '\r' && nextChar === '\n') {
+          index += 1;
+        }
+        row.push(cell);
+        rows.push(row);
+        row = [];
+        cell = '';
+        continue;
+      }
+
+      cell += char;
+    }
+
+    row.push(cell);
+    rows.push(row);
+
+    return rows;
+  }
+
+  private detectCsvDelimiter(rawCsv: string): ',' | ';' {
+    const firstLine = rawCsv.split(/\r?\n/, 1)[0] ?? '';
+    const commaCount = (firstLine.match(/,/g) ?? []).length;
+    const semicolonCount = (firstLine.match(/;/g) ?? []).length;
+
+    return semicolonCount > commaCount ? ';' : ',';
+  }
+
+  private normalizeCsvHeader(value: string): string {
+    return value
+      .trim()
+      .toLocaleLowerCase('es')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]/g, '');
+  }
+
+  private buildQuickCaptureText(items: QuickCaptureItem[]): string {
+    return items
+      .map((item) => {
+        const parts = [
+          item.name,
+          `${item.quantity} ${item.unit}`,
+          item.shoppingLocation ?? '',
+          item.estimatedUnitPrice === undefined
+            ? ''
+            : `${item.estimatedUnitPrice}`,
+        ];
+
+        if (item.barcode) {
+          parts.push(item.barcode);
+        }
+
+        return parts.join(' | ');
+      })
+      .join('\n');
+  }
+
+  private escapeCsvCell(value: string): string {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+
+  private downloadTextFile(
+    content: string,
+    filename: string,
+    type: string
+  ): void {
+    const blob = new Blob([content], { type });
+    const downloadUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = downloadUrl;
+    anchor.download = filename;
+    anchor.click();
+    URL.revokeObjectURL(downloadUrl);
   }
 
   private loadLocalShoppingSupport(): void {
@@ -2899,6 +3352,53 @@ export class PantryPageComponent implements OnInit {
       this.changeDetector.markForCheck();
     };
     this.voiceCaptureSupported = true;
+  }
+
+  private setupBarcodeCapture(): void {
+    const barcodeWindow = window as Window & {
+      BarcodeDetector?: BarcodeDetectorConstructorLike;
+    };
+
+    this.barcodeCaptureSupported = Boolean(barcodeWindow.BarcodeDetector);
+  }
+
+  private async detectBarcodeFromImage(
+    imageUrl: string
+  ): Promise<string | null> {
+    const barcodeWindow = window as Window & {
+      BarcodeDetector?: BarcodeDetectorConstructorLike;
+    };
+    const BarcodeDetectorConstructor = barcodeWindow.BarcodeDetector;
+
+    if (!BarcodeDetectorConstructor) {
+      return null;
+    }
+
+    const image = await this.loadImageElement(imageUrl);
+    const detector = new BarcodeDetectorConstructor({
+      formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'qr_code'],
+    });
+    const results = await detector.detect(image);
+
+    return results[0]?.rawValue?.trim() || null;
+  }
+
+  private loadImageElement(imageUrl: string): Promise<HTMLImageElement> {
+    return new Promise((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = () => reject(new Error('image_load_failed'));
+      image.src = imageUrl;
+    });
+  }
+
+  private revokeQuickCapturePhotoPreview(): void {
+    if (!this.quickCapturePhotoPreviewUrl) {
+      return;
+    }
+
+    URL.revokeObjectURL(this.quickCapturePhotoPreviewUrl);
+    this.quickCapturePhotoPreviewUrl = null;
   }
 
   private watchNetworkState(): void {

@@ -1440,8 +1440,86 @@
             ></textarea>
           </label>
           <p class="helper-copy field-full">
-            Formato: producto | cantidad unidad | tienda | precio. Se guarda localmente si no hay conexi&oacute;n.
+            Formato: producto | cantidad unidad | tienda | precio | c&oacute;digo. Se guarda localmente si no hay conexi&oacute;n.
           </p>
+
+          @if (getQuickCapturePreviewItems(quickCaptureForm.controls.rawText.value); as previewItems) {
+            @if (previewItems.length > 0) {
+              <div class="capture-preview-list field-full" aria-label="Vista previa de captura">
+                @for (item of previewItems; track item.name + item.unit + item.quantity + (item.barcode || '')) {
+                  <span>
+                    {{ item.name }} · {{ item.quantity }} {{ item.unit }}
+                    @if (item.barcode) {
+                      · {{ item.barcode }}
+                    }
+                  </span>
+                }
+              </div>
+            }
+          }
+
+          <div class="capture-tool-grid field-full">
+            <label class="field">
+              <span>Importar CSV</span>
+              <input type="file" accept=".csv,text/csv" (change)="handleQuickCaptureCsvImport($event)" />
+            </label>
+            @if (pantryGroups$ | async; as pantryGroups) {
+              <button type="button" class="secondary-button" (click)="downloadPantryCsv(pantryGroups)">
+                Exportar CSV/Excel
+              </button>
+            }
+          </div>
+
+          <section class="capture-local-panel field-full" aria-label="Captura local con foto y código">
+            <div>
+              <p class="panel-kicker">Foto local</p>
+              <h3>C&oacute;digo o etiqueta</h3>
+            </div>
+            <div class="capture-tool-grid">
+              <label class="field">
+                <span>Foto opcional</span>
+                <input type="file" accept="image/*" (change)="handleQuickCapturePhotoChange($event)" />
+              </label>
+              <label class="field">
+                <span>C&oacute;digo manual</span>
+                <input #manualBarcode type="text" inputmode="numeric" maxlength="80" placeholder="750..." />
+              </label>
+              <button type="button" class="secondary-button" (click)="confirmQuickCaptureBarcode(manualBarcode.value)">
+                Agregar c&oacute;digo
+              </button>
+            </div>
+
+            @if (quickCapturePhotoPreviewUrl) {
+              <div class="capture-photo-preview">
+                <img [src]="quickCapturePhotoPreviewUrl" [alt]="quickCapturePhotoName || 'Foto local de producto'" />
+                <small>{{ quickCapturePhotoName }}</small>
+              </div>
+            }
+
+            @if (quickCaptureDetectedBarcode) {
+              <button type="button" class="ghost-button" (click)="confirmQuickCaptureBarcode(quickCaptureDetectedBarcode)">
+                Usar c&oacute;digo detectado
+              </button>
+            }
+
+            @if (quickCapturePhotoStatus) {
+              <p class="helper-copy" aria-live="polite">{{ quickCapturePhotoStatus }}</p>
+            }
+          </section>
+
+          <section class="selection-card plus-preview-card capture-plus-preview field-full" aria-labelledby="capture-plus-preview-title">
+            <div>
+              <p class="panel-kicker">Plus preview</p>
+              <h3 id="capture-plus-preview-title">Cr&eacute;ditos de captura AI</h3>
+              <p class="helper-copy">
+                OCR de ticket, foto de anaquel y caducidad autom&aacute;tica quedar&aacute;n detr&aacute;s de confirmaci&oacute;n manual antes de cobrar.
+              </p>
+            </div>
+            <button type="button" class="secondary-button" disabled>
+              Sin cobro real
+            </button>
+          </section>
+
           @if (isOffline) {
             <p class="helper-copy field-full" role="status">Sin conexi&oacute;n: los borradores quedan en este navegador.</p>
           }
@@ -1485,6 +1563,9 @@
                         {{ item.shoppingLocation || 'Sin tienda' }}
                         @if (item.estimatedUnitPrice !== undefined) {
                           · {{ formatShoppingPrice(item.estimatedUnitPrice) }}
+                        }
+                        @if (item.barcode) {
+                          · C&oacute;digo {{ item.barcode }}
                         }
                       </small>
                       <button class="ghost-button" type="button" (click)="useQuickCaptureItem(item)">Usar</button>

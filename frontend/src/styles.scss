@@ -851,6 +851,56 @@ button:focus-visible {
   gap: 0.9rem;
 }
 
+.capture-tool-grid {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) auto;
+  gap: 0.75rem;
+  align-items: end;
+}
+
+.capture-preview-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.capture-preview-list span {
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+}
+
+.capture-local-panel {
+  display: grid;
+  gap: 0.8rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 22px;
+  background: rgba(255, 250, 242, 0.9);
+}
+
+.capture-local-panel h3,
+.capture-local-panel p {
+  margin: 0;
+}
+
+.capture-photo-preview {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.capture-photo-preview img {
+  width: 72px;
+  height: 72px;
+  border-radius: 12px;
+  object-fit: cover;
+  border: 1px solid var(--color-border);
+}
+
 .quick-draft-items {
   display: grid;
   gap: 0.6rem;
@@ -903,6 +953,7 @@ button:focus-visible {
   .route-group-card,
   .shopping-mode-row,
   .quick-draft-row,
+  .capture-tool-grid,
   .price-reference-row,
   .budget-form,
   .planning-settings-editor,

@@ -809,7 +809,7 @@ describe('PantryPageComponent', () => {
 
   it('parses quick capture lines for offline purchase drafts', () => {
     const parsed = (component as any).parseQuickCaptureText(
-      'Arroz | 2 kg | Mercado | 35\nShampoo | 1 botella | Farmacia',
+      'Arroz | 2 kg | Mercado | 35 | 7501001\nShampoo | 1 botella | Farmacia',
     );
 
     expect(parsed).toEqual([
@@ -819,6 +819,7 @@ describe('PantryPageComponent', () => {
         unit: 'kg',
         shoppingLocation: 'Mercado',
         estimatedUnitPrice: 35,
+        barcode: '7501001',
       },
       {
         name: 'Shampoo',
@@ -828,6 +829,81 @@ describe('PantryPageComponent', () => {
         estimatedUnitPrice: undefined,
       },
     ]);
+  });
+
+  it('imports quick capture CSV with regional semicolon delimiters', () => {
+    const parsed = component.parseQuickCaptureCsv(
+      'Producto;Cantidad;Unidad;Tienda;Precio;Codigo\nFrijol;2;kg;Mercado;41.5;7502002',
+    );
+
+    expect(parsed).toEqual([
+      {
+        name: 'Frijol',
+        quantity: 2,
+        unit: 'kg',
+        shoppingLocation: 'Mercado',
+        estimatedUnitPrice: 41.5,
+        barcode: '7502002',
+      },
+    ]);
+  });
+
+  it('exports pantry lots as CSV rows for Excel review', () => {
+    const csv = component.buildPantryCsvExport([
+      makePantryGroup({
+        productTypeId: 'type-rice',
+        baseName: 'Arroz integral',
+        category: 'food',
+        defaultUnit: 'kg',
+        totalQuantity: 2,
+        lots: [
+          makePantryLotSummary({
+            lotId: 'lot-rice',
+            variantName: 'Bolsa 1kg',
+            quantity: 2,
+            unit: 'kg',
+            purchaseDate: new Date('2026-06-01T00:00:00.000Z'),
+            expiresAt: new Date('2026-12-01T00:00:00.000Z'),
+          }),
+        ],
+        shoppingMetadata: {
+          storageLocation: 'Despensa',
+          shoppingLocation: 'Mercado',
+          preferredBrand: 'Marca local',
+          householdStaple: true,
+          buyOnlyOnPromo: false,
+          replenishWhenLow: true,
+          estimatedUnitPrice: 38,
+        },
+      }),
+    ]);
+
+    expect(csv).toContain('"Producto","Variante","Categoria"');
+    expect(csv).toContain(
+      '"Arroz integral","Bolsa 1kg","Comida","2","kg","Despensa","Mercado","Marca local","38","2026-06-01","2026-12-01"',
+    );
+  });
+
+  it('keeps barcode capture manual before filling the lot form', () => {
+    component.confirmQuickCaptureBarcode('7503003');
+
+    expect(component.quickCaptureForm.controls.rawText.value).toContain(
+      'Producto 503003 | 1 piezas | | | 7503003',
+    );
+
+    component.useQuickCaptureItem({
+      name: 'Producto 7503003',
+      quantity: 1,
+      unit: 'piezas',
+      barcode: '7503003',
+    });
+
+    expect(component.lotForm.getRawValue()).toEqual(
+      jasmine.objectContaining({
+        newBaseName: 'Producto 7503003',
+        shoppingNotes: 'Código: 7503003',
+      }),
+    );
   });
 
   it('summarizes household staple attention and restock estimates', () => {
