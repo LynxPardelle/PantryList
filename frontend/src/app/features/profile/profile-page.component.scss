@@ -135,6 +135,81 @@
   color: var(--color-text-muted);
 }
 
+.monetization-panel,
+.billing-decision-list,
+.plan-list,
+.stripe-readiness-list,
+.monetization-panel section ul {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.monetization-panel p,
+.monetization-panel dl,
+.monetization-panel ul {
+  margin: 0;
+}
+
+.billing-decision-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.billing-decision-list div {
+  border-top: 1px solid var(--color-border);
+  padding-top: 0.65rem;
+}
+
+.billing-decision-list dt,
+.billing-decision-list dd {
+  margin: 0;
+}
+
+.billing-decision-list dt,
+.plan-heading span,
+.plan-list small {
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+}
+
+.billing-decision-list dd,
+.plan-heading strong {
+  font-weight: 800;
+}
+
+.plan-list section {
+  display: grid;
+  gap: 0.55rem;
+  border-top: 1px solid var(--color-border);
+  padding-top: 0.85rem;
+}
+
+.plan-heading {
+  display: flex;
+  gap: 0.75rem;
+  align-items: start;
+  justify-content: space-between;
+}
+
+.plan-heading div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.stripe-readiness-list,
+.monetization-panel section ul {
+  padding-left: 1.2rem;
+  color: var(--color-text-muted);
+}
+
+.monetization-panel section li {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.monetization-panel h3 {
+  margin: 0;
+}
+
 .error-banner {
   display: grid;
   gap: 0.55rem;
@@ -153,7 +228,8 @@
   .profile-nav,
   .profile-grid,
   .profile-hero,
-  .profile-summary dl {
+  .profile-summary dl,
+  .billing-decision-list {
     grid-template-columns: 1fr;
   }
 

@@ -162,6 +162,96 @@
         </ul>
       </aside>
 
+      <aside class="panel monetization-panel">
+        <p class="panel-kicker">Monetizaci&oacute;n</p>
+        <h2>Plan y Stripe</h2>
+        <p>
+          PantryList sigue en plan Free. Stripe queda como proveedor elegido
+          para pagos web/PWA cuando activemos checkout real.
+        </p>
+
+        <dl class="billing-decision-list" aria-label="Decisi&oacute;n de pagos">
+          <div>
+            <dt>Proveedor</dt>
+            <dd>Stripe</dd>
+          </div>
+          <div>
+            <dt>Checkout</dt>
+            <dd>Checkout Sessions</dd>
+          </div>
+          <div>
+            <dt>Modelo</dt>
+            <dd>Billing + Prices</dd>
+          </div>
+          <div>
+            <dt>Portal</dt>
+            <dd>Customer Portal</dd>
+          </div>
+        </dl>
+
+        <div class="plan-list" aria-label="Frontera Free y Plus">
+          @for (plan of monetizationPlans; track plan.id) {
+            <section>
+              <div class="plan-heading">
+                <div>
+                  <strong>{{ plan.name }}</strong>
+                  <span>{{ plan.statusLabel }}</span>
+                </div>
+                <span>{{ plan.priceLabel }}</span>
+              </div>
+              <p>{{ plan.features.join(' · ') }}</p>
+              <small>{{ plan.boundaries.join(' · ') }}</small>
+              @if (plan.id !== 'free') {
+                <button
+                  class="secondary-button"
+                  type="button"
+                  (click)="registerMonetizationInterest(plan.id)"
+                >
+                  Registrar inter&eacute;s
+                </button>
+              }
+            </section>
+          }
+        </div>
+
+        <ul class="stripe-readiness-list">
+          @for (item of stripeReadinessItems; track item) {
+            <li>{{ item }}</li>
+          }
+        </ul>
+
+        @if (monetizationStatus) {
+          <p class="success-copy" role="status">{{ monetizationStatus }}</p>
+        }
+
+        @if (monetizationError) {
+          <p class="field-error" role="alert">{{ monetizationError }}</p>
+        }
+
+        @if (monetizationEvents.length > 0) {
+          <section aria-label="Eventos locales de monetizaci&oacute;n">
+            <h3>Eventos locales</h3>
+            <ul>
+              @for (event of monetizationEvents; track event.id) {
+                <li>
+                  <strong>{{ monetizationPlanLabel(event.planId) }}</strong>
+                  <span>
+                    {{ event.provider }} · {{ formatMonetizationEventCreatedAt(event) }} hora Central
+                  </span>
+                </li>
+              }
+            </ul>
+            <button
+              class="ghost-button"
+              type="button"
+              (click)="clearMonetizationDiscoveryEvents()"
+            >
+              Limpiar eventos locales
+            </button>
+          </section>
+        }
+      </aside>
+
       <aside class="panel household-panel">
         <p class="panel-kicker">Hogar</p>
         <h2>Colaboraci&oacute;n</h2>

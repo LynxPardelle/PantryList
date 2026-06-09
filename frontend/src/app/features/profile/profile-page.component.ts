@@ -22,6 +22,29 @@ import {
   UserProfile,
 } from '../../shared/models/profile.model';
 
+type MonetizationPlanId = 'free' | 'plus-household' | 'ai-capture-credits';
+
+interface MonetizationPlan {
+  id: MonetizationPlanId;
+  name: string;
+  priceLabel: string;
+  statusLabel: string;
+  features: string[];
+  boundaries: string[];
+}
+
+interface MonetizationDiscoveryEvent {
+  id: string;
+  planId: MonetizationPlanId;
+  provider: 'stripe';
+  eventType: 'checkout_interest';
+  createdAt: string;
+}
+
+const MONETIZATION_EVENTS_STORAGE_KEY =
+  'pantrylist.monetizationDiscoveryEvents.v1';
+const MONETIZATION_EVENT_LIMIT = 20;
+
 @Component({
   selector: 'app-profile-page',
   templateUrl: './profile-page.component.html',
@@ -66,6 +89,71 @@ export class ProfilePageComponent implements OnInit {
   householdInviteLink: string | null = null;
   householdRevokingInviteId: string | null = null;
   householdRemovingMemberUserId: string | null = null;
+  monetizationEvents: MonetizationDiscoveryEvent[] = [];
+  monetizationStatus: string | null = null;
+  monetizationError: string | null = null;
+
+  readonly monetizationPlans: MonetizationPlan[] = [
+    {
+      id: 'free',
+      name: 'Free',
+      priceLabel: 'MXN 0',
+      statusLabel: 'Activo ahora',
+      features: [
+        'Inventario manual',
+        'Caducidad y usar primero',
+        'Lista de compras',
+        'Export basico',
+      ],
+      boundaries: [
+        'Sin cobro',
+        'Sin limite de prueba artificial por ahora',
+        'Sin AI remota',
+      ],
+    },
+    {
+      id: 'plus-household',
+      name: 'Plus hogar',
+      priceLabel: 'Precio por validar',
+      statusLabel: 'Discovery',
+      features: [
+        'Hogar compartido completo',
+        'Backups y restore/version history',
+        'Reportes de ahorro y merma',
+        'Planeacion multi-tienda avanzada',
+      ],
+      boundaries: [
+        'Stripe Checkout despues de validar precio',
+        'Sin checkout real en esta tanda',
+        'Datos existentes quedan exportables si expira plan',
+      ],
+    },
+    {
+      id: 'ai-capture-credits',
+      name: 'Creditos AI',
+      priceLabel: 'Uso variable',
+      statusLabel: 'Futuro',
+      features: [
+        'OCR de ticket',
+        'Foto de anaquel',
+        'Lectura de caducidad',
+        'Enriquecimiento de codigo',
+      ],
+      boundaries: [
+        'Confirmacion manual obligatoria',
+        'Revision de privacidad separada',
+        'Nunca AI ilimitada en lifetime',
+      ],
+    },
+  ];
+
+  readonly stripeReadinessItems = [
+    'Proveedor decidido: Stripe para web/PWA.',
+    'Checkout Sessions para suscripciones.',
+    'Products y Prices como fuente de planes.',
+    'Customer Portal para cambios, cancelacion y metodo de pago.',
+    'PantryList no guardara datos de tarjeta.',
+  ];
 
   readonly preferencesForm = this.formBuilder.nonNullable.group({
     expirationWarningDays: [
@@ -140,6 +228,7 @@ export class ProfilePageComponent implements OnInit {
     if (isPlatformBrowser(this.platformId)) {
       this.loadProfile();
       this.loadHouseholdWorkspace();
+      this.loadMonetizationDiscoveryEvents();
       const inviteToken = this.route.snapshot.queryParamMap.get(
         'householdInvite',
       );
@@ -578,6 +667,71 @@ export class ProfilePageComponent implements OnInit {
     return labels[activity.type];
   }
 
+  registerMonetizationInterest(planId: MonetizationPlanId): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    const plan = this.monetizationPlans.find((item) => item.id === planId);
+
+    if (!plan) {
+      this.monetizationError = 'Plan no reconocido.';
+      this.monetizationStatus = null;
+      return;
+    }
+
+    const event: MonetizationDiscoveryEvent = {
+      id: this.createLocalEventId(),
+      planId,
+      provider: 'stripe',
+      eventType: 'checkout_interest',
+      createdAt: new Date().toISOString(),
+    };
+
+    const previousEvents = this.monetizationEvents;
+    this.monetizationEvents = [
+      event,
+      ...this.monetizationEvents,
+    ].slice(0, MONETIZATION_EVENT_LIMIT);
+
+    try {
+      this.persistMonetizationDiscoveryEvents();
+      this.monetizationError = null;
+      this.monetizationStatus = `${plan.name}: interes registrado para discovery de Stripe. No se cobro nada.`;
+    } catch (error) {
+      this.monetizationEvents = previousEvents;
+      this.monetizationStatus = null;
+      this.monetizationError = this.getErrorMessage(error);
+    }
+
+    this.changeDetector.markForCheck();
+  }
+
+  clearMonetizationDiscoveryEvents(): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    this.monetizationEvents = [];
+    this.document.defaultView?.localStorage.removeItem(
+      MONETIZATION_EVENTS_STORAGE_KEY,
+    );
+    this.monetizationError = null;
+    this.monetizationStatus = 'Eventos locales de monetizacion limpiados.';
+    this.changeDetector.markForCheck();
+  }
+
+  monetizationPlanLabel(planId: MonetizationPlanId): string {
+    return (
+      this.monetizationPlans.find((plan) => plan.id === planId)?.name ??
+      'Plan desconocido'
+    );
+  }
+
+  formatMonetizationEventCreatedAt(event: MonetizationDiscoveryEvent): string {
+    return this.formatCentralDate(new Date(event.createdAt));
+  }
+
   formatCentralDate(date: Date): string {
     return new Intl.DateTimeFormat('es-MX', {
       day: '2-digit',
@@ -602,6 +756,73 @@ export class ProfilePageComponent implements OnInit {
     }
 
     return 'No se pudo completar la solicitud.';
+  }
+
+  private loadMonetizationDiscoveryEvents(): void {
+    const storage = this.document.defaultView?.localStorage;
+
+    if (!storage) {
+      return;
+    }
+
+    try {
+      const rawEvents = storage.getItem(MONETIZATION_EVENTS_STORAGE_KEY);
+      const parsedEvents: unknown = rawEvents ? JSON.parse(rawEvents) : [];
+
+      this.monetizationEvents = Array.isArray(parsedEvents)
+        ? parsedEvents
+            .filter(
+              (event): event is MonetizationDiscoveryEvent =>
+                this.isMonetizationDiscoveryEvent(event),
+            )
+            .slice(0, MONETIZATION_EVENT_LIMIT)
+        : [];
+    } catch {
+      this.monetizationEvents = [];
+      this.monetizationError =
+        'No se pudieron leer eventos locales de monetizacion.';
+    }
+  }
+
+  private persistMonetizationDiscoveryEvents(): void {
+    const storage = this.document.defaultView?.localStorage;
+
+    if (!storage) {
+      throw new Error('Local storage no disponible.');
+    }
+
+    storage.setItem(
+      MONETIZATION_EVENTS_STORAGE_KEY,
+      JSON.stringify(this.monetizationEvents),
+    );
+  }
+
+  private isMonetizationDiscoveryEvent(
+    value: unknown,
+  ): value is MonetizationDiscoveryEvent {
+    if (!value || typeof value !== 'object') {
+      return false;
+    }
+
+    const event = value as Partial<MonetizationDiscoveryEvent>;
+    const knownPlanIds = this.monetizationPlans.map((plan) => plan.id);
+
+    return (
+      typeof event.id === 'string' &&
+      typeof event.createdAt === 'string' &&
+      Number.isFinite(new Date(event.createdAt).getTime()) &&
+      event.provider === 'stripe' &&
+      event.eventType === 'checkout_interest' &&
+      Boolean(event.planId && knownPlanIds.includes(event.planId))
+    );
+  }
+
+  private createLocalEventId(): string {
+    const crypto = this.document.defaultView?.crypto;
+
+    return crypto?.randomUUID
+      ? crypto.randomUUID()
+      : `mon-${Date.now()}-${this.monetizationEvents.length + 1}`;
   }
 
   private downloadJson(data: unknown, filename: string): void {

@@ -15,6 +15,10 @@ describe('ProfilePageComponent', () => {
   let pantryService: jasmine.SpyObj<PantryService>;
 
   beforeEach(async () => {
+    window.localStorage.removeItem(
+      'pantrylist.monetizationDiscoveryEvents.v1',
+    );
+
     authFacade = jasmine.createSpyObj<AuthFacade>('AuthFacade', ['logout']);
     profileService = jasmine.createSpyObj<ProfileService>('ProfileService', [
       'getProfile',
@@ -278,6 +282,51 @@ describe('ProfilePageComponent', () => {
     expect(compiled.textContent).toContain('Step-up esta preparado');
     expect(compiled.textContent).toContain('Dispositivos vistos');
     expect(compiled.textContent).toContain('Chrome en Windows');
+  });
+
+  it('renders Stripe monetization discovery without real checkout', () => {
+    const compiled = fixture.nativeElement as HTMLElement;
+
+    expect(compiled.textContent).toContain('Plan y Stripe');
+    expect(compiled.textContent).toContain('Stripe');
+    expect(compiled.textContent).toContain('Checkout Sessions');
+    expect(compiled.textContent).toContain('Billing + Prices');
+    expect(compiled.textContent).toContain('Customer Portal');
+    expect(compiled.textContent).toContain('Sin checkout real en esta tanda');
+  });
+
+  it('records local monetization interest without profile or payment data', () => {
+    component.registerMonetizationInterest('plus-household');
+
+    const rawEvents = window.localStorage.getItem(
+      'pantrylist.monetizationDiscoveryEvents.v1',
+    );
+    const events = JSON.parse(rawEvents ?? '[]');
+
+    expect(component.monetizationStatus).toContain('Stripe');
+    expect(events).toEqual([
+      jasmine.objectContaining({
+        planId: 'plus-household',
+        provider: 'stripe',
+        eventType: 'checkout_interest',
+      }),
+    ]);
+    expect(events[0].email).toBeUndefined();
+    expect(events[0].stripeCustomerId).toBeUndefined();
+    expect(events[0].paymentMethod).toBeUndefined();
+  });
+
+  it('clears local monetization discovery events', () => {
+    component.registerMonetizationInterest('ai-capture-credits');
+
+    expect(component.monetizationEvents.length).toBe(1);
+
+    component.clearMonetizationDiscoveryEvents();
+
+    expect(component.monetizationEvents.length).toBe(0);
+    expect(
+      window.localStorage.getItem('pantrylist.monetizationDiscoveryEvents.v1'),
+    ).toBeNull();
   });
 
   it('loads the household workspace and renders collaboration controls', () => {
