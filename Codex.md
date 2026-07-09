@@ -86,3 +86,12 @@
 - Route53 still has `pantrylist.lynxpardelle.com` aliasing CloudFront `d1p3db27kbt6gj.cloudfront.net` and `origin.pantrylist.lynxpardelle.com` pointing to EC2 IP `32.195.120.158`.
 - Old CloudFront distribution `E244X3QM2RVQYC` is enabled with alias `pantrylist.lynxpardelle.com` and origin `origin.pantrylist.lynxpardelle.com`.
 - Old stacks still present: `pantrylist-prod-app`, `pantrylist-prod-cognito`, and `pantrylist-dev-cognito`. `pantrylist-prod-app` DynamoDB tables have `DeletionPolicy=Retain` and `UpdateReplacePolicy=Retain`.
+
+## 2026-07-09 12:36 CT - PantryList EC2 Path Decommissioned
+
+- Deleted old CloudFormation stacks `pantrylist-prod-app`, `pantrylist-prod-cognito`, and `pantrylist-dev-cognito`; only `despensalista-prod-cognito` and `despensalista-prod-serverless-backend` remain active for this app.
+- Removed all Route53 records containing `pantrylist`; `pantrylist.lynxpardelle.com` no longer resolves. Route53 now only has `despensalista.lynxpardelle.com` plus its ACM validation CNAME.
+- Old CloudFront distribution `E244X3QM2RVQYC` is gone from `list-distributions`; active Despensa Lista distribution remains `EWXF7S0KL4WVN`.
+- On EC2 `i-061f471ff5edea8a9`, stopped and removed compose containers `compose-compress-back-end-port-hiewlq-frontend-1` and `compose-compress-back-end-port-hiewlq-backend-1`; removed PantryList Traefik dynamic route files; moved old compose/Traefik files to `/etc/dokploy/_decommissioned/despensalista-20260709T183617Z`.
+- Retained old DynamoDB tables `pantrylist-prod-*` still exist outside CloudFormation because the deleted stack had `Retain`; delete them separately only if data destruction is explicitly approved.
+- Current Cognito user pool `us-east-1_BmNImLALI` supports only `COGNITO`; `/api/auth/cognito/providers` returns `{"providers":["COGNITO"]}`. To restore Google/Facebook, configure the external apps with redirect `https://despensalista-prod-765932874577.auth.us-east-1.amazoncognito.com/oauth2/idpresponse`, create or reuse Secrets Manager client-secret entries, and redeploy `despensalista-prod-cognito` with `googleClientId`, `googleClientSecretName`, `facebookClientId`, and `facebookClientSecretName`.
