@@ -122,3 +122,11 @@
 - Deleted Cognito identity provider `Facebook` from user pool `us-east-1_BmNImLALI` and deleted SSM SecureString parameter `/despensalista/prod/facebook-client-secret`. Keep `/despensalista/prod/google-client-secret`.
 - Verified AWS state: Cognito identity providers list only `Google`, app client `7qr67hkrhus4b0bsp62e6rhmej` supports `COGNITO` and `Google`, and `/api/auth/cognito/providers` returns `{"providers":["COGNITO","Google"]}`.
 - Verified public login page shows `Entrar con correo en Cognito` and `Entrar con Google`, with no `Entrar con Facebook`.
+
+## 2026-07-09 17:53 CT - Serverless Migration Status
+
+- Production cutover to serverless is complete for Despensa Lista: active CloudFormation stacks are `despensalista-prod-cognito` and `despensalista-prod-serverless-backend`; CloudFront `EWXF7S0KL4WVN` has only API Gateway `aoltmu74g9.execute-api.us-east-1.amazonaws.com` and S3 `despensalista-prod-serverless-ba-webbucket12880f5b-wnf5pq5b9mhs.s3.us-east-1.amazonaws.com` as origins.
+- Route53 records containing the app name only include `despensalista.lynxpardelle.com` A/AAAA aliases and the ACM validation CNAME; `pantrylist.lynxpardelle.com` does not resolve in the current check.
+- DynamoDB tables for this app are only `despensalista-prod-users`, `despensalista-prod-products`, `despensalista-prod-product-types`, and `despensalista-prod-inventory-lots`; no `pantrylist-*` tables were returned.
+- Current backend architecture is serverless but not split into multiple domain microservices: API Gateway routes `ANY /` and `ANY /{proxy+}` both target the same integration, and the app Lambda is `despensalista-prod-backend-api`.
+- Formal remaining validation before calling the migration fully closed is an authenticated CRUD smoke on `/pantry` from a logged-in browser session; unauthenticated health/provider checks are green.
