@@ -74,3 +74,8 @@
 - `/healthz`, `/api/healthz`, `/login`, `/pantry`, and `/index.html` returned HTTP 200 after adding the static `index.html` post-build copy for Angular's `index.csr.html` output.
 - AWS stack tags were corrected to `Project=despensalista` and `Stage=prod`.
 - Security validation after the final deploy: backend `npm audit --omit=dev --audit-level=moderate` returned `0` vulnerabilities; frontend runtime audit returned `0` vulnerabilities. Full frontend audit still has the known dev-only `uuid <11.1.1` path through `webpack-dev-server`/`sockjs` with no fix available.
+
+## 2026-07-09 12:22 CT - GitHub Repository Renamed
+
+- GitHub repository was renamed from `LynxPardelle/PantryList` to `LynxPardelle/despensalista`; local `origin` now points to `https://github.com/LynxPardelle/despensalista.git`.
+- Historical Dokploy reports may still mention `LynxPardelle/PantryList`; treat those as evidence from the old EC2/Dokploy era, not current repo identity.
