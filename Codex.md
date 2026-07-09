@@ -79,3 +79,10 @@
 
 - GitHub repository was renamed from `LynxPardelle/PantryList` to `LynxPardelle/despensalista`; local `origin` now points to `https://github.com/LynxPardelle/despensalista.git`.
 - Historical Dokploy reports may still mention `LynxPardelle/PantryList`; treat those as evidence from the old EC2/Dokploy era, not current repo identity.
+
+## 2026-07-09 12:22 CT - Remaining PantryList EC2 Decommission Scope
+
+- Old PantryList EC2 path is still live: `https://pantrylist.lynxpardelle.com/healthz` returns `{"status":"ok","service":"pantrylist-frontend"}` and `/api/healthz` returns `{"status":"ok","service":"pantrylist-backend"}`.
+- Route53 still has `pantrylist.lynxpardelle.com` aliasing CloudFront `d1p3db27kbt6gj.cloudfront.net` and `origin.pantrylist.lynxpardelle.com` pointing to EC2 IP `32.195.120.158`.
+- Old CloudFront distribution `E244X3QM2RVQYC` is enabled with alias `pantrylist.lynxpardelle.com` and origin `origin.pantrylist.lynxpardelle.com`.
+- Old stacks still present: `pantrylist-prod-app`, `pantrylist-prod-cognito`, and `pantrylist-dev-cognito`. `pantrylist-prod-app` DynamoDB tables have `DeletionPolicy=Retain` and `UpdateReplacePolicy=Retain`.
