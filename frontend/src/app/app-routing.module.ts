@@ -36,6 +36,13 @@ const routes: Routes = [
       ).then((module) => module.SharedShoppingListPageComponent),
   },
   {
+    path: 'privacidad',
+    loadComponent: () =>
+      import('./features/legal/privacy-page.component').then(
+        (module) => module.PrivacyPageComponent,
+      ),
+  },
+  {
     path: 'pantry',
     loadChildren: () =>
       import('./features/pantry/pantry.module').then(

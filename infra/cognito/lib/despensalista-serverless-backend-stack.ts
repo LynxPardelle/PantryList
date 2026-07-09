@@ -371,6 +371,11 @@ function handler(event) {
     };
   }
 
+  if (uri === '/privacidad' || uri === '/privacidad/') {
+    request.uri = '/privacidad/index.html';
+    return request;
+  }
+
   if (uri === '/api' || uri.indexOf('/api/') === 0 || uri.indexOf('.') !== -1) {
     return request;
   }
