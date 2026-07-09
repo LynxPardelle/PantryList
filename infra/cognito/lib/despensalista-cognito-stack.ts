@@ -4,12 +4,6 @@ import { Construct } from 'constructs';
 
 type ContextValue = string | undefined;
 
-interface SocialProviderConfig {
-  enabled: boolean;
-  clientId: string;
-  clientSecretName: string;
-}
-
 export class DespensaListaCognitoStack extends cdk.Stack {
   readonly allowedProviders: string[];
   readonly userPoolClientId: string;
@@ -42,7 +36,6 @@ export class DespensaListaCognitoStack extends cdk.Stack {
     );
     const mfaConfiguration = this.readMfaConfiguration();
     const supportedIdentityProviders = ['COGNITO'];
-    const identityProviderDependencies: cdk.CfnResource[] = [];
 
     const userPool = new cognito.CfnUserPool(this, 'UserPool', {
       userPoolName: `${projectName}-${stage}-users`,
@@ -114,19 +107,9 @@ export class DespensaListaCognitoStack extends cdk.Stack {
       },
     );
 
-    const googleProvider = this.createGoogleProviderIfConfigured(userPool.ref);
-    if (googleProvider) {
-      supportedIdentityProviders.push('Google');
-      identityProviderDependencies.push(googleProvider);
-    }
-
-    const facebookProvider = this.createFacebookProviderIfConfigured(
-      userPool.ref,
-    );
-    if (facebookProvider) {
-      supportedIdentityProviders.push('Facebook');
-      identityProviderDependencies.push(facebookProvider);
-    }
+    this.readExternalSocialProviders().forEach((provider) => {
+      supportedIdentityProviders.push(provider);
+    });
 
     const userPoolClient = new cognito.CfnUserPoolClient(
       this,
@@ -154,10 +137,6 @@ export class DespensaListaCognitoStack extends cdk.Stack {
         },
       },
     );
-
-    identityProviderDependencies.forEach((dependency) => {
-      userPoolClient.addDependency(dependency);
-    });
 
     const managedLoginBranding = new cognito.CfnManagedLoginBranding(
       this,
@@ -199,92 +178,6 @@ export class DespensaListaCognitoStack extends cdk.Stack {
     });
 
     userPoolClient.addDependency(userPoolDomain);
-  }
-
-  private createGoogleProviderIfConfigured(
-    userPoolId: string,
-  ): cognito.CfnUserPoolIdentityProvider | undefined {
-    const config = this.readSocialProviderConfig(
-      'enableGoogle',
-      'googleClientId',
-      'googleClientSecretName',
-    );
-
-    if (!config.enabled) {
-      return undefined;
-    }
-
-    return new cognito.CfnUserPoolIdentityProvider(this, 'GoogleProvider', {
-      userPoolId,
-      providerName: 'Google',
-      providerType: 'Google',
-      providerDetails: {
-        client_id: config.clientId,
-        client_secret: cdk.SecretValue.secretsManager(
-          config.clientSecretName,
-        ).unsafeUnwrap(),
-        authorize_scopes: 'email profile openid',
-      },
-      attributeMapping: {
-        email: 'email',
-        name: 'name',
-        preferred_username: 'email',
-      },
-    });
-  }
-
-  private createFacebookProviderIfConfigured(
-    userPoolId: string,
-  ): cognito.CfnUserPoolIdentityProvider | undefined {
-    const config = this.readSocialProviderConfig(
-      'enableFacebook',
-      'facebookClientId',
-      'facebookClientSecretName',
-    );
-
-    if (!config.enabled) {
-      return undefined;
-    }
-
-    return new cognito.CfnUserPoolIdentityProvider(this, 'FacebookProvider', {
-      userPoolId,
-      providerName: 'Facebook',
-      providerType: 'Facebook',
-      providerDetails: {
-        client_id: config.clientId,
-        client_secret: cdk.SecretValue.secretsManager(
-          config.clientSecretName,
-        ).unsafeUnwrap(),
-        authorize_scopes: 'public_profile, email',
-        api_version: this.readContext('facebookApiVersion', 'v17.0'),
-      },
-      attributeMapping: {
-        email: 'email',
-        name: 'name',
-      },
-    });
-  }
-
-  private readSocialProviderConfig(
-    enabledKey: string,
-    clientIdKey: string,
-    clientSecretNameKey: string,
-  ): SocialProviderConfig {
-    const enabled = this.readBooleanContext(enabledKey, false);
-    const clientId = this.readOptionalContext(clientIdKey);
-    const clientSecretName = this.readOptionalContext(clientSecretNameKey);
-
-    if (enabled && (!clientId || !clientSecretName)) {
-      throw new Error(
-        `${enabledKey}=true requires ${clientIdKey} and ${clientSecretNameKey}`,
-      );
-    }
-
-    return {
-      enabled,
-      clientId: clientId ?? '',
-      clientSecretName: clientSecretName ?? '',
-    };
   }
 
   private buildCallbackUrls(
@@ -358,6 +251,14 @@ export class DespensaListaCognitoStack extends cdk.Stack {
       .split(',')
       .map((entry) => entry.trim())
       .filter(Boolean);
+  }
+
+  private readExternalSocialProviders(): string[] {
+    const allowed = new Set(['Google', 'Facebook']);
+
+    return this.readCsvContext('externallyManagedSocialProviders').filter(
+      (provider) => allowed.has(provider),
+    );
   }
 
   private resolveRemovalPolicy(): cdk.RemovalPolicy {

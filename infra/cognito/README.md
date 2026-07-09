@@ -7,8 +7,8 @@ This CDK app creates the AWS Cognito side of Despensa Lista authentication:
 - OAuth app client with Authorization Code flow.
 - Local callback/logout URLs for `http://localhost:48673`.
 - Optional Dokploy HTTPS callback/logout URLs.
-- Optional Google and Facebook social IdPs that read provider secrets from AWS
-  Secrets Manager dynamic references.
+- Optional Google and Facebook social login, with client secrets stored in SSM
+  SecureString parameters and Cognito IdPs updated by helper script.
 
 When `includeServerlessBackend=true`, it also creates the staged Lambda/API Gateway
 backend using the existing DynamoDB repositories and Cognito stack.
@@ -29,8 +29,7 @@ No Google/Facebook client secret belongs in this repository.
 
 The application code already expects Cognito Hosted UI redirects, Cognito token
 verification, and HttpOnly app cookies. CDK keeps the User Pool, app client,
-domain, callbacks, and social IdPs reproducible without configuring them by
-hand in the console every time.
+domain, callbacks, and supported-provider list reproducible.
 
 ## Prerequisites
 
@@ -70,33 +69,35 @@ https://despensalista-dev-alec.auth.us-east-1.amazoncognito.com
 
 ## Store Provider Secrets
 
-Create provider secrets in AWS Secrets Manager before deploying with social
-providers enabled:
+Create provider secrets in SSM Parameter Store SecureString parameters:
 
 ```powershell
-aws secretsmanager create-secret `
+aws ssm put-parameter `
   --name /despensalista/dev/google-client-secret `
-  --secret-string "<google-client-secret>"
+  --type SecureString `
+  --value "<google-client-secret>"
 
-aws secretsmanager create-secret `
+aws ssm put-parameter `
   --name /despensalista/dev/facebook-client-secret `
-  --secret-string "<facebook-client-secret>"
+  --type SecureString `
+  --value "<facebook-client-secret>"
 ```
 
-If a secret already exists, update it with:
+If a parameter already exists, update it with:
 
 ```powershell
-aws secretsmanager put-secret-value `
-  --secret-id /despensalista/dev/google-client-secret `
-  --secret-string "<new-google-client-secret>"
+aws ssm put-parameter `
+  --name /despensalista/dev/google-client-secret `
+  --type SecureString `
+  --value "<new-google-client-secret>" `
+  --overwrite
 ```
 
 Prefer entering real secret values outside shell history when possible, for
 example through the AWS Console or an approved secret-management workflow.
 
-You can also use the bundled helper. It prompts for secrets securely, writes
-them to AWS Secrets Manager, and can write a local deploy script with non-secret
-provider IDs and secret names:
+You can also use the bundled helper. It prompts for secrets securely and writes
+them to SSM SecureString parameters:
 
 ```powershell
 .\scripts\Set-SocialProviderSecrets.ps1 `
@@ -108,7 +109,31 @@ provider IDs and secret names:
 ```
 
 `Deploy-SocialProviders.local.ps1` is ignored by git. It can contain provider
-client IDs and secret names, but it must never contain provider client secrets.
+names and parameter names, but it must never contain provider client secrets.
+
+## Configure Cognito Social Providers From SSM
+
+Cognito social IdP `client_secret` values cannot be sourced from SSM
+SecureString dynamic references in CloudFormation. Deploy the Cognito pool and
+client first, then upsert the social IdPs from SSM:
+
+```powershell
+.\scripts\Set-CognitoSocialProvidersFromSsm.ps1 `
+  -UserPoolId <user-pool-id> `
+  -UserPoolClientId <user-pool-client-id> `
+  -GoogleClientId <google-oauth-client-id> `
+  -FacebookClientId <facebook-app-id> `
+  -Region us-east-1
+```
+
+Then deploy CDK with:
+
+```powershell
+--context externallyManagedSocialProviders=Google,Facebook
+```
+
+This keeps the Cognito app client and backend Lambda environment aligned with
+the externally managed IdPs without storing provider secrets in CloudFormation.
 
 ## Install And Validate
 
@@ -125,12 +150,7 @@ Validate the social-provider template shape without real secrets:
 npx cdk synth `
   --context domainPrefix=despensalista-dev-example `
   --context productionFrontendBaseUrl=https://despensalista.example.com `
-  --context enableGoogle=true `
-  --context googleClientId=google-client-id.example.apps.googleusercontent.com `
-  --context googleClientSecretName=/despensalista/dev/google-client-secret `
-  --context enableFacebook=true `
-  --context facebookClientId=facebook-app-id-example `
-  --context facebookClientSecretName=/despensalista/dev/facebook-client-secret
+  --context externallyManagedSocialProviders=Google,Facebook
 ```
 
 ## Deploy: Local Cognito Only
@@ -145,7 +165,7 @@ npx cdk deploy `
   --context domainPrefix=despensalista-dev-alec
 ```
 
-## Deploy: Google, Facebook, Local, And Dokploy
+## Deploy: Google, Facebook, And Local Callback URLs
 
 ```powershell
 npx cdk deploy `
@@ -153,66 +173,38 @@ npx cdk deploy `
   --context awsRegion=us-east-1 `
   --context domainPrefix=despensalista-dev-alec `
   --context productionFrontendBaseUrl=https://despensalista.example.com `
-  --context enableGoogle=true `
-  --context googleClientId=<google-oauth-client-id> `
-  --context googleClientSecretName=/despensalista/dev/google-client-secret `
-  --context enableFacebook=true `
-  --context facebookClientId=<facebook-app-id> `
-  --context facebookClientSecretName=/despensalista/dev/facebook-client-secret
+  --context externallyManagedSocialProviders=Google,Facebook
 ```
 
 Use `removalPolicy=retain` by default. Use `removalPolicy=destroy` only for
 throwaway environments.
 
-## Deploy: Production AWS App Support
+## Deploy: Production Serverless App
 
-This creates production Cognito plus the production support stack for
+This creates production Cognito plus the serverless production stack for
 `https://despensalista.lynxpardelle.com`:
 
 ```powershell
-$env:DESPENSALISTA_ORIGIN_VERIFY_HEADER_VALUE = aws ssm get-parameter `
-  --region us-east-1 `
-  --name "/despensalista/prod/cloudfront-origin-verify-header" `
-  --with-decryption `
-  --query "Parameter.Value" `
-  --output text
-
-try {
-  npx cdk deploy despensalista-prod-cognito despensalista-prod-app `
-    --require-approval never `
-    --context stage=prod `
-    --context awsRegion=us-east-1 `
-    --context domainPrefix=despensalista-prod-765932874577 `
-    --context productionFrontendBaseUrl=https://despensalista.lynxpardelle.com `
-    --context includeProductionInfra=true `
-    --context appDomainName=despensalista.lynxpardelle.com `
-    --context hostedZoneId=Z05088763QG63CC5SE7PN `
-    --context hostedZoneName=lynxpardelle.com `
-    --context originDomainName=origin.despensalista.lynxpardelle.com `
-    --context originRecordName=origin.despensalista.lynxpardelle.com `
-    --context originTargetIp=54.198.41.242 `
-    --context originProtocolPolicy=https-only `
-    --context enableIpv6=false `
-    --context originVerifyHeaderName=X-DespensaLista-Origin-Verify `
-    --context originVerifyHeaderParameterName=/despensalista/prod/cloudfront-origin-verify-header `
-    --context ec2RoleName=EC2TraefikRoute53DNS01Role `
-    --context deletionProtection=true `
-    --context enableGoogle=true `
-    --context googleClientId=<google-oauth-client-id> `
-    --context googleClientSecretName=/despensalista/prod/google-client-secret `
-    --context enableFacebook=true `
-    --context facebookClientId=<facebook-app-id> `
-    --context facebookClientSecretName=/despensalista/prod/facebook-client-secret
-} finally {
-  Remove-Item Env:\DESPENSALISTA_ORIGIN_VERIFY_HEADER_VALUE -ErrorAction SilentlyContinue
-}
+npx cdk deploy despensalista-prod-cognito despensalista-prod-serverless-backend `
+  --require-approval never `
+  --context projectName=despensalista `
+  --context stage=prod `
+  --context awsRegion=us-east-1 `
+  --context includeServerlessBackend=true `
+  --context removalPolicy=retain `
+  --context deletionProtection=true `
+  --context domainPrefix=despensalista-prod-765932874577 `
+  --context productionFrontendBaseUrl=https://despensalista.lynxpardelle.com `
+  --context serverlessFrontendBaseUrl=https://despensalista.lynxpardelle.com `
+  --context appDomainName=despensalista.lynxpardelle.com `
+  --context hostedZoneId=Z05088763QG63CC5SE7PN `
+  --context hostedZoneName=lynxpardelle.com `
+  --context externallyManagedSocialProviders=Google,Facebook
 ```
 
-Do not put OAuth client secrets in command-line context. Store them in Secrets
-Manager and reference only the secret names.
-Do not put the CloudFront origin verification value in command-line context.
-Load it from SSM SecureString into `DESPENSALISTA_ORIGIN_VERIFY_HEADER_VALUE` for
-the deploy process, then clear that environment variable.
+Do not put OAuth client secrets in command-line context. Store them in SSM
+SecureString parameters and pass only non-secret provider IDs to
+`Set-CognitoSocialProvidersFromSsm.ps1`.
 
 ## Apply Outputs To Despensa Lista
 

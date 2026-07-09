@@ -96,4 +96,5 @@ jobs:
             --context domainPrefix="$COGNITO_DOMAIN_PREFIX" \
             --context appDomainName="$APP_DOMAIN_NAME" \
             --context productionFrontendBaseUrl="$FRONTEND_BASE_URL" \
-            --context serverlessFrontendBaseUrl="$FRONTEND_BASE_URL"
+            --context serverlessFrontendBaseUrl="$FRONTEND_BASE_URL" \
+            --context externallyManagedSocialProviders=Google,Facebook

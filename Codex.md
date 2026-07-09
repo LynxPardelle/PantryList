@@ -45,7 +45,7 @@
 - `despensalista-prod-app` was redeployed with `OriginVerifyHeaderParameterName=/despensalista/prod/cloudfront-origin-verify-header`; EC2 role now has scoped `ssm:GetParameter` for that parameter.
 - Remote Traefik route was updated from the same SSM parameter. Public checks returned `200` for `/healthz`, `/api/healthz`, `/login/`, and `/api/auth/cognito/providers`; direct origin without the header returned `404`.
 - Old Secrets Manager secret `/despensalista/prod/cloudfront-origin-verify-header` was scheduled for deletion with a 7-day recovery window.
-- User decision after migration: leave Google/Facebook Cognito provider secrets in Secrets Manager for now; do not force SSM migration unless explicitly reopened.
+- Superseded at 2026-07-09 13:35 CT: Google/Facebook Cognito provider secrets were moved from Secrets Manager to SSM SecureString parameters.
 
 ## 2026-06-09 CT - Dokploy Disk-Full Recovery
 
@@ -93,5 +93,16 @@
 - Removed all Route53 records containing `pantrylist`; `pantrylist.lynxpardelle.com` no longer resolves. Route53 now only has `despensalista.lynxpardelle.com` plus its ACM validation CNAME.
 - Old CloudFront distribution `E244X3QM2RVQYC` is gone from `list-distributions`; active Despensa Lista distribution remains `EWXF7S0KL4WVN`.
 - On EC2 `i-061f471ff5edea8a9`, stopped and removed compose containers `compose-compress-back-end-port-hiewlq-frontend-1` and `compose-compress-back-end-port-hiewlq-backend-1`; removed PantryList Traefik dynamic route files; moved old compose/Traefik files to `/etc/dokploy/_decommissioned/despensalista-20260709T183617Z`.
-- Retained old DynamoDB tables `pantrylist-prod-*` still exist outside CloudFormation because the deleted stack had `Retain`; delete them separately only if data destruction is explicitly approved.
-- Current Cognito user pool `us-east-1_BmNImLALI` supports only `COGNITO`; `/api/auth/cognito/providers` returns `{"providers":["COGNITO"]}`. To restore Google/Facebook, configure the external apps with redirect `https://despensalista-prod-765932874577.auth.us-east-1.amazoncognito.com/oauth2/idpresponse`, create or reuse Secrets Manager client-secret entries, and redeploy `despensalista-prod-cognito` with `googleClientId`, `googleClientSecretName`, `facebookClientId`, and `facebookClientSecretName`.
+- Superseded at 2026-07-09 13:35 CT: old retained DynamoDB tables `pantrylist-prod-*` were deleted after explicit user approval.
+- Superseded at 2026-07-09 13:35 CT: Cognito social providers were restored with SSM SecureString parameters and external IdP upsert script, not Secrets Manager.
+
+## 2026-07-09 13:35 CT - Social Login SSM Migration And Legacy Data Deletion
+
+- User explicitly approved destroying legacy PantryList data. Deleted and waited for removal of `pantrylist-prod-users`, `pantrylist-prod-products`, `pantrylist-prod-product-types`, and `pantrylist-prod-inventory-lots`; only `despensalista-prod-*` DynamoDB tables remain for this app.
+- Social provider client secrets moved from old Secrets Manager `/pantrylist/*` names into SSM SecureString parameters `/despensalista/prod/google-client-secret` and `/despensalista/prod/facebook-client-secret`; secret values were not printed.
+- AWS CloudFormation rejected direct SSM SecureString dynamic references for Cognito IdP `ProviderDetails.client_secret` with: `SSM Secure reference is not supported in: [AWS::Cognito::UserPoolIdentityProvider/Properties/ProviderDetails/client_secret,AWS::Cognito::UserPoolIdentityProvider/Properties/ProviderDetails/client_secret]`.
+- Current pattern: keep Cognito Google/Facebook IdPs externally managed by `infra/cognito/scripts/Set-CognitoSocialProvidersFromSsm.ps1`, then deploy CDK with `externallyManagedSocialProviders=Google,Facebook` so the user pool client and backend Lambda env stay aligned without Secrets Manager.
+- Production Cognito `us-east-1_BmNImLALI` now has identity providers `Facebook` and `Google`; app client `7qr67hkrhus4b0bsp62e6rhmej` supports `COGNITO`, `Facebook`, and `Google`; `/api/auth/cognito/providers` returns `{"providers":["COGNITO","Google","Facebook"]}`.
+- Old Secrets Manager entries `/pantrylist/dev/google-client-secret`, `/pantrylist/dev/facebook-client-secret`, `/pantrylist/prod/google-client-secret`, and `/pantrylist/prod/facebook-client-secret` were force-deleted without recovery. A follow-up active `list-secrets` query for `pantrylist` and Despensa Lista social secrets returned `[]`.
+- Browser audit of `https://despensalista.lynxpardelle.com/login?redirectTo=%2Fpantry` showed title `Despensa Lista`, visible buttons for Cognito, Google, and Facebook, no console warnings/errors, no visible `PantryList` text, and no suspicious PantryList/EC2/Dokploy resource URLs. CloudFront origins remain only API Gateway `aoltmu74g9.execute-api.us-east-1.amazonaws.com` and S3 `despensalista-prod-serverless-ba-webbucket12880f5b-wnf5pq5b9mhs.s3.us-east-1.amazonaws.com`.
+- Google click reaches Google but is blocked with `Error 400: redirect_uri_mismatch` until Google Cloud Console authorizes `https://despensalista-prod-765932874577.auth.us-east-1.amazoncognito.com/oauth2/idpresponse` for client ID `830495050505-er7ne3ib3m48rrkjv9n3cj5r9dd5p164.apps.googleusercontent.com`. Facebook click reaches Facebook login using app ID `1663554728118496` with the same Cognito redirect URI.
