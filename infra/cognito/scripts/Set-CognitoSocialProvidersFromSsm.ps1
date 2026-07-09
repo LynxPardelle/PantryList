@@ -6,8 +6,7 @@ param(
   [Parameter(Mandatory = $true)]
   [string]$GoogleClientId,
   [string]$GoogleClientSecretParameterName = "/despensalista/prod/google-client-secret",
-  [Parameter(Mandatory = $true)]
-  [string]$FacebookClientId,
+  [string]$FacebookClientId = "",
   [string]$FacebookClientSecretParameterName = "/despensalista/prod/facebook-client-secret",
   [string]$FacebookApiVersion = "v17.0",
   [string]$Region = "us-east-1",
@@ -95,13 +94,18 @@ function Upsert-FacebookProvider {
 }
 
 Upsert-GoogleProvider
-Upsert-FacebookProvider
+$supportedIdentityProviders = @("COGNITO", "Google")
+
+if ($FacebookClientId.Trim().Length -gt 0) {
+  Upsert-FacebookProvider
+  $supportedIdentityProviders += "Facebook"
+}
 
 aws cognito-idp update-user-pool-client `
   --user-pool-id $UserPoolId `
   --client-id $UserPoolClientId `
-  --supported-identity-providers COGNITO Google Facebook `
+  --supported-identity-providers $supportedIdentityProviders `
   --region $Region `
   --profile $Profile *> $null
 
-Write-Host "Configured Google and Facebook providers for $UserPoolId from SSM SecureString parameters."
+Write-Host "Configured $($supportedIdentityProviders -join ', ') providers for $UserPoolId from SSM SecureString parameters."

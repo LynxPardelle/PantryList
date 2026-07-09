@@ -122,14 +122,16 @@ client first, then upsert the social IdPs from SSM:
   -UserPoolId <user-pool-id> `
   -UserPoolClientId <user-pool-client-id> `
   -GoogleClientId <google-oauth-client-id> `
-  -FacebookClientId <facebook-app-id> `
   -Region us-east-1
 ```
+
+Pass `-FacebookClientId <facebook-app-id>` only after the Meta app can be made
+active.
 
 Then deploy CDK with:
 
 ```powershell
---context externallyManagedSocialProviders=Google,Facebook
+--context externallyManagedSocialProviders=Google
 ```
 
 This keeps the Cognito app client and backend Lambda environment aligned with
@@ -150,7 +152,7 @@ Validate the social-provider template shape without real secrets:
 npx cdk synth `
   --context domainPrefix=despensalista-dev-example `
   --context productionFrontendBaseUrl=https://despensalista.example.com `
-  --context externallyManagedSocialProviders=Google,Facebook
+  --context externallyManagedSocialProviders=Google
 ```
 
 ## Deploy: Local Cognito Only
@@ -165,7 +167,7 @@ npx cdk deploy `
   --context domainPrefix=despensalista-dev-alec
 ```
 
-## Deploy: Google, Facebook, And Local Callback URLs
+## Deploy: Google And Local Callback URLs
 
 ```powershell
 npx cdk deploy `
@@ -173,7 +175,7 @@ npx cdk deploy `
   --context awsRegion=us-east-1 `
   --context domainPrefix=despensalista-dev-alec `
   --context productionFrontendBaseUrl=https://despensalista.example.com `
-  --context externallyManagedSocialProviders=Google,Facebook
+  --context externallyManagedSocialProviders=Google
 ```
 
 Use `removalPolicy=retain` by default. Use `removalPolicy=destroy` only for
@@ -199,7 +201,7 @@ npx cdk deploy despensalista-prod-cognito despensalista-prod-serverless-backend 
   --context appDomainName=despensalista.lynxpardelle.com `
   --context hostedZoneId=Z05088763QG63CC5SE7PN `
   --context hostedZoneName=lynxpardelle.com `
-  --context externallyManagedSocialProviders=Google,Facebook
+  --context externallyManagedSocialProviders=Google
 ```
 
 Do not put OAuth client secrets in command-line context. Store them in SSM
@@ -227,7 +229,7 @@ COGNITO_CLIENT_SECRET=
 COGNITO_REDIRECT_URI=http://localhost:48673/api/auth/cognito/callback
 COGNITO_LOGOUT_REDIRECT_URI=http://localhost:48673/login
 COGNITO_SCOPES=openid email profile
-COGNITO_ALLOWED_PROVIDERS=COGNITO,Google,Facebook
+COGNITO_ALLOWED_PROVIDERS=COGNITO,Google
 ```
 
 For Dokploy, use:

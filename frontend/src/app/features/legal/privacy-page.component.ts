@@ -45,13 +45,13 @@ import { RouterLink } from '@angular/router';
           </li>
         </ul>
 
-        <h2>Google y Facebook</h2>
+        <h2>Google y proveedores sociales</h2>
         <p>
-          Si eliges iniciar sesion con Google o Facebook, Despensa Lista usa
-          Amazon Cognito para solicitar el acceso basico necesario:
-          identificador de cuenta, correo, nombre y perfil basico segun el
-          proveedor. No publicamos contenido en tus cuentas sociales y no
-          vendemos estos datos.
+          Si eliges iniciar sesion con Google o con otro proveedor social
+          habilitado, Despensa Lista usa Amazon Cognito para solicitar el
+          acceso basico necesario: identificador de cuenta, correo, nombre y
+          perfil basico segun el proveedor. No publicamos contenido en tus
+          cuentas sociales y no vendemos estos datos.
         </p>
 
         <h2>Como usamos los datos</h2>
@@ -65,9 +65,9 @@ import { RouterLink } from '@angular/router';
         <h2>Con quien compartimos datos</h2>
         <p>
           Usamos servicios de AWS para autenticar, almacenar y ejecutar la app.
-          Tambien usamos Google o Facebook solo cuando eliges esos proveedores
-          para iniciar sesion. No vendemos datos personales ni compartimos el
-          contenido de tu despensa con anunciantes.
+          Tambien usamos Google u otro proveedor social solo cuando eliges ese
+          proveedor para iniciar sesion. No vendemos datos personales ni
+          compartimos el contenido de tu despensa con anunciantes.
         </p>
 
         <h2>Retencion y eliminacion de datos</h2>

@@ -114,3 +114,11 @@
 - Google OAuth was rechecked after the user updated Google settings: clicking `Entrar con Google` reached `accounts.google.com` login for client `830495050505-er7ne3ib3m48rrkjv9n3cj5r9dd5p164.apps.googleusercontent.com` with no `redirect_uri_mismatch` and no `Error 400`.
 - Cognito/API still return allowed providers `COGNITO,Google,Facebook`; SSM parameters `/despensalista/prod/google-client-secret` and `/despensalista/prod/facebook-client-secret` still exist as `SecureString`.
 - Avoid running `aws cognito-idp describe-identity-provider` with unmasked provider details in shared logs: Cognito can return provider `client_secret` values. If tool logs are treated as sensitive exposure, rotate both Google and Facebook client secrets and update the SSM parameters before rerunning `Set-CognitoSocialProvidersFromSsm.ps1`.
+
+## 2026-07-09 17:41 CT - Facebook Login Paused
+
+- User decided to continue without Facebook because Meta required business verification and then restricted the account action.
+- Production was redeployed with `externallyManagedSocialProviders=Google`; Cognito stack output is now `AllowedProviders = COGNITO,Google`.
+- Deleted Cognito identity provider `Facebook` from user pool `us-east-1_BmNImLALI` and deleted SSM SecureString parameter `/despensalista/prod/facebook-client-secret`. Keep `/despensalista/prod/google-client-secret`.
+- Verified AWS state: Cognito identity providers list only `Google`, app client `7qr67hkrhus4b0bsp62e6rhmej` supports `COGNITO` and `Google`, and `/api/auth/cognito/providers` returns `{"providers":["COGNITO","Google"]}`.
+- Verified public login page shows `Entrar con correo en Cognito` and `Entrar con Google`, with no `Entrar con Facebook`.
