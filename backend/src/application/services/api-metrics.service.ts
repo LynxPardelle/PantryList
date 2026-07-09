@@ -18,7 +18,7 @@ export interface ApiMetricsRouteSnapshot {
 }
 
 export interface ApiMetricsSnapshot {
-  service: 'pantrylist-backend';
+  service: 'despensalista-backend';
   startedAt: string;
   generatedAt: string;
   uptimeSeconds: number;
@@ -141,7 +141,7 @@ export class ApiMetricsService {
     const alerts = this.buildAlerts(errorRate);
 
     return {
-      service: 'pantrylist-backend',
+      service: 'despensalista-backend',
       startedAt: this.startedAt.toISOString(),
       generatedAt: referenceDate.toISOString(),
       uptimeSeconds: Math.max(

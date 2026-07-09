@@ -71,7 +71,7 @@ export class ProfileController {
   }
 
   @Patch('preferences')
-  @ApiOperation({ summary: 'Actualizar preferencias de PantryList' })
+  @ApiOperation({ summary: 'Actualizar preferencias de Despensa Lista' })
   async updatePreferences(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() dto: UpdateUserPreferencesDto,
@@ -109,7 +109,9 @@ export class ProfileController {
   }
 
   @Delete('account')
-  @ApiOperation({ summary: 'Eliminar cuenta PantryList e identidad Cognito' })
+  @ApiOperation({
+    summary: 'Eliminar cuenta Despensa Lista e identidad Cognito',
+  })
   async deleteAccount(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() dto: DeleteAccountDto,

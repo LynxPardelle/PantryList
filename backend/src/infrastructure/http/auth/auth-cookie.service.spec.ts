@@ -9,7 +9,7 @@ describe('AuthCookieService', () => {
         const values: Record<string, string> = {
           AUTH_COOKIE_SECURE: 'false',
           AUTH_COOKIE_SAME_SITE: 'lax',
-          AUTH_COOKIE_DOMAIN: 'pantrylist.lynxpardelle.com',
+          AUTH_COOKIE_DOMAIN: 'despensalista.lynxpardelle.com',
           COGNITO_AUTH_TRANSACTION_TTL_SECONDS: '900',
         };
 
@@ -34,12 +34,12 @@ describe('AuthCookieService', () => {
     });
 
     expect(reply.setCookie).toHaveBeenCalledWith(
-      'pantrylist_access_token',
+      'despensalista_access_token',
       'access-token',
       expect.objectContaining({ httpOnly: true, path: '/' }),
     );
     expect(reply.setCookie).toHaveBeenCalledWith(
-      'pantrylist_refresh_token',
+      'despensalista_refresh_token',
       'refresh-token',
       expect.objectContaining({ httpOnly: true, path: '/api/auth' }),
     );
@@ -62,15 +62,15 @@ describe('AuthCookieService', () => {
     });
     const request = {
       cookies: {
-        pantrylist_cognito_state: 'state-value',
-        pantrylist_cognito_nonce: 'nonce-value',
-        pantrylist_cognito_code_verifier: 'verifier-value',
-        pantrylist_cognito_redirect_to: '/pantry',
+        despensalista_cognito_state: 'state-value',
+        despensalista_cognito_nonce: 'nonce-value',
+        despensalista_cognito_code_verifier: 'verifier-value',
+        despensalista_cognito_redirect_to: '/pantry',
       },
     } as unknown as FastifyRequest;
 
     expect(reply.setCookie).toHaveBeenCalledWith(
-      'pantrylist_cognito_state',
+      'despensalista_cognito_state',
       'state-value',
       expect.objectContaining({
         httpOnly: true,
@@ -92,26 +92,38 @@ describe('AuthCookieService', () => {
 
     service.clearSessionCookies(reply);
 
-    expect(reply.clearCookie).toHaveBeenCalledWith('pantrylist_access_token', {
-      path: '/',
-    });
-    expect(reply.clearCookie).toHaveBeenCalledWith('pantrylist_access_token', {
-      path: '/',
-      domain: 'pantrylist.lynxpardelle.com',
-    });
-    expect(reply.clearCookie).toHaveBeenCalledWith('pantrylist_refresh_token', {
-      path: '/api/auth',
-    });
-    expect(reply.clearCookie).toHaveBeenCalledWith('pantrylist_refresh_token', {
-      path: '/api/auth',
-      domain: 'pantrylist.lynxpardelle.com',
-    });
+    expect(reply.clearCookie).toHaveBeenCalledWith(
+      'despensalista_access_token',
+      {
+        path: '/',
+      },
+    );
+    expect(reply.clearCookie).toHaveBeenCalledWith(
+      'despensalista_access_token',
+      {
+        path: '/',
+        domain: 'despensalista.lynxpardelle.com',
+      },
+    );
+    expect(reply.clearCookie).toHaveBeenCalledWith(
+      'despensalista_refresh_token',
+      {
+        path: '/api/auth',
+      },
+    );
+    expect(reply.clearCookie).toHaveBeenCalledWith(
+      'despensalista_refresh_token',
+      {
+        path: '/api/auth',
+        domain: 'despensalista.lynxpardelle.com',
+      },
+    );
     expect(reply.clearCookie).toHaveBeenCalledWith('XSRF-TOKEN', {
       path: '/',
     });
     expect(reply.clearCookie).toHaveBeenCalledWith('XSRF-TOKEN', {
       path: '/',
-      domain: 'pantrylist.lynxpardelle.com',
+      domain: 'despensalista.lynxpardelle.com',
     });
   });
 
@@ -121,12 +133,18 @@ describe('AuthCookieService', () => {
 
     service.clearCognitoAuthTransactionCookies(reply);
 
-    expect(reply.clearCookie).toHaveBeenCalledWith('pantrylist_cognito_state', {
-      path: '/api/auth/cognito',
-    });
-    expect(reply.clearCookie).toHaveBeenCalledWith('pantrylist_cognito_state', {
-      path: '/api/auth/cognito',
-      domain: 'pantrylist.lynxpardelle.com',
-    });
+    expect(reply.clearCookie).toHaveBeenCalledWith(
+      'despensalista_cognito_state',
+      {
+        path: '/api/auth/cognito',
+      },
+    );
+    expect(reply.clearCookie).toHaveBeenCalledWith(
+      'despensalista_cognito_state',
+      {
+        path: '/api/auth/cognito',
+        domain: 'despensalista.lynxpardelle.com',
+      },
+    );
   });
 });

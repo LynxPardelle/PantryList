@@ -324,14 +324,14 @@ export class PantryPageComponent implements OnInit {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly changeDetector = inject(ChangeDetectorRef);
   private readonly lotRegistrationTimeoutMs = 15000;
-  private readonly shoppingBudgetStorageKey = 'pantrylist.shoppingBudget';
+  private readonly shoppingBudgetStorageKey = 'despensalista.shoppingBudget';
   private readonly archivedPageSize = ARCHIVED_PAGE_SIZE;
-  private readonly quickCaptureStorageKey = 'pantrylist.quickCaptureDrafts';
-  private readonly shoppingTripStorageKey = 'pantrylist.shoppingTripDraft';
+  private readonly quickCaptureStorageKey = 'despensalista.quickCaptureDrafts';
+  private readonly shoppingTripStorageKey = 'despensalista.shoppingTripDraft';
   private readonly pendingShoppingCheckoutStorageKey =
-    'pantrylist.pendingShoppingCheckouts';
+    'despensalista.pendingShoppingCheckouts';
   private readonly savedShoppingListsStorageKey =
-    'pantrylist.savedShoppingLists';
+    'despensalista.savedShoppingLists';
 
   readonly username$ = this.authFacade.currentUsername$;
   readonly loading$ = this.store.select(selectPantryLoading);
@@ -1681,11 +1681,11 @@ export class PantryPageComponent implements OnInit {
 
   buildShoppingPlanExportText(items: ShoppingPlanItem[]): string {
     if (items.length === 0) {
-      return 'Lista de compras PantryList\nSin compras sugeridas.';
+      return 'Lista de compras Despensa Lista\nSin compras sugeridas.';
     }
 
     const lines = [
-      'Lista de compras PantryList',
+      'Lista de compras Despensa Lista',
       this.getShoppingPlanTotalSummary(items),
       '',
     ];
@@ -1906,7 +1906,7 @@ export class PantryPageComponent implements OnInit {
 
   buildSavedShoppingListExportText(list: SavedShoppingList): string {
     const lines = [
-      `Lista PantryList: ${list.title}`,
+      `Despensa Lista: ${list.title}`,
       list.occasion ? `Ocasión: ${list.occasion}` : '',
       list.shoppingLocation ? `Tienda: ${list.shoppingLocation}` : '',
       '',
@@ -1954,7 +1954,7 @@ export class PantryPageComponent implements OnInit {
     if (shareNavigator.share) {
       try {
         await shareNavigator.share({
-          title: 'Lista PantryList',
+          title: 'Despensa Lista',
           text: exportText,
         });
         this.shoppingExportStatus = 'Lista lista para compartir.';
@@ -2202,7 +2202,7 @@ export class PantryPageComponent implements OnInit {
           const downloadUrl = URL.createObjectURL(blob);
           const anchor = document.createElement('a');
           anchor.href = downloadUrl;
-          anchor.download = `pantrylist-export-${toDateInputValue(
+          anchor.download = `despensalista-export-${toDateInputValue(
             new Date()
           )}.json`;
           anchor.click();
@@ -2726,7 +2726,7 @@ export class PantryPageComponent implements OnInit {
 
     this.downloadTextFile(
       this.buildPantryCsvExport(pantryGroups),
-      `pantrylist-despensa-${toDateInputValue(new Date())}.csv`,
+      `despensalista-despensa-${toDateInputValue(new Date())}.csv`,
       'text/csv;charset=utf-8'
     );
     this.quickCaptureStatus = 'CSV exportado para Excel.';

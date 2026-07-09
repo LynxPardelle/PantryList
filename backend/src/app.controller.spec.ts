@@ -32,21 +32,21 @@ describe('AppController', () => {
     it('should return the backend status payload', () => {
       expect(appController.getRootStatus()).toEqual({
         status: 'ok',
-        service: 'pantrylist-backend',
+        service: 'despensalista-backend',
       });
     });
 
     it('should expose a healthz payload', () => {
       expect(appController.getHealthz()).toEqual({
         status: 'ok',
-        service: 'pantrylist-backend',
+        service: 'despensalista-backend',
       });
     });
 
     it('should expose operational metrics without user data', () => {
       const metrics = appController.getMetrics('metrics-token');
 
-      expect(metrics.service).toBe('pantrylist-backend');
+      expect(metrics.service).toBe('despensalista-backend');
       expect(metrics.totalRequests).toBe(0);
       expect(metrics.routes).toEqual([]);
     });

@@ -18,14 +18,15 @@ export interface CognitoAuthTransactionCookies {
 
 @Injectable()
 export class AuthCookieService {
-  readonly accessCookieName = 'pantrylist_access_token';
-  readonly refreshCookieName = 'pantrylist_refresh_token';
+  readonly accessCookieName = 'despensalista_access_token';
+  readonly refreshCookieName = 'despensalista_refresh_token';
   readonly xsrfCookieName = 'XSRF-TOKEN';
   readonly xsrfHeaderName = 'x-xsrf-token';
-  readonly cognitoStateCookieName = 'pantrylist_cognito_state';
-  readonly cognitoNonceCookieName = 'pantrylist_cognito_nonce';
-  readonly cognitoCodeVerifierCookieName = 'pantrylist_cognito_code_verifier';
-  readonly cognitoRedirectToCookieName = 'pantrylist_cognito_redirect_to';
+  readonly cognitoStateCookieName = 'despensalista_cognito_state';
+  readonly cognitoNonceCookieName = 'despensalista_cognito_nonce';
+  readonly cognitoCodeVerifierCookieName =
+    'despensalista_cognito_code_verifier';
+  readonly cognitoRedirectToCookieName = 'despensalista_cognito_redirect_to';
 
   constructor(private readonly configService: ConfigService) {}
 

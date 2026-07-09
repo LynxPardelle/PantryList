@@ -10,11 +10,16 @@ interface SocialProviderConfig {
   clientSecretName: string;
 }
 
-export class PantryListCognitoStack extends cdk.Stack {
+export class DespensaListaCognitoStack extends cdk.Stack {
+  readonly allowedProviders: string[];
+  readonly userPoolClientId: string;
+  readonly userPoolDomainUrl: string;
+  readonly userPoolId: string;
+
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    const projectName = this.readContext('projectName', 'pantrylist');
+    const projectName = this.readContext('projectName', 'despensalista');
     const stage = this.readContext('stage', 'dev');
     const localFrontendBaseUrl = this.readContext(
       'localFrontendBaseUrl',
@@ -166,6 +171,10 @@ export class PantryListCognitoStack extends cdk.Stack {
     managedLoginBranding.addDependency(userPoolClient);
 
     const userPoolDomainUrl = `https://${domainPrefix}.auth.${cdk.Aws.REGION}.amazoncognito.com`;
+    this.allowedProviders = supportedIdentityProviders;
+    this.userPoolClientId = userPoolClient.ref;
+    this.userPoolDomainUrl = userPoolDomainUrl;
+    this.userPoolId = userPool.ref;
 
     new cdk.CfnOutput(this, 'UserPoolId', {
       value: userPool.ref,

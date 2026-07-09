@@ -562,7 +562,7 @@ describe('PantryPageComponent', () => {
       } as ShoppingPlanItem,
     ]);
 
-    expect(exportText).toContain('Lista de compras PantryList');
+    expect(exportText).toContain('Lista de compras Despensa Lista');
     expect(exportText).toContain('Total estimado: 42.50 moneda local');
     expect(exportText).toContain('Mayoreo:');
     expect(exportText).toContain('Subtotal ruta: 42.50 moneda local');
@@ -576,7 +576,7 @@ describe('PantryPageComponent', () => {
   });
 
   it('saves and copies a server-backed shopping list snapshot by store', async () => {
-    localStorage.removeItem('pantrylist.savedShoppingLists');
+    localStorage.removeItem('despensalista.savedShoppingLists');
     component.savedShoppingListForm.patchValue({
       title: 'Mayoreo semanal',
       occasion: 'Quincena',
@@ -1487,7 +1487,7 @@ describe('PantryPageComponent', () => {
   });
 
   it('queues a selected shopping checkout while offline and syncs it later', () => {
-    localStorage.removeItem('pantrylist.pendingShoppingCheckouts');
+    localStorage.removeItem('despensalista.pendingShoppingCheckouts');
     const item = makeShoppingPlanItem();
 
     component.isOffline = true;
@@ -1502,7 +1502,7 @@ describe('PantryPageComponent', () => {
     expect(component.shoppingModeActive).toBeFalse();
     expect(
       JSON.parse(
-        localStorage.getItem('pantrylist.pendingShoppingCheckouts') ?? '[]',
+        localStorage.getItem('despensalista.pendingShoppingCheckouts') ?? '[]',
       )[0].items[0],
     ).toEqual(
       jasmine.objectContaining({
@@ -1530,7 +1530,7 @@ describe('PantryPageComponent', () => {
     const pendingRequest = new Subject<InventoryLot[]>();
     pantryService.closeShoppingPurchase.and.returnValue(pendingRequest);
     localStorage.setItem(
-      'pantrylist.pendingShoppingCheckouts',
+      'despensalista.pendingShoppingCheckouts',
       JSON.stringify([
         {
           id: 'checkout-1',
@@ -1556,7 +1556,7 @@ describe('PantryPageComponent', () => {
     pendingRequest.complete();
 
     expect(
-      localStorage.getItem('pantrylist.pendingShoppingCheckouts'),
+      localStorage.getItem('despensalista.pendingShoppingCheckouts'),
     ).toBeNull();
   });
 });

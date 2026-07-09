@@ -147,7 +147,9 @@ export class AuthController {
 
   @Get('me')
   @UseGuards(AccessTokenGuard)
-  @ApiOperation({ summary: 'Get the current authenticated PantryList user' })
+  @ApiOperation({
+    summary: 'Get the current authenticated Despensa Lista user',
+  })
   async me(
     @CurrentUser() currentUser: AuthenticatedUser,
   ): Promise<AuthUserResponseDto> {

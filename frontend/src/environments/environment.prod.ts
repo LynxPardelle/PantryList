@@ -1,7 +1,7 @@
 export const environment = {
   production: true,
   apiUrl: '/api',
-  appName: 'PantryList',
+  appName: 'Despensa Lista',
   version: '1.0.0',
   enableDevTools: false,
   enableHydration: true,

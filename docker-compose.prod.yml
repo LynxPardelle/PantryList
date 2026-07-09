@@ -1,4 +1,4 @@
-name: pantrylist-prod
+name: despensalista-prod
 
 services:
   backend:
@@ -10,7 +10,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
-      DATABASE_NAME: ${DATABASE_NAME:-pantrylist}
+      DATABASE_NAME: ${DATABASE_NAME:-despensalista}
       PERSISTENCE_PROVIDER: ${PERSISTENCE_PROVIDER:-dynamodb}
       AWS_REGION: ${AWS_REGION:-us-east-1}
       DYNAMODB_REGION: ${DYNAMODB_REGION:-us-east-1}
@@ -56,7 +56,7 @@ services:
       retries: 5
       start_period: 20s
     networks:
-      - pantrylist-network
+      - despensalista-network
 
   frontend:
     build:
@@ -89,8 +89,8 @@ services:
       retries: 5
       start_period: 20s
     networks:
-      - pantrylist-network
+      - despensalista-network
 
 networks:
-  pantrylist-network:
+  despensalista-network:
     driver: bridge

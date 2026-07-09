@@ -9,7 +9,7 @@
       <p class="eyebrow">Centro de control</p>
       <h1 id="profile-title">Preferencias para operar la casa sin ruido.</h1>
       <p class="lead">
-        Ajusta cu&aacute;ndo PantryList debe llamar tu atenci&oacute;n y c&oacute;mo calcula
+        Ajusta cu&aacute;ndo Despensa Lista debe llamar tu atenci&oacute;n y c&oacute;mo calcula
         caducidad, durabilidad y reposici&oacute;n.
       </p>
     </div>
@@ -48,7 +48,7 @@
       <div class="panel-header">
         <div>
           <p class="panel-kicker">Configuraci&oacute;n</p>
-          <h2>Reglas de PantryList</h2>
+          <h2>Reglas de Despensa Lista</h2>
         </div>
       </div>
 
@@ -117,7 +117,7 @@
 
           <label class="check-field">
             <input type="checkbox" formControlName="showGuidanceTips" />
-            <span>Mostrar ayudas de PantryList</span>
+            <span>Mostrar ayudas de Despensa Lista</span>
           </label>
           <p class="helper-copy">
             Estos mensajes explican como registrar lotes, interpretar compras
@@ -166,7 +166,7 @@
         <p class="panel-kicker">Monetizaci&oacute;n</p>
         <h2>Plan y Stripe</h2>
         <p>
-          PantryList sigue en plan Free. Stripe queda como proveedor elegido
+          Despensa Lista sigue en plan Free. Stripe queda como proveedor elegido
           para pagos web/PWA cuando activemos checkout real.
         </p>
 
@@ -412,7 +412,7 @@
         <h2>Ciclo de vida de datos</h2>
         <ul>
           <li>Exportar datos no crea permisos compartidos.</li>
-          <li>Borrar datos locales elimina tipos base, lotes activos y archivados de PantryList.</li>
+          <li>Borrar datos locales elimina tipos base, lotes activos y archivados de Despensa Lista.</li>
           <li>Borrar cuenta elimina datos locales y solicita borrado de identidad Cognito.</li>
           @if (profile; as lifecycleProfile) {
             <li>{{ retentionPolicyLabel(lifecycleProfile) }}</li>

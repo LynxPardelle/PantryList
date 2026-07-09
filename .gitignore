@@ -18,6 +18,7 @@ infra/cognito/Deploy-SocialProviders.local.ps1
 dist/
 build/
 cdk.out/
+infra/cognito/cdk-outputs*.json
 tmp/
 out-tsc/
 Output/

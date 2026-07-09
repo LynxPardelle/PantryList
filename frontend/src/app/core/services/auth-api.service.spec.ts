@@ -103,7 +103,7 @@ describe('AuthApiService', () => {
 function makeApiUser(): AuthUser {
   return {
     id: 'user-1',
-    email: 'user@pantrylist.local',
+    email: 'user@despensalista.local',
     username: 'user',
     status: 'active',
     createdAt: new Date('2026-04-27T00:00:00.000Z'),

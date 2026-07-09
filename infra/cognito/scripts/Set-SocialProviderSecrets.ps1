@@ -56,7 +56,7 @@ if (-not $Google -and -not $Facebook) {
 }
 
 $context = [ordered]@{
-  projectName = "pantrylist"
+  projectName = "despensalista"
   stage = $Stage
   awsRegion = $Region
   localFrontendBaseUrl = "http://localhost:48673"
@@ -69,7 +69,7 @@ if ($Google) {
   $googleClientId = Read-Host "Google OAuth Client ID"
   $googleSecret = Convert-SecureStringToPlainText `
     (Read-Host "Google OAuth Client Secret" -AsSecureString)
-  $googleSecretName = "/pantrylist/$Stage/google-client-secret"
+  $googleSecretName = "/despensalista/$Stage/google-client-secret"
 
   Upsert-SecretValue `
     -Name $googleSecretName `
@@ -86,7 +86,7 @@ if ($Facebook) {
   $facebookClientId = Read-Host "Facebook App ID"
   $facebookSecret = Convert-SecureStringToPlainText `
     (Read-Host "Facebook App Secret" -AsSecureString)
-  $facebookSecretName = "/pantrylist/$Stage/facebook-client-secret"
+  $facebookSecretName = "/despensalista/$Stage/facebook-client-secret"
 
   Upsert-SecretValue `
     -Name $facebookSecretName `

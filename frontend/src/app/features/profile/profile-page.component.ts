@@ -42,7 +42,7 @@ interface MonetizationDiscoveryEvent {
 }
 
 const MONETIZATION_EVENTS_STORAGE_KEY =
-  'pantrylist.monetizationDiscoveryEvents.v1';
+  'despensalista.monetizationDiscoveryEvents.v1';
 const MONETIZATION_EVENT_LIMIT = 20;
 
 @Component({
@@ -152,7 +152,7 @@ export class ProfilePageComponent implements OnInit {
     'Checkout Sessions para suscripciones.',
     'Products y Prices como fuente de planes.',
     'Customer Portal para cambios, cancelacion y metodo de pago.',
-    'PantryList no guardara datos de tarjeta.',
+    'Despensa Lista no guardara datos de tarjeta.',
   ];
 
   readonly preferencesForm = this.formBuilder.nonNullable.group({
@@ -328,7 +328,7 @@ export class ProfilePageComponent implements OnInit {
           try {
             this.downloadJson(
               exportData,
-              `pantrylist-export-${this.toSafeDateStamp(exportData.exportedAt)}.json`,
+              `despensalista-export-${this.toSafeDateStamp(exportData.exportedAt)}.json`,
             );
             this.exportMessage = 'Export listo.';
           } catch (error) {

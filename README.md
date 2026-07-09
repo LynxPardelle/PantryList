@@ -1,13 +1,13 @@
-# PantryList
+# Despensa Lista
 
-PantryList es un MVP para registrar inventario del hogar por tipo base y por
+Despensa Lista es un MVP para registrar inventario del hogar por tipo base y por
 lote, con foco en caducidades visibles, durabilidad estimada, consumo
 controlado por lote y una ruta de crecimiento razonable para despliegue
 posterior en Dokploy o AWS.
 
 ## Estado actual
 
-- Autenticacion reemplazada por Amazon Cognito Hosted UI: PantryList ya no
+- Autenticacion reemplazada por Amazon Cognito Hosted UI: Despensa Lista ya no
   registra ni valida passwords locales en el flujo activo
 - Perfil local `users` conservado para propiedad de despensa, con
   `User.id = Cognito sub`
@@ -90,7 +90,7 @@ Esto levanta:
 - volumen persistente nombrado
 - `healthcheck`
 - usuario root separado del usuario de aplicacion
-- usuario de aplicacion con permisos `readWrite` solo sobre `pantrylist`
+- usuario de aplicacion con permisos `readWrite` solo sobre `despensalista`
 - `restart: unless-stopped` para los tres servicios
 
 En desarrollo, el navegador debe seguir viendo las llamadas API sobre
@@ -100,8 +100,8 @@ real dentro de Docker en `http://backend:3000`.
 
 Los puertos publicados del host son intencionalmente altos y poco comunes para
 que este stack pueda quedarse arriba sin chocar con otros proyectos. Puedes
-cambiarlos en `.env.docker.local` con `PANTRYLIST_MONGO_HOST_PORT`,
-`PANTRYLIST_BACKEND_HOST_PORT` y `PANTRYLIST_FRONTEND_HOST_PORT`.
+cambiarlos en `.env.docker.local` con `DESPENSALISTA_MONGO_HOST_PORT`,
+`DESPENSALISTA_BACKEND_HOST_PORT` y `DESPENSALISTA_FRONTEND_HOST_PORT`.
 
 El `backend` ya no depende de un `DATABASE_URL` duplicado en el archivo Docker.
 Ahora construye su conexion desde `MONGO_HOST`, `MONGO_PORT`,
@@ -133,7 +133,7 @@ docker compose --env-file .env.docker.local up -d mongodb
 - Si el navegador muestra errores contra `http://localhost:48673/api/...`, no
   cambies el frontend a `http://localhost:39173`. Primero valida el backend, ya
   que `localhost:48673/api` es el contrato correcto en desarrollo.
-- Si `pantrylist-backend` queda en bucle con errores de TypeScript por modulos
+- Si `despensalista-backend` queda en bucle con errores de TypeScript por modulos
   faltantes de Node/Nest, el contenedor tenia
   un `node_modules` de Docker desincronizado. El `docker-compose.yml` de
   desarrollo ahora ejecuta `npm ci --include=dev` al arrancar para reparar ese
@@ -142,7 +142,7 @@ docker compose --env-file .env.docker.local up -d mongodb
   el compose de desarrollo ahora limpia `dist` y `tsconfig.tsbuildinfo` antes
   de entrar en `nest start --watch`, evitando que el contenedor arranque con
   artefactos compilados stale.
-- Si `pantrylist-mongodb` queda `unhealthy` y los logs muestran
+- Si `despensalista-mongodb` queda `unhealthy` y los logs muestran
   `SCRAM authentication failed` o `storedKey mismatch`, tu volumen persistente
   fue inicializado con credenciales de una version anterior del stack. Primero
   intenta la reparacion no destructiva; el script no imprime secretos y actualiza
@@ -160,7 +160,7 @@ docker compose --env-file .env.docker.local up -d mongodb
 
 ```bash
 docker compose --profile app down
-docker volume rm pantrylist_mongodb_data
+docker volume rm despensalista_mongodb_data
 docker compose --env-file .env.docker.local --profile app up -d --build
 ```
 
@@ -171,8 +171,8 @@ Ejemplo de `backend/.env`:
 ```env
 NODE_ENV=development
 PORT=3000
-DATABASE_URL=mongodb://pantrylist_app:change-this-app-password@127.0.0.1:37917/pantrylist?authSource=pantrylist
-DATABASE_NAME=pantrylist
+DATABASE_URL=mongodb://despensalista_app:change-this-app-password@127.0.0.1:37917/despensalista?authSource=despensalista
+DATABASE_NAME=despensalista
 API_PREFIX=api
 CORS_ORIGIN=http://localhost:48673
 HELMET_ENABLED=true
@@ -181,8 +181,8 @@ RATE_LIMIT_MAX=120
 RATE_LIMIT_TIME_WINDOW=1 minute
 RATE_LIMIT_TRUST_PROXY=false
 SWAGGER_ENABLED=true
-SWAGGER_TITLE=PantryList API
-SWAGGER_DESCRIPTION=PantryList API
+SWAGGER_TITLE=Despensa Lista API
+SWAGGER_DESCRIPTION=Despensa Lista API
 SWAGGER_VERSION=1.0.0
 COGNITO_ENABLED=false
 AUTH_ACCESS_COOKIE_TTL_SECONDS=900
@@ -339,7 +339,7 @@ Verificacion de runtime:
   `backend`
 - `Invoke-WebRequest http://localhost:48673/login` devolvio `StatusCode = 200`
 - `docker compose --env-file .env.docker.local --profile app ps` mostro
-  `pantrylist-backend`, `pantrylist-frontend` y `pantrylist-mongodb` en estado
+  `despensalista-backend`, `despensalista-frontend` y `despensalista-mongodb` en estado
   `Up`, con MongoDB marcado como `healthy`
 - `GET /api/inventory-lots/expiring?userId=lot-api-user&days=7` devolvio `2`
   lotes para el grupo de prueba
@@ -363,9 +363,9 @@ Verificacion de runtime:
 
 Evidencia visual existente:
 
-- `C:\Users\lince\Documents\GitHub\Codex\Output\pantrylist-expiration-smoke.png`
-- `C:\Users\lince\Documents\GitHub\Codex\Output\pantrylist-smoke.png`
-- `C:\Users\lince\Documents\GitHub\Codex\Output\pantrylist-durability-smoke.png`
+- `C:\Users\lince\Documents\GitHub\Codex\Output\despensalista-expiration-smoke.png`
+- `C:\Users\lince\Documents\GitHub\Codex\Output\despensalista-smoke.png`
+- `C:\Users\lince\Documents\GitHub\Codex\Output\despensalista-durability-smoke.png`
 
 ## Verificacion 2026-04-29
 

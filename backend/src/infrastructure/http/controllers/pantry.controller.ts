@@ -158,7 +158,7 @@ export class PantryController {
 
   @Get('export')
   @Header('Cache-Control', 'no-store')
-  @ApiOperation({ summary: 'Exportar datos de PantryList del usuario' })
+  @ApiOperation({ summary: 'Exportar datos de Despensa Lista del usuario' })
   async exportData(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Req() request: FastifyRequest,

@@ -161,7 +161,7 @@ const buildMongoUri = (configService: ConfigService): string => {
   const databaseName =
     configService.get<string>('MONGO_APP_DATABASE') ??
     configService.get<string>('DATABASE_NAME') ??
-    'pantrylist';
+    'despensalista';
   const explicitDatabaseUrl = configService.get<string>('DATABASE_URL');
 
   if (configService.get<string>('MONGO_HOST')) {
@@ -197,7 +197,7 @@ const databaseImports = useDynamoDb
           dbName:
             configService.get<string>('MONGO_APP_DATABASE') ??
             configService.get<string>('DATABASE_NAME') ??
-            'pantrylist',
+            'despensalista',
         }),
       }),
       MongooseModule.forFeature([
@@ -282,7 +282,7 @@ const wasteEventRepositoryProvider = useDynamoDb
         DATABASE_URL: Joi.string()
           .uri({ scheme: ['mongodb', 'mongodb+srv'] })
           .optional(),
-        DATABASE_NAME: Joi.string().default('pantrylist'),
+        DATABASE_NAME: Joi.string().default('despensalista'),
         MONGO_HOST: Joi.string().hostname().optional(),
         MONGO_PORT: Joi.number().port().optional(),
         MONGO_APP_DATABASE: Joi.string().optional(),
@@ -428,7 +428,7 @@ const wasteEventRepositoryProvider = useDynamoDb
           .default('lax'),
         AUTH_COOKIE_DOMAIN: Joi.string().allow('').optional(),
         SWAGGER_ENABLED: Joi.string().valid('true', 'false').default('false'),
-        SWAGGER_TITLE: Joi.string().default('PantryList API'),
+        SWAGGER_TITLE: Joi.string().default('Despensa Lista API'),
         SWAGGER_DESCRIPTION: Joi.string().default(
           'API for managing household products and shopping schedules',
         ),

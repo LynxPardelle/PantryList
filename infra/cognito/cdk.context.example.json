@@ -1,17 +1,21 @@
 {
-  "projectName": "pantrylist",
+  "projectName": "despensalista",
   "stage": "dev",
   "awsRegion": "us-east-1",
   "localFrontendBaseUrl": "http://localhost:48673",
-  "productionFrontendBaseUrl": "https://pantrylist.example.com",
-  "domainPrefix": "pantrylist-dev-your-suffix",
+  "productionFrontendBaseUrl": "https://despensalista.example.com",
+  "domainPrefix": "despensalista-dev-your-suffix",
   "removalPolicy": "retain",
   "deletionProtection": "false",
   "enableGoogle": "true",
   "googleClientId": "replace-with-google-oauth-client-id",
-  "googleClientSecretName": "/pantrylist/dev/google-client-secret",
+  "googleClientSecretName": "/despensalista/dev/google-client-secret",
   "enableFacebook": "true",
   "facebookClientId": "replace-with-facebook-app-id",
-  "facebookClientSecretName": "/pantrylist/dev/facebook-client-secret",
-  "facebookApiVersion": "v17.0"
+  "facebookClientSecretName": "/despensalista/dev/facebook-client-secret",
+  "facebookApiVersion": "v17.0",
+  "includeServerlessBackend": "true",
+  "serverlessFrontendBaseUrl": "https://dev.despensalista.example.com",
+  "backendLambdaMemoryMb": "512",
+  "backendLambdaTimeoutSeconds": "15"
 }

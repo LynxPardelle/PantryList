@@ -1,7 +1,7 @@
 services:
   frontend:
     networks:
-      - pantrylist-network
+      - despensalista-network
       - dokploy-network
 
 networks:

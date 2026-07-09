@@ -8,22 +8,22 @@ import * as route53 from "aws-cdk-lib/aws-route53";
 import * as targets from "aws-cdk-lib/aws-route53-targets";
 import { Construct } from "constructs";
 
-interface PantryListTables {
+interface DespensaListaTables {
   users: dynamodb.Table;
   products: dynamodb.Table;
   productTypes: dynamodb.Table;
   inventoryLots: dynamodb.Table;
 }
 
-export class PantryListProductionStack extends cdk.Stack {
+export class DespensaListaProductionStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    const projectName = this.readContext("projectName", "pantrylist");
+    const projectName = this.readContext("projectName", "despensalista");
     const stage = this.readContext("stage", "prod");
     const domainName = this.readContext(
       "appDomainName",
-      "pantrylist.lynxpardelle.com"
+      "despensalista.lynxpardelle.com"
     );
     const hostedZoneId = this.readContext(
       "hostedZoneId",
@@ -218,7 +218,7 @@ export class PantryListProductionStack extends cdk.Stack {
     });
   }
 
-  private createTables(projectName: string, stage: string): PantryListTables {
+  private createTables(projectName: string, stage: string): DespensaListaTables {
     const users = this.createTable(`${projectName}-${stage}-users`, "pk");
     const products = this.createEntityTable(`${projectName}-${stage}-products`);
     const productTypes = this.createEntityTable(
@@ -405,7 +405,7 @@ export class PantryListProductionStack extends cdk.Stack {
   private readOriginVerifyHeaderValue(): string | undefined {
     return (
       this.readOptionalContext("originVerifyHeaderValue") ??
-      process.env.PANTRYLIST_ORIGIN_VERIFY_HEADER_VALUE?.trim()
+      process.env.DESPENSALISTA_ORIGIN_VERIFY_HEADER_VALUE?.trim()
     );
   }
 

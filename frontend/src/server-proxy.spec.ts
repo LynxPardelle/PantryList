@@ -9,7 +9,7 @@ describe('server proxy helpers', () => {
         host: 'public.example',
         'x-xsrf-token': 'xsrf-token',
       },
-      hostname: 'pantrylist.example',
+      hostname: 'despensalista.example',
       protocol: 'https',
     } as never);
 
@@ -17,7 +17,7 @@ describe('server proxy helpers', () => {
     expect(headers.get('host')).toBeNull();
     expect(headers.get('cookie')).toBe('session=abc');
     expect(headers.get('x-xsrf-token')).toBe('xsrf-token');
-    expect(headers.get('x-forwarded-host')).toBe('pantrylist.example');
+    expect(headers.get('x-forwarded-host')).toBe('despensalista.example');
     expect(headers.get('x-forwarded-proto')).toBe('https');
     expect(headers.get('x-request-id')).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,

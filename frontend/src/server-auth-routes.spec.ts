@@ -16,19 +16,19 @@ describe('server auth route protection', () => {
     expect(isProtectedAppRoute('/login')).toBeFalse();
   });
 
-  it('detects non-empty PantryList session cookies', () => {
+  it('detects non-empty DespensaLista session cookies', () => {
     expect(
-      hasAuthSessionCookie('theme=light; pantrylist_access_token=abc; other=1'),
+      hasAuthSessionCookie('theme=light; despensalista_access_token=abc; other=1'),
     ).toBeTrue();
-    expect(hasAuthSessionCookie('pantrylist_refresh_token=refresh')).toBeTrue();
-    expect(hasAuthSessionCookie('pantrylist_access_token=; other=1')).toBeFalse();
+    expect(hasAuthSessionCookie('despensalista_refresh_token=refresh')).toBeTrue();
+    expect(hasAuthSessionCookie('despensalista_access_token=; other=1')).toBeFalse();
     expect(hasAuthSessionCookie(undefined)).toBeFalse();
   });
 
   it('builds a local login redirect target from path and query', () => {
     expect(
       buildLoginRedirectPath(
-        new URL('https://pantrylist.local/pantry?tab=basicos'),
+        new URL('https://despensalista.local/pantry?tab=basicos'),
       ),
     ).toBe('/login?redirectTo=%2Fpantry%3Ftab%3Dbasicos');
   });
@@ -65,7 +65,7 @@ describe('server auth route protection', () => {
       {
         method: 'GET',
         originalUrl: '/profile',
-        headers: { cookie: 'pantrylist_refresh_token=refresh' },
+        headers: { cookie: 'despensalista_refresh_token=refresh' },
       } as never,
       res as never,
       next,

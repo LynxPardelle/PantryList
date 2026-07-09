@@ -6,7 +6,8 @@ describe('CognitoAuthUrlBuilderService', () => {
     ({
       get: jest.fn((key: string) => {
         const values: Record<string, string> = {
-          COGNITO_DOMAIN: 'https://pantrylist.auth.us-east-1.amazoncognito.com',
+          COGNITO_DOMAIN:
+            'https://despensalista.auth.us-east-1.amazoncognito.com',
           COGNITO_CLIENT_ID: 'client-123',
           COGNITO_LOGOUT_REDIRECT_URI: 'http://localhost:48673/login',
         };
@@ -30,7 +31,7 @@ describe('CognitoAuthUrlBuilderService', () => {
     const url = new URL(output.url);
 
     expect(url.origin).toBe(
-      'https://pantrylist.auth.us-east-1.amazoncognito.com',
+      'https://despensalista.auth.us-east-1.amazoncognito.com',
     );
     expect(url.pathname).toBe('/oauth2/authorize');
     expect(url.searchParams.get('response_type')).toBe('code');
@@ -52,7 +53,7 @@ describe('CognitoAuthUrlBuilderService', () => {
     const url = new URL(service.buildLogoutUrl());
 
     expect(url.origin).toBe(
-      'https://pantrylist.auth.us-east-1.amazoncognito.com',
+      'https://despensalista.auth.us-east-1.amazoncognito.com',
     );
     expect(url.pathname).toBe('/logout');
     expect(url.searchParams.get('client_id')).toBe('client-123');

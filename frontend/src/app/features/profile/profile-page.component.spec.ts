@@ -16,7 +16,7 @@ describe('ProfilePageComponent', () => {
 
   beforeEach(async () => {
     window.localStorage.removeItem(
-      'pantrylist.monetizationDiscoveryEvents.v1',
+      'despensalista.monetizationDiscoveryEvents.v1',
     );
 
     authFacade = jasmine.createSpyObj<AuthFacade>('AuthFacade', ['logout']);
@@ -299,7 +299,7 @@ describe('ProfilePageComponent', () => {
     component.registerMonetizationInterest('plus-household');
 
     const rawEvents = window.localStorage.getItem(
-      'pantrylist.monetizationDiscoveryEvents.v1',
+      'despensalista.monetizationDiscoveryEvents.v1',
     );
     const events = JSON.parse(rawEvents ?? '[]');
 
@@ -325,7 +325,7 @@ describe('ProfilePageComponent', () => {
 
     expect(component.monetizationEvents.length).toBe(0);
     expect(
-      window.localStorage.getItem('pantrylist.monetizationDiscoveryEvents.v1'),
+      window.localStorage.getItem('despensalista.monetizationDiscoveryEvents.v1'),
     ).toBeNull();
   });
 

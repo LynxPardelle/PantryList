@@ -1,17 +1,17 @@
 services:
   mongodb:
     image: mongo:7.0
-    container_name: pantrylist-mongodb
+    container_name: despensalista-mongodb
     restart: unless-stopped
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-pantrylist_root}
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-despensalista_root}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-change-this-root-password}
-      MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE:-pantrylist}
-      MONGO_APP_DATABASE: ${MONGO_APP_DATABASE:-pantrylist}
-      MONGO_APP_USERNAME: ${MONGO_APP_USERNAME:-pantrylist_app}
+      MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE:-despensalista}
+      MONGO_APP_DATABASE: ${MONGO_APP_DATABASE:-despensalista}
+      MONGO_APP_USERNAME: ${MONGO_APP_USERNAME:-despensalista_app}
       MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:-change-this-app-password}
     ports:
-      - "127.0.0.1:${PANTRYLIST_MONGO_HOST_PORT:-37917}:27017"
+      - "127.0.0.1:${DESPENSALISTA_MONGO_HOST_PORT:-37917}:27017"
     volumes:
       - mongodb_data:/data/db
       - ./docker/mongodb/initdb:/docker-entrypoint-initdb.d:ro
@@ -26,7 +26,7 @@ services:
       retries: 10
       start_period: 20s
     networks:
-      - pantrylist-network
+      - despensalista-network
 
   backend:
     profiles:
@@ -34,17 +34,17 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: pantrylist-backend
+    container_name: despensalista-backend
     restart: unless-stopped
     environment:
       NODE_ENV: ${NODE_ENV:-development}
       PORT: ${PORT:-3000}
-      DATABASE_NAME: ${DATABASE_NAME:-pantrylist}
-      DATABASE_URL: ${DATABASE_URL:-mongodb://${MONGO_APP_USERNAME:-pantrylist_app}:${MONGO_APP_PASSWORD:-change-this-app-password}@mongodb:${MONGO_PORT:-27017}/${MONGO_APP_DATABASE:-pantrylist}?authSource=${MONGO_APP_DATABASE:-pantrylist}}
+      DATABASE_NAME: ${DATABASE_NAME:-despensalista}
+      DATABASE_URL: ${DATABASE_URL:-mongodb://${MONGO_APP_USERNAME:-despensalista_app}:${MONGO_APP_PASSWORD:-change-this-app-password}@mongodb:${MONGO_PORT:-27017}/${MONGO_APP_DATABASE:-despensalista}?authSource=${MONGO_APP_DATABASE:-despensalista}}
       MONGO_HOST: ${MONGO_HOST:-mongodb}
       MONGO_PORT: ${MONGO_PORT:-27017}
-      MONGO_APP_DATABASE: ${MONGO_APP_DATABASE:-pantrylist}
-      MONGO_APP_USERNAME: ${MONGO_APP_USERNAME:-pantrylist_app}
+      MONGO_APP_DATABASE: ${MONGO_APP_DATABASE:-despensalista}
+      MONGO_APP_USERNAME: ${MONGO_APP_USERNAME:-despensalista_app}
       MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:-change-this-app-password}
       API_PREFIX: ${API_PREFIX:-api}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:48673}
@@ -67,7 +67,7 @@ services:
       AUTH_ACCESS_COOKIE_TTL_SECONDS: ${AUTH_ACCESS_COOKIE_TTL_SECONDS:-900}
       AUTH_REFRESH_COOKIE_TTL_SECONDS: ${AUTH_REFRESH_COOKIE_TTL_SECONDS:-2592000}
     ports:
-      - "127.0.0.1:${PANTRYLIST_BACKEND_HOST_PORT:-39173}:3000"
+      - "127.0.0.1:${DESPENSALISTA_BACKEND_HOST_PORT:-39173}:3000"
     user: root
     depends_on:
       mongodb:
@@ -76,7 +76,7 @@ services:
       - ./backend:/app
       - /app/node_modules
     networks:
-      - pantrylist-network
+      - despensalista-network
     command:
       - sh
       - -c
@@ -88,19 +88,19 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: pantrylist-frontend
+    container_name: despensalista-frontend
     restart: unless-stopped
     environment:
       NODE_ENV: ${NODE_ENV:-development}
       API_PROXY_TARGET: http://backend:3000
     ports:
-      - "127.0.0.1:${PANTRYLIST_FRONTEND_HOST_PORT:-48673}:4200"
+      - "127.0.0.1:${DESPENSALISTA_FRONTEND_HOST_PORT:-48673}:4200"
     user: root
     volumes:
       - ./frontend:/app
       - /app/node_modules
     networks:
-      - pantrylist-network
+      - despensalista-network
     command:
       - sh
       - -c
@@ -110,5 +110,5 @@ volumes:
   mongodb_data:
 
 networks:
-  pantrylist-network:
+  despensalista-network:
     driver: bridge

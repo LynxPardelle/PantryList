@@ -52,14 +52,14 @@ describe('AppController (e2e)', () => {
   it('/api (GET)', () => {
     return request(app.getHttpServer()).get('/api').expect(200).expect({
       status: 'ok',
-      service: 'pantrylist-backend',
+      service: 'despensalista-backend',
     });
   });
 
   it('/api/healthz (GET)', () => {
     return request(app.getHttpServer()).get('/api/healthz').expect(200).expect({
       status: 'ok',
-      service: 'pantrylist-backend',
+      service: 'despensalista-backend',
     });
   });
 
@@ -72,7 +72,7 @@ describe('AppController (e2e)', () => {
       .expect(200)
       .expect((response) => {
         const body = response.body as ApiMetricsSnapshot;
-        expect(body.service).toBe('pantrylist-backend');
+        expect(body.service).toBe('despensalista-backend');
         expect(body.totalRequests).toBeGreaterThanOrEqual(1);
         expect(body.routes).toEqual(
           expect.arrayContaining([

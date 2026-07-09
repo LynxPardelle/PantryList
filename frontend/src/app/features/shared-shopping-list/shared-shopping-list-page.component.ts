@@ -27,19 +27,19 @@ interface ShoppingSharePayload {
   template: `
     <main class="shared-shopping-page" aria-labelledby="shared-shopping-title">
       <section class="shared-shopping-hero">
-        <p class="eyebrow">PantryList</p>
+        <p class="eyebrow">Despensa Lista</p>
         <h1 id="shared-shopping-title">Lista compartida</h1>
         <p>
           Este enlace muestra una lista de compra temporal. No abre acceso a la
           cuenta ni a la despensa completa. El contenido se carga desde
-          PantryList cuando el enlace sigue vigente.
+          Despensa Lista cuando el enlace sigue vigente.
         </p>
       </section>
 
       @if (errorMessage) {
         <section class="error-banner" role="alert">
           <strong>{{ errorMessage }}</strong>
-          <a class="ghost-button" routerLink="/pantry">Ir a PantryList</a>
+          <a class="ghost-button" routerLink="/pantry">Ir a Despensa Lista</a>
         </section>
       } @else if (loading) {
         <section class="shared-shopping-card" aria-live="polite">

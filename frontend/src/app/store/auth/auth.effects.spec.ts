@@ -57,7 +57,7 @@ function makeUser(): AuthUser {
 
   return {
     id: 'user-1',
-    email: 'user@pantrylist.local',
+    email: 'user@despensalista.local',
     username: 'user',
     status: 'active',
     createdAt: date,

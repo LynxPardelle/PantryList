@@ -49,7 +49,7 @@ app.get('/healthz', (_req, res) => {
   res.setHeader('cache-control', 'no-store');
   res.status(200).json({
     status: 'ok',
-    service: 'pantrylist-frontend',
+    service: 'despensalista-frontend',
   });
 });
 

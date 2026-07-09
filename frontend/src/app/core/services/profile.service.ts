@@ -227,7 +227,7 @@ export class ProfileService {
       return undefined;
     }
 
-    const storageKey = 'pantrylist.clientDeviceId';
+    const storageKey = 'despensalista.clientDeviceId';
 
     try {
       const existingDeviceId = localStorage.getItem(storageKey);

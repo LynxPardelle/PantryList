@@ -31,7 +31,7 @@ describe('shopping share use cases', () => {
 
     const result = await useCase.execute({
       ownerUserId: 'user-1',
-      text: 'Lista de compras PantryList\n- Arroz: 2 kg',
+      text: 'Lista de compras Despensa Lista\n- Arroz: 2 kg',
     });
 
     const saved = repository.save.mock.calls[0][0].toPrimitives();

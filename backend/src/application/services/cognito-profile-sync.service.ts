@@ -73,7 +73,7 @@ export class CognitoProfileSyncService {
       !existingUserBySubject.id.equals(existingUserByEmail.id)
     ) {
       throw new UnauthorizedException(
-        'Cognito email belongs to a different PantryList account',
+        'Cognito email belongs to a different Despensa Lista account',
       );
     }
 
@@ -87,7 +87,7 @@ export class CognitoProfileSyncService {
   private ensureVerifiedEmailForLinking(claims: CognitoVerifiedClaims): void {
     if (claims.emailVerified !== true) {
       throw new UnauthorizedException(
-        'Verified Cognito email is required to link PantryList account',
+        'Verified Cognito email is required to link Despensa Lista account',
       );
     }
   }

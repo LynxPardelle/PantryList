@@ -1,4 +1,4 @@
-name: pantrylist-dokploy-prod
+name: despensalista-dokploy-prod
 
 services:
   backend:
@@ -10,7 +10,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
-      DATABASE_NAME: ${DATABASE_NAME:-pantrylist}
+      DATABASE_NAME: ${DATABASE_NAME:-despensalista}
       PERSISTENCE_PROVIDER: ${PERSISTENCE_PROVIDER:-dynamodb}
       AWS_REGION: ${AWS_REGION:-us-east-1}
       DYNAMODB_REGION: ${DYNAMODB_REGION:-us-east-1}
@@ -40,7 +40,7 @@ services:
       AUTH_REFRESH_COOKIE_TTL_SECONDS: ${AUTH_REFRESH_COOKIE_TTL_SECONDS:-2592000}
       AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-true}
       AUTH_COOKIE_SAME_SITE: ${AUTH_COOKIE_SAME_SITE:-lax}
-      AUTH_COOKIE_DOMAIN: ${AUTH_COOKIE_DOMAIN:-pantrylist.lynxpardelle.com}
+      AUTH_COOKIE_DOMAIN: ${AUTH_COOKIE_DOMAIN:-despensalista.lynxpardelle.com}
     expose:
       - "3000"
     healthcheck:
@@ -56,7 +56,7 @@ services:
       retries: 5
       start_period: 20s
     networks:
-      - pantrylist-network
+      - despensalista-network
 
   frontend:
     build:
@@ -89,11 +89,11 @@ services:
       retries: 5
       start_period: 20s
     networks:
-      - pantrylist-network
+      - despensalista-network
       - dokploy-network
 
 networks:
-  pantrylist-network:
+  despensalista-network:
     driver: bridge
   dokploy-network:
     external: true

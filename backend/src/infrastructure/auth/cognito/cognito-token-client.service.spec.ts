@@ -8,7 +8,8 @@ describe('CognitoTokenClientService', () => {
     ({
       get: jest.fn((key: string) => {
         const values: Record<string, string> = {
-          COGNITO_DOMAIN: 'https://pantrylist.auth.us-east-1.amazoncognito.com',
+          COGNITO_DOMAIN:
+            'https://despensalista.auth.us-east-1.amazoncognito.com',
           COGNITO_CLIENT_ID: 'client-123',
           COGNITO_CLIENT_SECRET: 'secret-456',
         };
@@ -52,7 +53,7 @@ describe('CognitoTokenClientService', () => {
     const body = new URLSearchParams(init.body as string);
 
     expect(url).toBe(
-      'https://pantrylist.auth.us-east-1.amazoncognito.com/oauth2/token',
+      'https://despensalista.auth.us-east-1.amazoncognito.com/oauth2/token',
     );
     expect(init.method).toBe('POST');
     expect(init.headers).toMatchObject({
@@ -103,7 +104,7 @@ describe('CognitoTokenClientService', () => {
     const body = new URLSearchParams(init.body as string);
 
     expect(url).toBe(
-      'https://pantrylist.auth.us-east-1.amazoncognito.com/oauth2/revoke',
+      'https://despensalista.auth.us-east-1.amazoncognito.com/oauth2/revoke',
     );
     expect(init.method).toBe('POST');
     expect(body.get('token')).toBe('refresh-token');

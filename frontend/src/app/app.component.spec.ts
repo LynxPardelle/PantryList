@@ -33,10 +33,10 @@ describe('AppComponent', () => {
     expect(app).toBeTruthy();
   });
 
-  it(`should have as title 'PantryList'`, () => {
+  it(`should have as title 'Despensa Lista'`, () => {
     const fixture = TestBed.createComponent(AppComponent);
     const app = fixture.componentInstance;
-    expect(app.title).toEqual('PantryList');
+    expect(app.title).toEqual('Despensa Lista');
   });
 
   it('should render the shell container', () => {

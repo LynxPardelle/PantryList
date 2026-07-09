@@ -24,7 +24,7 @@ describe('SharedShoppingListPageComponent', () => {
     );
     expect(request.request.withCredentials).toBeFalse();
     request.flush({
-      text: 'Lista de compras PantryList\n- Arroz: 2 kg',
+      text: 'Lista de compras Despensa Lista\n- Arroz: 2 kg',
       createdAt: '2026-05-19T12:00:00.000Z',
       expiresAt: '2099-05-19T12:00:00.000Z',
     });
@@ -49,7 +49,7 @@ describe('SharedShoppingListPageComponent', () => {
         type: 'shopping-list',
         createdAt: '2026-05-19T12:00:00.000Z',
         expiresAt: '2099-05-19T12:00:00.000Z',
-        text: 'Lista de compras PantryList\n- Arroz: 2 kg',
+        text: 'Lista de compras Despensa Lista\n- Arroz: 2 kg',
       }),
     );
     fixture = await createComponent(token);

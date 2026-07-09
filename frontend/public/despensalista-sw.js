@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pantrylist-shell-v2';
+const CACHE_NAME = 'despensalista-shell-v2';
 const SHELL_URLS = [
   '/',
   '/login',

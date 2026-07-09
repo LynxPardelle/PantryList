@@ -356,7 +356,7 @@ test('shows replenishment guidance, purchase date, per-type settings, and archiv
   await page.goto('/pantry');
 
   const guidance = page.getByTestId('pantry-guidance-card');
-  await expect(guidance).toContainText('Ayuda para usar PantryList');
+  await expect(guidance).toContainText('Ayuda para usar Despensa Lista');
   await guidance.getByRole('button', { name: 'Ocultar por ahora' }).click();
   await expect(guidance).toHaveCount(0);
 

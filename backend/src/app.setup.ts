@@ -75,10 +75,12 @@ export async function configureApp(
 
   if (swaggerEnabled) {
     const swaggerConfig = new DocumentBuilder()
-      .setTitle(configService.get<string>('SWAGGER_TITLE') ?? 'PantryList API')
+      .setTitle(
+        configService.get<string>('SWAGGER_TITLE') ?? 'Despensa Lista API',
+      )
       .setDescription(
         configService.get<string>('SWAGGER_DESCRIPTION') ??
-          'PantryList API documentation',
+          'Despensa Lista API documentation',
       )
       .setVersion(configService.get<string>('SWAGGER_VERSION') ?? '1.0')
       .build();

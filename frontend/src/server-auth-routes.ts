@@ -2,7 +2,7 @@ import type { NextFunction, Request, RequestHandler, Response } from 'express';
 
 const PROTECTED_APP_ROUTES = ['/pantry', '/profile'];
 const SESSION_COOKIE_PATTERN =
-  /(?:^|;\s*)pantrylist_(?:access|refresh)_token=[^;\s]+/;
+  /(?:^|;\s*)despensalista_(?:access|refresh)_token=[^;\s]+/;
 
 export function createProtectedRouteRedirect(): RequestHandler {
   return (req: Request, res: Response, next: NextFunction) => {
@@ -13,7 +13,7 @@ export function createProtectedRouteRedirect(): RequestHandler {
 
     const requestUrl = new URL(
       req.originalUrl || req.url || '/',
-      'https://pantrylist.local',
+      'https://despensalista.local',
     );
 
     if (

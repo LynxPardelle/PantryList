@@ -1,7 +1,7 @@
 param(
   [string]$EnvFile = '.env.docker.local',
-  [string]$VolumeName = 'pantrylist_mongodb_data',
-  [string]$RepairContainer = 'pantrylist-mongodb-credential-repair',
+  [string]$VolumeName = 'despensalista_mongodb_data',
+  [string]$RepairContainer = 'despensalista-mongodb-credential-repair',
   [switch]$NoStart
 )
 

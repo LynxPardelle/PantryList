@@ -128,7 +128,7 @@ describe('CognitoProfileSyncService', () => {
     expect(user.username).toBe('chef');
   });
 
-  it('links a verified Cognito subject to an existing PantryList profile by email', async () => {
+  it('links a verified Cognito subject to an existing Despensa Lista profile by email', async () => {
     const { service, userDao } = makeService();
     const existing = makeUser({
       id: 'stable-app-user',

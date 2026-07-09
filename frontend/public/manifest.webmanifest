@@ -1,6 +1,6 @@
 {
-  "name": "PantryList",
-  "short_name": "PantryList",
+  "name": "Despensa Lista",
+  "short_name": "Despensa Lista",
   "description": "Despensa del hogar con compras sugeridas, caducidades y borradores locales.",
   "start_url": "/pantry",
   "scope": "/",
