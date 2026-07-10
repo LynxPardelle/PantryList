@@ -79,14 +79,14 @@ Status: Implemented batch evidence and remaining backlog source.
 - Full session/device list beyond Cognito global sign-out.
 - External metrics and alerting sink beyond the protected in-memory metrics snapshot.
 - Cursor pagination for active pantry and legacy product reads beyond archived pantry pagination, current explicit query limits, and export metadata.
-- Future backend architecture migration from the Nest monolith to AWS serverless microservices with Lambda, Step Functions where needed, supporting AWS services, and isolated dev/test/production environments.
+- P0 backend architecture migration from the current one-Lambda serverless backend to AWS serverless microservices with Lambda, Step Functions where needed, supporting AWS services, and isolated dev/test/production environments.
 
 ## Recommended Next Batch
 
-1. Full session/device list beyond Cognito global sign-out.
-2. Multiple shopping lists by store, occasion, or trip.
-3. Voice input for quick capture.
-4. Cursor pagination for active pantry and legacy product reads if production data volume starts stressing overview/export paths.
-5. Waste event tracking and weekly savings/waste summaries.
+1. Serverless microservice migration discovery for the current one-Lambda backend.
+2. Full session/device list beyond Cognito global sign-out.
+3. Multiple shopping lists by store, occasion, or trip.
+4. Voice input for quick capture.
+5. Cursor pagination for active pantry and legacy product reads if production data volume starts stressing overview/export paths.
 
-This is the best next package because the trust controls and first technical scale guardrails are now in place, so the next gain should improve user workflows while keeping a small technical safety follow-up ready.
+This is the best next package because production is already serverless, so the next technical gain is splitting the backend into domain services before adding heavier product surfaces.

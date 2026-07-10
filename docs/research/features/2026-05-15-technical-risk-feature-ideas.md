@@ -395,17 +395,18 @@ Status note:
 
 ### 16. Serverless Microservice Backend Migration
 
-Priority: P2
+Priority: P0
 
 Why it matters:
 
 - The current backend is a Nest monolith, which is practical for product iteration but can become harder to scale, deploy independently, and isolate by domain as the app adds households, payments, AI/OCR, notifications, and background workflows.
 - Future AWS-native growth should support clear service boundaries, async workflows, and environment isolation.
+- Production is now serverless, but API Gateway still routes all backend traffic to one Lambda. The next architecture priority is splitting that Lambda by domain/service without reintroducing EC2.
 
 Evidence:
 
 - The current repository has a single backend application under `backend/` and AWS infrastructure under `infra/cognito/`.
-- Production currently relies on the existing app deployment path plus AWS-managed Cognito, CloudFront, and DynamoDB resources.
+- Production runs through CloudFront, API Gateway, one app Lambda, Cognito, S3, and DynamoDB. The EC2 path for this app has been decommissioned.
 
 Feature idea:
 
@@ -430,11 +431,11 @@ Feature idea:
 
 ## Recommended Next Technical Batch
 
-1. Full session/device list beyond Cognito global sign-out.
-2. External metrics sink and alert delivery for the protected metrics snapshot.
-3. Cursor pagination for active pantry overview and legacy product reads if production data volume requires it.
-4. Direct-origin validation checklist after CloudFront or Dokploy changes.
-5. Serverless microservice migration discovery for the Nest-to-AWS transition.
+1. Serverless microservice migration discovery for the current one-Lambda backend.
+2. Full session/device list beyond Cognito global sign-out.
+3. External metrics sink and alert delivery for the protected metrics snapshot.
+4. Cursor pagination for active pantry overview and legacy product reads if production data volume requires it.
+5. Direct-origin validation checklist after CloudFront changes.
 
 ## Notes
 

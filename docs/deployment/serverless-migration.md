@@ -21,12 +21,12 @@ The first serverless cut is deliberately small:
 - API Gateway HTTP API forwards all routes to that Lambda.
 - Existing DynamoDB repositories stay in use.
 - Existing Cognito CDK stack provides user pool, app client, issuer, and domain.
-- Current Dokploy/EC2 runtime remains the rollback path until serverless smoke
-  passes per environment.
+- The old Dokploy/EC2 runtime for this app has been decommissioned after
+  production smoke passed.
 
 This is not yet the final microservice split. Route-family Lambdas, Step
-Functions, EventBridge/SQS, custom API domains, CloudFront frontend hosting, and
-EC2/Dokploy retirement stay behind separate verified cuts.
+Functions, EventBridge/SQS, and domain-owned observability are now the next P0
+architecture improvement.
 
 ## Deploy Variables
 
@@ -37,13 +37,11 @@ Each GitHub Environment needs:
 - `COGNITO_DOMAIN_PREFIX`
 - `FRONTEND_BASE_URL`
 
-Production also requires these so the existing Cognito social providers are not
-removed by a prod stack update:
+Production also requires this so the existing Google provider is not removed by
+a prod stack update:
 
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET_NAME`
-- `FACEBOOK_CLIENT_ID`
-- `FACEBOOK_CLIENT_SECRET_NAME`
 
 ## Local Commands
 
@@ -70,4 +68,4 @@ npm run synth:prod
 - account deletion and global sign-out still have Cognito IAM permissions
 - frontend can call the API with credentials and XSRF headers
 - CloudWatch logs show no cold-start bootstrap errors
-- rollback to Dokploy/EC2 remains available until production browser smoke passes
+- production browser smoke passes for authenticated pantry CRUD
