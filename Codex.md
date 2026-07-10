@@ -138,3 +138,12 @@
 - After reload, active counts returned to `Tipos base 0` and `Lotes 0`; the QA name was no longer visible, page title was `Despensa Lista`, visible text did not include `PantryList` or `Facebook`, and browser console warning/error logs were empty.
 - In-app browser checks for `/profile` and `/privacidad` loaded with title `Despensa Lista`, no console warning/error logs, no visible `PantryList`, and no visible `Facebook`; privacy page still includes `Google y proveedores sociales`.
 - Updated improvement backlog to make serverless microservice migration the P0 next architecture priority now that production is serverless but still served by one backend Lambda.
+
+## 2026-07-10 11:22 CT - EC2 Decommission Readiness
+
+- Live AWS check returned only active app stacks `despensalista-prod-cognito` and `despensalista-prod-serverless-backend`; no active `pantrylist` stacks were returned.
+- Route53 has only `despensalista.lynxpardelle.com` A/AAAA aliases and the ACM validation CNAME for this app; `pantrylist.lynxpardelle.com` did not resolve in the current DNS check.
+- CloudFront distribution `EWXF7S0KL4WVN` has only API Gateway `aoltmu74g9.execute-api.us-east-1.amazonaws.com` and S3 `despensalista-prod-serverless-ba-webbucket12880f5b-wnf5pq5b9mhs.s3.us-east-1.amazonaws.com` as origins.
+- DynamoDB check returned only `despensalista-prod-*` tables for this app; no `pantrylist-*` tables were returned.
+- Read-only SSM inspection on EC2 `i-061f471ff5edea8a9` showed no matching running Docker containers and no active Traefik files for PantryList/Despensa Lista; only old logs and `_decommissioned/despensalista-20260709T183617Z` copies remain.
+- Decision: the Despensa Lista/PantryList migration can be treated as complete for EC2 decommission scope. Do not terminate the shared EC2 instance until other projects hosted there have also migrated or been retired.
